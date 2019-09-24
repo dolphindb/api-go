@@ -1,5 +1,0 @@
-/home/ybzhang/sqlodbc/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/ybzhang/sqlodbc/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/ybzhang/sqlodbc/cmake-build-debug/CMakeFiles/ThreadPooledClientTester.dir
-/home/ybzhang/sqlodbc/cmake-build-debug/CMakeFiles/ThreadedClientTester.dir
-/home/ybzhang/sqlodbc/cmake-build-debug/CMakeFiles/PollingClientTester.dir

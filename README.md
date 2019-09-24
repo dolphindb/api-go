@@ -4,7 +4,7 @@ DolphinDB Go API 目前仅支持Linux开发环境。
 
 本教程主要介绍以下内容：
 
-- 导API包
+- 项目编译
 - 建立DolphinDB连接
 - 运行DolphinDB脚本
 - 运行函数
@@ -12,9 +12,20 @@ DolphinDB Go API 目前仅支持Linux开发环境。
 - 上传本地对象到DolphinDB服务器
 - 追加数据到DolphinDB数据表
 
-### 1.导API包
+### 1.项目编译
 
-下载整个项目，进入api-go目录，新建.go文件并导入DolphinDB GO API包。可参考api-go目录下example.go文件，包名简写为ddb。
+#### 1.1 添加环境变量
+
+下载整个项目，进入api-go目录，使用如下指令添加环境变量。请注意，执行export指令只能临时添加环境变量，若需要让变量持久生效，请根据Linux相关教程修改系统文件。
+
+```bash
+$ cd api-go/
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/api
+```
+
+#### 1.2 导入API包
+
+新建.go文件并导入DolphinDB GO API包，可参考api-go目录下example.go文件，包名简写为ddb。
 
 ```GO
 package main
@@ -25,7 +36,6 @@ func main() {
   var conn ddb.DBConnection;
   conn.Init();
   conn.Connect("localhost",1621,"admin","123456");
-  
 }
 ```
 
@@ -85,9 +95,11 @@ fmt.Println(result1.GetString());
 输出结果为：
 >[6]
 
+上述例子中，我们使用GO API中的`CreateVector()`函数分别创建两个向量，再调用`<CreateDataType>`系列函数中的`CreateInt()`函数将一个GO语言中int型的值转换成GO API提供的DT_INT类型的对象，通过`Append()`函数添加到向量对象中。然后调用`ToConstant()`函数将vector转换成Constant对象，作为参数上传到DolphinDB server端进行运算。
+
 ### 5. 数据对象介绍
 
-DolphinDB GO API 通过Constant这一基本类型接受各种类型的数据，包括int、float等。同时，GO API还提供Vector类和Table类来存放向量和表对象。
+DolphinDB GO API 通过Constant这一基本类型接受各种类型的数据，包括DT_INT、DT_FLOAT等。同时，GO API还提供Vector类和Table类来存放向量和表对象。
 
 #### 5.1 Constant类
 
@@ -95,11 +107,11 @@ Constant类提供的较为常用的方法如下：
 
 | 方法名        | 详情          |
 |:------------- |:-------------|
-|GetForm()|获取对象类型|
-|GetType()|获取数据类型|
+|GetForm()|获取对象的数据形式|
+|GetType()|获取对象的数据类型|
 |Size()|获取对象大小|
 |`<GetDataType>`|将Constant对象转换为GO中的基本数据类型|
-|`<IsDataForm>`|校验Constant对象存放的数据类型|
+|`<IsDataForm>`|校验Constant对象的数据形式|
 |ToVector()|转换为Vector类型|
 |ToTable()|转换为Table类型|
 
@@ -107,7 +119,7 @@ Constant类提供的较为常用的方法如下：
 
 * `GetForm()`、`GetType()`
 
-对Constant对象调用`GetForm`方法获取对象类型，调用`GetType`方法获取数据类型。需要注意的是，这两个方法返回的不是字符串，而是对象类型或者数据类型对应的序号，具体对应关系见附录。
+对Constant对象调用`GetForm`方法获取对象的数据形式，调用`GetType`方法获取对象的数据类型。需要注意的是，这两个方法返回的不是字符串，而是数据形式或者数据类型对应的序号，具体对应关系见附录。
 
 ```GO
 x := conn.Run("1+1");
@@ -143,7 +155,7 @@ x.GetDouble();  //float64
 
 * `<IsDataForm>`
 
-使用`IisDataForm>`系列方法，校验对象存放的数据的类型
+使用`IsDataForm>`系列方法，校验对象的数据形式
 
 ```GO
 x := conn.Run("2 3 5");
@@ -357,7 +369,7 @@ t = table(100:0, `name`date`price, [STRING,DATE,DOUBLE]);
 share t as tglobal;
 ```
 
-在GO应用程序中，创建一个表，并调用`ToConstant()`方法将表对象转换为Constant类型对象，再通过`RunFunc`函数调用DolphinDB内置的`TableInsert`函数将demotb表内数据插入到表tglobal中。
+在GO应用程序中，创建一个表，并调用`ToConstant()`方法将表对象转换为Constant类型对象，再通过`RunFunc`函数调用DolphinDB内置的`tableInsert`函数将demotb表内数据插入到表tglobal中。
 
 ```GO
 ta := CreateDemoTable();
@@ -381,7 +393,7 @@ saveTable(db, t, `dt);
 share t as tDiskGlobal;
 ```
 
-与6.1小节的方法类似，我们通过将表Upload到服务器之后再向磁盘表追加数据。需要注意的是，`tableInsert`函数只把数据追加到内存，如果要保存到磁盘上，必须再次执行`saveTable`函数。
+与7.1小节的方法类似，我们通过将表Upload到服务器之后再向磁盘表追加数据。需要注意的是，`tableInsert`函数只把数据追加到内存，如果要保存到磁盘上，必须再次执行`saveTable`函数。
 
 ```GO
 ta := CreateDemoTable();
@@ -436,8 +448,9 @@ name date       price
 1    2019.01.01 1    
 ```
 
-附录：
+关于追加数据到DolphinDB分区表的实例可以参考api-go目录下appendData.go文件。
 
+附录
 ---
 数据形式列表（`GetFrom()`函数返回值对应的数据形式）
 

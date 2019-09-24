@@ -72,11 +72,17 @@ Constant* createDateTime(int year, int month, int day, int hour, int minute, int
 
 Constant* createVector(int type);
 Constant* createTable(Constant* colname,Constant* cols,int len);
-#cgo LDFLAGS: -L./api-c -lwrapper -Wl,-rpath,./api/api-c
+#cgo LDFLAGS: -L./ -lwrapper -Wl,-rpath,./api/
 */
 import "C"
 //import "unsafe"
 //import "fmt"
+const(
+	hostname = "localhost";
+	port = 1621;
+	user = "admin";
+	pass = "123456";
+)
 
 const ( DT_VOID = iota
 		DT_BOOL
@@ -499,7 +505,7 @@ func (c *Constant) ToConstant() Constant{
 func main() {
 	conn := new(DBConnection);
 	conn.Init();
-	fmt.Println(conn.Connect("localhost",1621,"admin","123456"));
+	fmt.Println(conn.Connect(hostname,port,user,pass));
 	v1 := CreateVector(DT_INT);
 	v2 := CreateVector(DT_INT)
 	cols := [] Vector {v1,v2};
