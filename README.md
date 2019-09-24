@@ -421,7 +421,7 @@ db = database(dbPath, VALUE, 2019.01.01..2019.01.30)
 pt=db.createPartitionedTable(table(100:0, `name`date`price, [STRING,DATE,DOUBLE]), tableName, `date)
 ```
 
-DolphinDB提供`loadTable`F方法来加载分布式表，通过`tableInsert`方式追加数据，具体的脚本示例如下：
+DolphinDB提供`loadTable`方法来加载分布式表，通过`tableInsert`方式追加数据，具体的脚本示例如下：
 
 ```GO
 ta := CreateDemoTable();
