@@ -13,7 +13,8 @@ DolphinDB Go API 目前仅支持Linux开发环境。
 - 追加数据到DolphinDB数据表
 
 ### 1.导API包
-可参考api-go目录下example.go文件,包名简写为ddb
+
+下载整个项目，进入api-go目录，新建.go文件并导入DolphinDB GO API包。可参考api-go目录下example.go文件，包名简写为ddb。
 
 ```GO
 package main

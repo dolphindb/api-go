@@ -500,22 +500,6 @@ func main() {
 	conn := new(DBConnection);
 	conn.Init();
 	fmt.Println(conn.Connect("localhost",1621,"admin","123456"));
-
-//	var p Constant;
-	conn.Run("t1=table(1 2 3 as a, `x`y`z as b, 10.8 7.6 3.5 as c);");
-	p1 := conn.Run("t1");
-	conn.Run("x = 3 6 1 5 9");
-//	p = conn.Run("x");
-//	var y Vector = p.ToVector();
-//	 z := y.Get(1);
-    var t Table = p1.ToTable();
-	fmt.Println(t.GetString());
-	fmt.Println(t.Columns(),t.GetColumnType(1));
-	y := t.GetColumnbyName("b");
-	fmt.Println(y.GetString());
-	s := y.GetStringSlice();
-	fmt.Println(s);
-	
 	v1 := CreateVector(DT_INT);
 	v2 := CreateVector(DT_INT)
 	cols := [] Vector {v1,v2};
@@ -523,20 +507,7 @@ func main() {
 	v2.Append(CreateInt(1));
 	colnames := [] string {"v1","v2"};
 	ta := CreateTable(colnames, cols);
-    fmt.Println(ta.GetString());
-	
-
-  //  a := []int {1,2,3};
-
-	tb := ta.ToConstant();
-	args := [] Constant{tb};
-	conn.Upload("tglobal",tb);
-	conn.RunFunc("tableInsert{tglobal}", args); 
-	
-	x := conn.Run("1+1");
-	fmt.Println(x.GetForm(),x.GetType());
-
-//	 conn.Close();
-//	 p = conn.Run("1+1");
+        fmt.Println(ta.GetString());
+        conn.Close();
 }
 */
