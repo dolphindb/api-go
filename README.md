@@ -4,7 +4,7 @@ DolphinDB Go API 目前仅支持Linux开发环境。
 
 本教程主要介绍以下内容：
 
-- 项目编译
+- 导API包
 - 建立DolphinDB连接
 - 运行DolphinDB脚本
 - 运行函数
@@ -48,7 +48,7 @@ var conn DBConnection;
 conn.Init();
 ```
 
-GO API通过TCP/IP协议连接到DolphinDB。使用`connect`方法创建连接时，需要提供DolphinDB Server的IP、端口号、用户名及密码，函数返回一个布尔值表示是否连接成功。
+GO API通过TCP/IP协议连接到DolphinDB。使用`Connect`方法创建连接时，需要提供DolphinDB Server的IP、端口号、用户名及密码，函数返回一个布尔值表示是否连接成功。
 
 ```GO
 conn.Connect("localhost",8848,"admin","123456");
@@ -100,6 +100,7 @@ Constant类提供的较为常用的方法如下：
 |`<GetDataType>`|将Constant对象转换为GO中的基本数据类型|
 |`<IsDataForm>`|校验Constant对象存放的数据类型|
 |ToVector()|转换为Vector类型|
+|ToTable()|转换为Table类型|
 
 具体示例如下：
 
@@ -150,15 +151,21 @@ x.IsVector();
 x.IsTable();
 ```
 
-对Constant对象调用ToVector可以获得一个Vector对象，Vector类的介绍见5.2小节。
+对Constant对象调用`ToVector()`可以获得一个Vector对象，Vector类的介绍见5.2小节。
 
 ```GO
 p := conn.Run("5 4 8");
 p1 := p.ToVector();
 ```
 
-类似地，对Constant对象调用`ToTable`可以获得一个Table对象。
+类似地，对Constant对象调用`ToTable()`可以获得一个Table对象, Table类的介绍见5.3小节。
 
+```GO
+script :="t=table(1..5 as id, rand(5.0, 5) as values);"
+script += "select * from t";
+p := conn.Run(script);
+p1 := p.ToTable();
+```
 #### 5.2 Vector类
 
 Vector(向量)是DolphinDB中常用的类型，也可作为表中的一列,Vector类提供的较为常用的方法如下：
@@ -231,7 +238,7 @@ s5 := p1.GetDoubleSlice();
 s6 := p1.GetStringSlice();
 ```
 
-查看p1.GetIntSlice()的结果，结果是一个Int类型的向量。
+查看p1.GetIntSlice()的结果，结果是一个Int类型的slice。
 >[5 4 8]
 
 #### 5.3 Table类
@@ -431,7 +438,7 @@ name date       price
 附录：
 
 ---
-数据形式列表
+数据形式列表（`GetFrom()`函数返回值对应的数据形式）
 
 | 序号       | 数据形式          |
 |:------------- |:-------------|
@@ -444,7 +451,7 @@ name date       price
 |6|DF_CHART
 |7|DF_CHUNK
 
-数据类型列表
+数据类型列表（`GetType()`函数返回值对应的数据类型）
 
 | 序号       | 数据类型          |
 |:------------- |:-------------|
