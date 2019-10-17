@@ -1,4 +1,4 @@
-# DolphinDB Go API 概述
+# DolphinDB Go API
 
 DolphinDB Go API 目前仅支持Linux开发环境。
 
@@ -7,10 +7,10 @@ DolphinDB Go API 目前仅支持Linux开发环境。
 - 项目编译
 - 建立DolphinDB连接
 - 运行DolphinDB脚本
-- 运行函数
+- 运行DolphinDB函数
 - 数据对象介绍
 - 上传本地对象到DolphinDB服务器
-- 追加数据到DolphinDB数据表
+- 读写DolphinDB数据表
 
 ### 1.项目编译
 
@@ -25,7 +25,7 @@ $ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/api
 
 #### 1.2 导入API包
 
-新建.go文件并导入DolphinDB GO API包，可参考api-go目录下example.go文件，包名简写为ddb。
+新建.go文件并导入DolphinDB GO API包，可参考api-go目录下example.go文件，包名已经简写为ddb。
 
 ```GO
 package main
@@ -35,7 +35,7 @@ import (
 func main() {
   var conn ddb.DBConnection;
   conn.Init();
-  conn.Connect("localhost",1621,"admin","123456");
+  conn.Connect("localhost",8920,"admin","123456");
 }
 ```
 
@@ -52,7 +52,7 @@ DolphinDB GO API 提供的最核心的对象是DBConnection。GO应用可以通�
 |Init()|初始化链接信息|
 |Close()|关闭当前会话|
 
-如下脚本声明了一个`DBConnection`对象，并调用`Init`方法初始化对象。请注意，GO API 在定义DBConnection对象之后必须首先调用`Init`方法来进行初始化配置，否则可能会导致不能正常使用。
+如下脚本声明了一个`DBConnection`对象，并调用`Init`方法初始化对象。请注意，GO API 在定义DBConnection对象之后必须首先调用`Init`方法来进行初始化配置，否则会导致API的一些方法不能正常使用。
 
 ```GO
 var conn DBConnection;
@@ -76,26 +76,64 @@ fmt.Println(v.GetString());
 输出结果为：
 >["IBM","GOOG","YHOO"]
 
-### 4. 运行函数
+当需要调用DolphinDB内置或用户自定义函数时，若函数所需参数都在服务端，我们可以通过`Run(script)`方法直接调用该函数。
 
-通过`RunFunc(script,args)`方法运行DolphinDB脚本的方式调用DolphinDB的内置函数：
+例如，对两个向量调用`add`函数时，若函数所需的两个参数x和y都在服务端被定义，则直接调用`Run(script)`：
 
 ```GO
-v1 := CreateVector(DT_INT);
-v2 := CreateVector(DT_INT)
-v1.Append(CreateInt(1));
-v2.Append(CreateInt(5));
-x := v1.ToConstant();
-y := v2.ToConstant();
-args := [] Constant{x, y};
+sum := conn.Run("x = [1,3,5]; y = [2,4,6]; add(x,y)");
+fmt.Println(sum.GetString());
+```
+输出结果为：
+>[3,7,11]
+
+### 4. 运行函数
+
+当需要在远程DolphinDB服务器上执行DolphinDB内置或用户自定义函数，而函数所需的一个或多个参数需要由GO客户端提供时，我们可以通过`RunFunc(func,args)`方法来调用这类函数。`RunFunc(func,args)`的第一个参数为DolphinDB中的函数名，第二个参数是该函数所需的一个或者多个参数，为Constant类型的向量。下面仍以`add`函数为例，区分两种情况：
+
+- 仅部分参数需由GO客户端赋值
+
+若变量x已经通过GO程序在服务器端生成，
+
+```GO
+conn.run("x = [1,3,5]");
+```
+
+而参数y要在GO客户端生成，这时就需要使用“部分应用”方式，把参数x固化在`add`函数内。具体请参考[部分应用文档](https://www.dolphindb.com/cn/help/PartialApplication.html)。
+
+```GO
+a2 := [] int32 {9,8,7};
+y0 := ddb.CreateVector(ddb.DT_INT, 3);
+y0.SetIntArray(0,3,a2);
+y := y0.ToConstant();
+args = [] ddb.Constant{y};
+result1 := conn.RunFunc("add{x,}", args);
+fmt.Println(result1.GetString());
+```
+输出结果为：
+> [10, 11, 12]
+
+* 所有参数都待由GO客户端赋值
+
+当所有参数都待由GO客户端赋值时，直接通过`RunFunc(script,args)`方法调用DolphinDB的内置函数：
+
+```GO
+a1 := [] int32 {1,2,3};
+a2 := [] int32 {9,8,7};
+x0 := ddb.CreateVector(ddb.DT_INT, 3);
+y0 := ddb.CreateVector(ddb.DT_INT, 3);
+x0.SetIntArray(0,3,a1);
+y0.SetIntArray(0,3,a2);
+x := x0.ToConstant();
+y := y0.ToConstant();
+args = [] ddb.Constant{x, y};
 result1 := conn.RunFunc("add", args);
 fmt.Println(result1.GetString());
 ```
-
 输出结果为：
->[6]
+>[10,10,10]
 
-上述例子中，我们使用GO API中的`CreateVector()`函数分别创建两个向量，再调用`<CreateDataType>`系列函数中的`CreateInt()`函数将一个GO语言中int型的值转换成GO API提供的DT_INT类型的对象，通过`Append()`函数添加到向量对象中。然后调用`ToConstant()`函数将vector转换成Constant对象，作为参数上传到DolphinDB server端进行运算。
+上述例子中，我们使用GO API中的`CreateVector()`函数分别创建两个向量，再调用`SetIntArray()`函数将GO语言中int类型的切片赋值给ddb.DT_INT类型的向量。最后调用`ToConstant()`函数将vector转换成Constant对象，作为参数上传到DolphinDB server端。
 
 ### 5. 数据对象介绍
 
@@ -144,18 +182,18 @@ p.Size();
 
 ```GO
 x := conn.Run("1+1");
+x.GetBool(); //转换为布尔型
+x.GetShort();  //int16
 x.GetInt();  //转换为整形int
 x.GetLong();  //int64
-x.GetShort();  //int16
-X.GetBool(); //转换为布尔型
-x.GetString()  //转换为字符串
 x.GetFloat(); //float32
 x.GetDouble();  //float64
+x.GetString()  //转换为字符串
 ```
 
 * `<IsDataForm>`
 
-使用`IsDataForm>`系列方法，校验对象的数据形式
+使用`<IsDataForm>`系列方法，校验对象的数据形式
 
 ```GO
 x := conn.Run("2 3 5");
@@ -174,24 +212,26 @@ p1 := p.ToVector();
 类似地，对Constant对象调用`ToTable()`可以获得一个Table对象, Table类的介绍见5.3小节。
 
 ```GO
-script :="t=table(1..5 as id, rand(5.0, 5) as values);"
+script := "t=table(1..5 as id, rand(5.0, 5) as values);"
 script += "select * from t";
 p := conn.Run(script);
 p1 := p.ToTable();
 ```
+
 #### 5.2 Vector类
 
-Vector(向量)是DolphinDB中常用的类型，也可作为表中的一列,Vector类提供的较为常用的方法如下：
+Vector(向量)是DolphinDB中常用的类型，也可作为表中的一列，Vector类提供的较为常用的方法如下：
 
 | 方法名        | 详情          |
 |:------------- |:-------------|
 |GetName()|获取向量名称|
 |SetName()|设置向量名称|
 |Get(index)|访问向量的元素，返回Constant对象|
-|CreateVector(type)|创建一个空的Vector，返回Vector对象|
+|CreateVector(dtype, size)|初始化一个指定大小的Vector，返回Vector对象|
 |Append(Constant)|向Vector尾部追加一个对象|
 |Remove(n)|移除末尾的n个元素|
-|`<GetDataTypeSlice>`|    获取对应数据类型的切片  |
+|`<GetDataTypeSlice>`|获取对应数据类型的切片|
+|`<SetDataTypeArray>`|将对应数据类型的切片赋值给向量|
 
 具体示例如下：
 
@@ -213,19 +253,19 @@ p2 := p1.Get(0)；
 if p2.GetInt()!= 1 { t.Error("Append Error"); }
 ```
 
-* `CreateVector(type)`
+* `CreateVector(type,size)`
 
-使用`CreateVector(type)`函数创建一个空的Vector，这会返回一个Vector对象,参数type为DolphinDB的数据类型
+使用`CreateVector(type,size)`函数创建一个空的Vector，这会返回一个Vector对象,参数type为DolphinDB的数据类型，size为向量的初始大小。
 
 ```GO
-p1 := CreateVector(DT_INT);
+p1 := ddb.CreateVector(ddb.DT_INT,5);
 ```
 * `Append(Constant)`
 
 对Vector调用`Append(Constant)`方法可以向Vector尾部push一个对象，这有点类似于C++ vector的push_back方法
 
 ```GO
-p1.Append(CreateInt(1));
+p1.Append(ddb.CreateInt(1));
 ```
 
 * `Remove(n)`
@@ -254,6 +294,35 @@ s6 := p1.GetStringSlice();
 查看p1.GetIntSlice()的结果，结果是一个Int类型的slice。
 >[5 4 8]
 
+* `<SetDataTypeArray>`
+
+对Vector调用`<SetDataTypeArray>`，将对应数据类型的切片赋值给对应类型的向量向量，例如：
+
+```GO
+rowNum := 10;
+v1 := ddb.CreateVector(ddb.DT_BOOL,rowNum);
+v2 := ddb.CreateVector(ddb.DT_INT, rowNum);
+v3 := ddb.CreateVector(ddb.DT_FLOAT, rowNum);
+v4 := ddb.CreateVector(ddb.DT_STRING, rowNum);
+var arr1 []bool;
+var arr2 []int32;
+var arr3 []float32;
+var arr4 []string;
+for i := 0; i<rowNum; i++{
+  arr1 = append(arr1, true);
+  arr2 = append(arr2, 1);
+  arr3 = append(arr3, 1.0);
+  arr4 = append(arr4, "1");
+}
+v1.SetBoolArray(0,rowNum,arr1);
+v2.SetIntArray(0,rowNum,arr2);  
+v3.SetFloatArray(0,rowNum,arr3);  
+v4.SetStringArray(0,rowNum,arr4);
+```
+
+查看v1.GetString()的结果，结果是一个Int类型的slice。
+>[1,1,1,1,1,1,1,1,1,1]
+
 #### 5.3 Table类
 
 Table类提供的较为常用的方法如下：
@@ -268,12 +337,13 @@ Table类提供的较为常用的方法如下：
 |GetColumnName(index)|获取下标为index列的列名|
 |GetColumnType(index)|获取下标为index列的数据类型|
 |GetColumnbyName(name)|通过列名获取列，返回Vector对象|
-|CreateTable(colname,cols)|用列名和列创建一个Table，返回Table对象|
+|CreateTable(colname, coltype, size, capacity)|用列名和列创建一个Table，并指定初始大小和容量，返回Table对象|
+|CreateTableByVector(colname,cols)|用列名和列创建一个Table，返回Table对象|
 
 
 * `GetColumn(index)`
 
-使用`GetColumn(index)`方法获取表某个下标的列，从0开始，返回一个Vector对象
+使用`GetColumn(index)`方法获取表某个下标的列，下标从0开始，返回一个Vector对象
 
 ```GO
 t1.GetColumn(0);
@@ -281,7 +351,7 @@ t1.GetColumn(0);
 
 * `GetColumnName(index)`
 
-使用`GetColumnName(index)`方法获取表某个下标的列，从0开始，返回一个字符串
+使用`GetColumnName(index)`方法获取表某个下标的列，下标从0开始，返回一个字符串
 
 ```GO
 t1.GetColumnName(0);
@@ -289,7 +359,7 @@ t1.GetColumnName(0);
 
 * `GetColumnType(index)`
 
-使用`GetColumnType(index)`方法获取表某个下标的列类型，返回一个DolphinDB数据类型，参考附录
+使用`GetColumnType(index)`方法获取表中指定列的类型，返回一个DolphinDB数据类型，各数据类型请参考附录。
 
 ```GO
 t1.GetColumnType(0);
@@ -303,24 +373,48 @@ t1.GetColumnType(0);
 t1.GetColumnbyName("v1");
 ```
 
-* `CreateTable(colname,cols)`
+* `CreateTable(colname, coltype, size, capacity)`
 
-使用`CreateTable(colname,cols)`方法通过列名和列的数据类型创建一个Table，返回Table对象
+下面的例子中，使用`CreateTableByVector(colname, coltype, size, capacity)`用列名和列创建一个Table，并指定初始大小和容量，返回Table对象，再对Table对象的每一列进行赋值。
 
 ```GO
-v1 := CreateVector(DT_INT);
-v2 := CreateVector(DT_INT)
-cols := [] Vector {v1,v2};
-v1.Append(CreateInt(1));
-v2.Append(CreateInt(1));
-colnames := [] string {"v1","v2"};
-ta := CreateTable(colnames, cols);
+colnames := [] string {"id","value"};
+coltypes := [] int {ddb.DT_INT, ddb.DT_DOUBLE};
+rowNum := 3;
+const colNum = 2;
+indexCapacity := 3;
+ta := ddb.CreateTable(colnames, coltypes, rowNum, indexCapacity);
+var columnVecs [colNum]ddb.Vector;
+for i := 0; i<colNum; i++{
+  columnVecs[i] = ta.GetColumn(i);
+}
+a1 := [] int32 {1,2,3};
+a2 := [] float64 {1.5,2.7,3.9};
+columnVecs[0].SetIntArray(0,3,a1);
+columnVecs[1].SetDoubleArray(0,3,a2);
+fmt.Println(ta.GetString());
+```
+
+* `CreateTableByVector(colname,cols)`
+
+使用`CreateTableByVector(colname,cols)`方法通过列名和列创建一个Table，返回Table对象。需要注意的是，这里的列可以是已经有数值的列。
+
+```GO
+v1 := ddb.CreateVector(ddb.DT_INT,3);
+v2 := ddb.CreateVector(ddb.DT_DOUBLE,3);
+a1 := [] int32 {1,2,3};
+a2 := [] float64 {1.5,2.7,3.9};
+v1.SetIntArray(0,3,a1);
+v2.SetDoubleArray(0,3,a2);
+cols := [] ddb.Vector {v1,v2};
+colnames := [] string {"id","value"};
+ta := ddb.CreateTableByVector(colnames, cols);
 fmt.Println(ta.GetString());
 ```
 
 ### 6. 上传数据对象
 
-调用`Upload`方法，可以将一个Constant对象上传到DolphinDB数据库，对于非Constant类型，可以调用`ToConstant`方法将其转换为Constant类型对象.
+调用`Upload`方法，可以将一个Constant对象上传到DolphinDB数据库，对于非Constant类型，可以调用`ToConstant`方法将其转换为Constant类型对象。
 
 ```GO
 p := conn.Run("5 4 8");
@@ -329,7 +423,7 @@ p2 := p1.ToConstant();
 conn.Upload("vector1",p2);
 ```
 
-### 7. 追加数据到DolphinDB数据表
+### 7. 读写DolphinDB数据表
 
 使用GO API的一个重要场景是，用户从其他数据库系统或是第三方Web API中取得数据后存入DolphinDB数据库中。本节将介绍通过GO API将取到的数据上传并保存到DolphinDB的数据表中。
 
@@ -341,22 +435,37 @@ DolphinDB数据表按存储方式分为三种:
 
 下面子分别介绍向三种形式的表中追加数据的实例。
 
-首先，我们定义一个`CreateDemoTable`函数，该函数在GO环境中创建一个表，该具备3个列，分别是DT_STRING, DT_DATE, DT_DOUBLE类型，列名分别为name, date和price，并向该表中插入10条数据。
+首先，我们定义一个`CreateDemoTable`函数，该函数在GO环境中创建一个表，该具备3个列，类型分别是DT_STRING, DT_DATE和DT_DOUBLE，列名分别为name, date和price，并向该表中插入10条数据。
 
 ```GO
-func CreateDemoTable() Table{
-	rowNum :=10;
-	v1 := CreateVector(DT_STRING);
-	v2 := CreateVector(DT_DATE);
-	v3 := CreateVector(DT_DOUBLE);
-	for i :=0; i<rowNum; i++{
-		v1.Append(CreateString("1"));
-		v2.Append(CreateDate(2019, 1, 1));
-		v3.Append(CreateDouble(1.0));
-	}
-	cols := [] Vector {v1,v2,v3};
-	colnames := [] string {"name","date","price"};
-	return CreateTable(colnames, cols);
+import (
+   "strconv"
+)
+
+func CreateDemoTable() ddb.Table{
+  colnames := [] string {"name","date","price"};
+  coltypes := [] int {ddb.DT_STRING,ddb.DT_DATE,ddb.DT_DOUBLE};
+  rowNum := 10;
+  const colNum = 3;
+  indexCapacity := 11;
+  ta := ddb.CreateTable(colnames, coltypes, rowNum, indexCapacity);
+  var columnVecs [colNum]ddb.Vector;
+  for i := 0; i<colNum; i++{
+    columnVecs[i] = ta.GetColumn(i);
+  }
+  var arr1 []string;
+  var arr2 []int32;
+  var arr3 []float64;
+  for i := 0; i<rowNum; i++{
+	arr1 = append(arr1, strconv.Itoa(i));
+	arr2 = append(arr2, 17897);
+	arr3 = append(arr3, 2.6);
+  }
+  columnVecs[0].SetStringArray(0,rowNum,arr1);
+  columnVecs[1].SetIntArray(0,rowNum,arr2);
+  columnVecs[2].SetDoubleArray(0,rowNum,arr3);
+  fmt.Println(ta.GetString());
+  return ta;
 }
 ```
 
@@ -364,7 +473,7 @@ func CreateDemoTable() Table{
 
 在DolphinDB中，我们通过`table`函数来创建一个相同结构的内存表，指定表的容量和初始大小、列名和数据类型。由于内存表是会话隔离的，所以普通内存表只有当前会话可见。为了让多个客户端可以同时访问t，我们使用`share`在会话间共享内存表。
 
-```
+```DolphinDB
 t = table(100:0, `name`date`price, [STRING,DATE,DOUBLE]);
 share t as tglobal;
 ```
@@ -374,9 +483,9 @@ share t as tglobal;
 ```GO
 ta := CreateDemoTable();
 tb := ta.ToConstant();
-args := [] Constant{tb};
+args := [] ddb.Constant{tb};
 conn.RunFunc("tableInsert{tglobal}", args);
-result :=conn.Run("select * from tglobal");
+result := conn.Run("select * from tglobal");
 fmt.Println(result.GetString());
 ```
 
@@ -386,7 +495,7 @@ fmt.Println(result.GetString());
 
 在DolphinDB中使用以下脚本创建一个本地磁盘表，使用`database`函数创建数据库，调用`saveTable`函数将内存表保存到磁盘中：
 
-```
+```DolphinDB
 t = table(100:0, `name`date`price, [STRING,DATE,DOUBLE]); 
 db=database("~/demoDB"); 
 saveTable(db, t, `dt); 
@@ -398,10 +507,10 @@ share t as tDiskGlobal;
 ```GO
 ta := CreateDemoTable();
 tb := ta.ToConstant();
-args := [] Constant{tb};
+args := [] ddb.Constant{tb};
 conn.RunFunc("tableInsert{tDiskGlobal}", args);
 conn.Run("saveTable(database('/home/hj/dbtest/demoDB'),tDiskGlobal,`dt)");
-result :=conn.Run("select * from tDiskGlobal");
+result := conn.Run("select * from tDiskGlobal");
 fmt.Println(result.GetString());
 ```
 
@@ -426,7 +535,7 @@ DolphinDB提供`loadTable`方法来加载分布式表，通过`tableInsert`方�
 ```GO
 ta := CreateDemoTable();
 tb := ta.ToConstant();
-args := [] Constant{tb};
+args := [] ddb.Constant{tb};
 conn.RunFunc("tableInsert{loadTable('dfs://demoDB', `demoTable)}", args);
 ```
 
@@ -449,6 +558,33 @@ name date       price
 ```
 
 关于追加数据到DolphinDB分区表的实例可以参考api-go目录下appendData.go文件。
+
+### 7.4 读取和使用数据表
+
+在GO API中，数据表保存为Table对象。由于Table是列式存储，所以若要在GO API中读取行数据需要先取出需要的列，再取出行。
+下面我们调用自定义的函数`CreateDemoTable()`创建一个表，并且访问表中的元素。
+
+```GO
+var conn ddb.DBConnection;
+conn.Init();
+conn.Connect(host,port,username,password);
+ta := CreateDemoTable();
+name := ta.GetColumn(0);
+date := ta.GetColumn(1);
+price := ta.GetColumn(2);
+name0 := name.Get(0);
+date0 := date.Get(1);
+price0 := price.Get(2);
+fmt.Println(name0.GetString());
+fmt.Println(date0.GetString());
+fmt.Println(price0.GetString());
+```
+输出结果为：
+```Conosle
+0
+2019.01.01
+2.6
+```
 
 附录
 ---

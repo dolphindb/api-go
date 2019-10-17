@@ -33,6 +33,36 @@ int Constant_isDictionary(Constant* w);
 
 int Constant_size(Constant* w);
 
+int Constant_setBoolArray(Constant* w, int start, int len, char* buf);
+int Constant_setIntArray(Constant* w, int start, int len, int* buf);
+int Constant_setLongArray(Constant* w, int start, int len, long long* buf);
+int Constant_setShortArray(Constant* w, int start, int len, short* buf);
+int Constant_setFloatArray(Constant* w, int start, int len, float* buf);
+int Constant_setDoubleArray(Constant* w, int start, int len, double* buf);
+int Constant_setStringArray(Constant* w, int start, int len, char* buf);
+
+void Constant_setIntByIndex(Constant* w, int index, int val);
+void Constant_setBoolByIndex(Constant* w, int index, short val);
+void Constant_setShortByIndex(Constant* w, int index, short val);
+void Constant_setLongByIndex(Constant* w, int index, long long val);
+void Constant_setFloatByIndex(Constant* w, int index, float val);
+void Constant_setDoubleByIndex(Constant* w, int index, double val);
+void Constant_setStringByIndex(Constant* w, int index, char* val);
+void Constant_setNullByIndex(Constant* w, int index);
+
+void Constant_setInt(Constant* w, int val);
+void Constant_setBool(Constant* w, short val);
+void Constant_setShort(Constant* w, short val);
+void Constant_setLong(Constant* w, long long val);
+void Constant_setFloat(Constant* w, float val);
+void Constant_setDouble(Constant* w, double val);
+void Constant_setString(Constant* w, char* val);
+void Constant_setNull(Constant* w);
+
+void delConstant(Constant* w);
+
+int Constant_setByIndex(Constant*w, int index, Constant* x);
+
 Constant*  toConstant(Constant* w);
 
 Constant*  toVector(Constant* w);
@@ -41,6 +71,13 @@ char* Vector_getName(Constant* w);
 Constant* Vector_get(Constant* w, int x);
 int Vector_remove(Constant* v,int x);
 int Vector_append(Constant* v,Constant* w);
+int Vector_appendInt(Constant* v, int* x, int len);
+int Vector_appendShort(Constant* v, short * x, int len);
+int Vector_appendLong(Constant* v, long long* x, int len);
+int Vector_appendFloat(Constant* v, float* x, int len);
+int Vector_appendDouble(Constant* v, double* x, int len);
+int Vector_appendString(Constant* v, char* x, int len);
+int Vector_appendBool(Constant* v, char* x, int len);
 
 Constant*  toTable(Constant* w);
 void Table_setName(Constant* w, char* tname);
@@ -70,13 +107,14 @@ Constant* createNanoTimestamp(int year, int month, int day, int hour, int minute
 Constant* createTimestamp(int year, int month, int day, int hour, int minute, int second, int millisecond);
 Constant* createDateTime(int year, int month, int day, int hour, int minute, int second);
 
-Constant* createVector(int type);
-Constant* createTable(Constant* colname,Constant* cols,int len);
+Constant* createVector(int type, int size);
+Constant* createTable(Constant* colname,Constant* coltypes,int size, int capacity, int len);
+Constant* createTableByVector(Constant* colname,Constant* cols,int len);
 #cgo LDFLAGS: -L./ -lwrapper -Wl,-rpath,./api/
 */
 import "C"
-//import "unsafe"
-//import "fmt"
+import "unsafe"
+import "fmt"
 const(
 	hostname = "localhost";
 	port = 1621;
@@ -146,6 +184,9 @@ type Table struct {
 	Constant;
 }
 
+type Matrix struct {
+	Constant;
+}
 
 func CreateInt(x int) Constant{
    
@@ -245,18 +286,39 @@ func CreateDateTime(year int, month int, day, hour int, minute int, second int) 
 	 
 }
 
-func CreateVector(dttype int) Vector{
+func CreateVector(dttype int, size int) Vector{
     
-   return Vector{Constant:Constant{ptr:C.createVector(C.int(dttype))}};
+   return Vector{Constant:Constant{ptr:C.createVector(C.int(dttype), C.int(size))}};
 
 }
 
-func CreateTable(colname []string, cols []Vector) Table {
+func CreateTable(colname []string, coltype []int, size int, capacity int) Table {
+	l := len(colname); 
+//	s := make([]*C.char, 0, l);
+//	v := make([]*C.Constant, 0, l);
+   s := CreateVector(DT_STRING,0);
+   v := CreateVector(DT_INT,0);
+
+   for i := 0; i < l;i++{
+//	   s = append(s,C.CString(colname[i]));
+	  s.Append(CreateString(colname[i]));
+	  v.Append(CreateInt(coltype[i]));
+	  //v = append(v, cols[i].ptr);
+
+	}
+	return Table{Constant:Constant{ptr:C.createTable(s.ptr, v.ptr , C.int(size), C.int(capacity), C.int(l))}}; 
+//	return Table{Constant:Constant{ptr:C.createTable(s.ptr, (*C.int)(unsafe.Pointer(&coltype[0]))  , C.int(size), C.int(capacity), C.int(l))}}; 
+//	return Table{Constant:Constant{ptr:C.createTable((**C.char)(unsafe.Pointer(&colname[0])),(**C.Constant)(unsafe.Pointer(&v[0])), C.int(l))}};   
+//return 0;
+   
+}
+
+func CreateTableByVector(colname []string, cols []Vector) Table {
 	 l := len(colname); 
 //	s := make([]*C.char, 0, l);
 //	v := make([]*C.Constant, 0, l);
-	s := CreateVector(DT_STRING);
-	v := CreateVector(DT_ANY);
+	s := CreateVector(DT_STRING,0);
+	v := CreateVector(DT_ANY,0);
 
 	for i := 0; i < l;i++{
 //	   s = append(s,C.CString(colname[i]));
@@ -264,7 +326,7 @@ func CreateTable(colname []string, cols []Vector) Table {
 	   //v = append(v, cols[i].ptr);
 	   v.Append(cols[i].ToConstant());
 	 }
-	 return Table{Constant:Constant{ptr:C.createTable(s.ptr,v.ptr, C.int(l))}}; 
+	 return Table{Constant:Constant{ptr:C.createTableByVector(s.ptr,v.ptr, C.int(l))}}; 
 //	return Table{Constant:Constant{ptr:C.createTable((**C.char)(unsafe.Pointer(&colname[0])),(**C.Constant)(unsafe.Pointer(&v[0])), C.int(l))}};   
 //return 0;
 	
@@ -295,6 +357,46 @@ func (v *Vector) Remove(x int) bool {
 
 func (v *Vector) Append(c Constant) bool {
 	return tobool(C.Vector_append(v.ptr, c.ptr));
+}
+
+func (v *Vector) AppendBool(x []bool, len int) bool{
+	
+	return tobool(C.Vector_appendBool(v.ptr, (*C.char)(unsafe.Pointer(&x[0])),C.int(len)));
+}
+
+
+func (v *Vector) AppendInt(x []int32, len int) bool{
+	
+	return tobool(C.Vector_appendInt(v.ptr, (*C.int)(unsafe.Pointer(&x[0])),C.int(len)));
+}
+
+func (v *Vector) AppendShort(x []int16, len int) bool{
+
+	return tobool(C.Vector_appendShort(v.ptr, (*C.short)(unsafe.Pointer(&x[0])),C.int(len)));
+}
+
+func (v *Vector) AppendLong(x []int64, len int) bool{
+	
+	return tobool(C.Vector_appendLong(v.ptr, (*C.longlong)(unsafe.Pointer(&x[0])),C.int(len)));
+}
+
+func (v *Vector) AppendFloat(x []float32, len int) bool{
+	
+	return tobool(C.Vector_appendFloat(v.ptr, (*C.float)(unsafe.Pointer(&x[0])),C.int(len)));
+}
+
+func (v *Vector) AppendDouble(x []float64, len int) bool{
+	
+	return tobool(C.Vector_appendDouble(v.ptr, (*C.double)(unsafe.Pointer(&x[0])),C.int(len)));
+}
+
+func (v *Vector) AppendString(x []string, len int) bool{
+	
+	for i:=0;i<len;i++{
+       if  tobool(C.Vector_appendString(v.ptr, C.CString(x[i]),C.int(1))) != true {return false} 
+	}
+	return true;
+	//return tobool(C.Vector_appendString(v.ptr, C.CString(x[0]),C.int(l)));
 }
 
 func (v *Vector) GetIntSlice() []int{
@@ -378,7 +480,7 @@ func (t *Table) GetName() string {
 func (t *Table) GetColumn(x int) Vector {
 	return Vector{Constant:Constant{ptr:C.Table_getColumn(t.ptr, C.int(x))}};
 }
-func (t *Table) GetColumnbyName(name string) Vector {
+func (t *Table) GetColumnByName(name string) Vector {
 	return Vector{Constant:Constant{ptr:C.Table_getColumnbyName(t.ptr, C.CString(name))}};
 }
 func (t *Table) GetColumnName(x int) string {
@@ -423,7 +525,7 @@ func (conn *DBConnection) RunFunc(script string, args []Constant) Constant {
 	//	s := make([]*C.char, 0, l);
 	//	v := make([]*C.Constant, 0, l);
 	//	s := CreateVector(DT_STRING);
-		v := CreateVector(DT_ANY);
+		v := CreateVector(DT_ANY,0);
 	
 		for i := 0; i < l;i++{
 	//	   s = append(s,C.CString(colname[i]));
@@ -499,21 +601,199 @@ func (c *Constant) IsDictionary() bool{
 }
 
 func (c *Constant) ToConstant() Constant{
+
    return Constant{C.toConstant(c.ptr)};
+
 }
-/*
+
+func (c *Constant) SetBoolArray(start int, len int, x []bool) bool{
+
+	return tobool(C.Constant_setBoolArray(c.ptr, C.int(start), C.int(len), (*C.char)(unsafe.Pointer(&x[0]))));
+
+ }
+
+func (c *Constant) SetIntArray(start int, len int, x []int32) bool{
+
+	return tobool(C.Constant_setIntArray(c.ptr, C.int(start), C.int(len), (*C.int)(unsafe.Pointer(&x[0]))));
+
+}
+func (c *Constant) SetLongArray(start int, len int, x []int64) bool{
+
+	return tobool(C.Constant_setLongArray(c.ptr, C.int(start), C.int(len), (*C.longlong)(unsafe.Pointer(&x[0]))));
+}
+func (c *Constant) SetShortArray(start int, len int, x []int16) bool{
+
+	return tobool(C.Constant_setShortArray(c.ptr, C.int(start), C.int(len), (*C.short)(unsafe.Pointer(&x[0]))));
+
+}
+func (c *Constant) SetFloatArray(start int, len int, x []float32) bool{
+	return tobool(C.Constant_setFloatArray(c.ptr, C.int(start), C.int(len), (*C.float)(unsafe.Pointer(&x[0]))));
+}
+func (c *Constant) SetDoubleArray(start int, len int, x []float64) bool{
+	return tobool(C.Constant_setDoubleArray(c.ptr, C.int(start), C.int(len), (*C.double)(unsafe.Pointer(&x[0]))));
+}
+func (c *Constant) SetStringArray(start int, len int, x []string) bool{
+	for i:=0;i<len;i++{
+	if tobool(C.Constant_setStringArray(c.ptr, C.int(start+i), C.int(1), C.CString(x[i]) )  ) != true {return false};
+
+         }
+  return true
+}
+
+func booltoshort(x bool) int16{
+	 if x {return 1;}
+	 return 0;
+  
+}
+
+func (c *Constant) SetIntByIndex(index int, x int32) {
+
+	C.Constant_setIntByIndex(c.ptr, C.int(index),C.int(x));
+
+ }
+
+func (c *Constant) SetBoolByIndex(index int, x bool) {
+
+	C.Constant_setBoolByIndex(c.ptr, C.int(index),C.short(booltoshort(x)));
+
+ }
+
+func (c *Constant) SetShortByIndex(index int, x int16) {
+
+    C.Constant_setShortByIndex(c.ptr, C.int(index),C.short(x));
+
+}
+
+func (c *Constant) SetLongByIndex(index int, x int64) {
+
+    C.Constant_setLongByIndex(c.ptr, C.int(index),C.longlong(x));
+
+}
+
+func (c *Constant) SetFloatByIndex(index int, x float32) {
+
+    C.Constant_setFloatByIndex(c.ptr, C.int(index),C.float(x));
+
+}
+
+func (c *Constant) SetDoubleByIndex(index int, x float64) {
+
+    C.Constant_setDoubleByIndex(c.ptr, C.int(index),C.double(x));
+
+}
+
+func (c *Constant) SetStringByIndex(index int, x string) {
+
+    C.Constant_setStringByIndex(c.ptr, C.int(index),C.CString(x));
+
+}
+
+func (c *Constant) SetNullByIndex(index int) {
+
+    C.Constant_setNullByIndex(c.ptr, C.int(index));
+
+}
+
+func (c *Constant) SetBool(x bool) {
+
+	C.Constant_setBool(c.ptr,C.short(booltoshort(x)));
+
+}
+
+func (c *Constant) SetInt(x int32) {
+
+	C.Constant_setInt(c.ptr,C.int(x));
+
+}
+
+func (c *Constant) SetShort(x int16) {
+
+	C.Constant_setShort(c.ptr,C.short(x));
+
+}
+
+func (c *Constant) SetLong(x int64) {
+
+	C.Constant_setLong(c.ptr,C.longlong(x));
+
+}
+
+func (c *Constant) SetFloat(x float32) {
+
+	C.Constant_setFloat(c.ptr,C.float(x));
+
+}
+
+func (c *Constant) SetDouble(x float64) {
+
+	C.Constant_setDouble(c.ptr,C.double(x));
+
+}
+
+func (c *Constant) SetNull(x float64) {
+
+	C.Constant_setNull(c.ptr);
+
+}
+
+func (c *Constant) SetByIndex(index int, val Constant) {
+
+	C.Constant_setByIndex(c.ptr, C.int(index), val.ptr);
+
+}
+
+func DelConstant(c Constant) {
+ 
+   C.delConstant(c.ptr);
+
+}
+
 func main() {
 	conn := new(DBConnection);
 	conn.Init();
 	fmt.Println(conn.Connect(hostname,port,user,pass));
-	v1 := CreateVector(DT_INT);
-	v2 := CreateVector(DT_INT)
+	v1 := CreateVector(DT_INT,0);
+	v2 := CreateVector(DT_INT,0);
 	cols := [] Vector {v1,v2};
 	v1.Append(CreateInt(1));
 	v2.Append(CreateInt(1));
+	//chuan := [] int32 {1,2,3,4,5};
+	//v1.AppendInt(chuan, 5);
+	//fmt.Println(v1.GetString());
+
+	v4 := CreateVector(DT_STRING,0);
+	s1 := [] string {"12321","21313","asd"};
+	v4.AppendString(s1, 3);
+	fmt.Println(v4.GetString());
+	s2 := [] string {"1","2","3"};
+	v4.SetStringArray(0,3,s2);
+	fmt.Println(v4.GetString());
+	
+	v5 := CreateVector(DT_BOOL,5);
+	b1 := [] bool {true,true,true};
+	v5.AppendBool(b1, 3);
+	b2 := [] bool {false,false,false,false,false};
+	v5.SetBoolArray(0,5,b2);
+	fmt.Println(v5.GetString());
+//	v3 := CreateVector(DT_LONG,0);
+//	chuan1 := [] int64 {1,2,3,4,5};
+//	v3.AppendInt(chuan1);
+//	fmt.Println(v3.GetString());
 	colnames := [] string {"v1","v2"};
-	ta := CreateTable(colnames, cols);
-        fmt.Println(ta.GetString());
+	ta := CreateTableByVector(colnames, cols);
+		fmt.Println(ta.GetString());
+	
+	v6:= CreateVector(DT_STRING,5);
+	v6.SetStringByIndex(1,"1111");
+	v6.SetByIndex(2,CreateString("2222"));
+	fmt.Println(v6.GetString());
+
+
+	cdel := CreateInt(1);
+	DelConstant(cdel);
+//	coltypes:= [] int{DT_INT,DT_INT};
+//	tb :=  CreateTable(colnames, coltypes, 10, 15)
+//	fmt.Println(tb.GetString());
         conn.Close();
 }
-*/
+

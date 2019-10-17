@@ -1,10 +1,10 @@
 package main
 import (
-	 "./api"
+   "./api"
 )
 const(
 	host = "localhost";
-	port = 1621;
+	port = 8920;
 	username = "admin";
 	password = "123456";
 )
@@ -12,5 +12,5 @@ const(
 func main() {
   var conn ddb.DBConnection;
   conn.Init();
-  conn.Connect(host,port,username,password);
+  conn.Connect(host,port,username,password); 
 }
