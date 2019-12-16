@@ -586,6 +586,32 @@ fmt.Println(price0.GetString());
 2.6
 ```
 
+### 8 新增的数据类型及函数
+DolphinDB新增了数据类型:IP与INT128，在go-api中标记为DT_IP与DT_128，可以使用
+```GO
+ipex := CreateConstant(DT_IP);
+vu := CreateVector(DT_IP, 5);
+```
+来创建它们。需要用长度为16的byte数组来set它们，否则会抛出错误。
+```GO
+b := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
+ipex.SetBinary(b);
+
+vu.SetBinaryByIndex(1, b);
+
+bx := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1,255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
+vu.SetBinaryArray(0, 2, bx);
+```
+
+`ParseConstant(DT_type int, val string)` 函数，将字符串解析为你需要的DolphinDB类型，并返回一个Constant值。
+```GO
+xn := ParseConstant(DT_INT,"1");
+```
+
+`GetEpochTime()`函数，int64类型，返回从1970年1月1日到当前时刻的毫秒数。
+
+`GetHash()`方法，返回一个Constant的哈希值。
+
 附录
 ---
 数据形式列表（`GetFrom()`函数返回值对应的数据形式）

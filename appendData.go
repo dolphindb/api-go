@@ -8,7 +8,7 @@ import (
 
 const(
 	host = "localhost";
-	port = 8920;
+	port = 8921;
 	user = "admin";
 	pass = "123456";
 )
@@ -157,6 +157,159 @@ func CreateDemoTableSlow() ddb.Table{
   return ddb.CreateTableByVector(colnames, cols);
 }
 
+func assertEqual(a ddb.Constant, b ddb.Constant) bool{
+	sa:=a.GetString();
+	sb:=b.GetString();
+	if sa == sb {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+func TestUpdateFuncs(){
+	rowNum := 6;
+  
+	v1 := ddb.CreateVector(ddb.DT_BOOL,rowNum);
+	v2 := ddb.CreateVector(ddb.DT_SHORT, rowNum);
+	v3 := ddb.CreateVector(ddb.DT_INT, rowNum);
+	v4 := ddb.CreateVector(ddb.DT_LONG, rowNum);
+	v5 := ddb.CreateVector(ddb.DT_FLOAT, rowNum);
+	v6 := ddb.CreateVector(ddb.DT_DOUBLE, rowNum);
+	v7 := ddb.CreateVector(ddb.DT_STRING, rowNum);
+  
+	arr1 := [] bool {true,false,true,false,true,false};
+	arr2 := [] int16 {11,14,13,12,15,10};
+	arr3 := [] int32 {11,14,13,12,15,10};
+	arr4 := [] int64 {33000,78546,54796,63215,84132,52369};
+	arr5 := [] float32 {1.6,7.0,2.8,1.7,10.4,4.8};
+	arr6 := [] float64 {101.6,97.2,12.88,51.7,10.4,74.8};
+	arr7 := [] string {"q","a","d","w","q","r"};
+  
+	start := 0;
+	v1.SetBoolArray(start,rowNum,arr1);
+	v2.SetShortArray(start,rowNum,arr2);
+	v3.SetIntArray(start,rowNum,arr3);  
+	v4.SetLongArray(start,rowNum,arr4);
+	v5.SetFloatArray(start,rowNum,arr5);  
+	v6.SetDoubleArray(start,rowNum,arr6);
+	v7.SetStringArray(start,rowNum,arr7);    
+  
+	v1.SetBoolByIndex(4,false);
+	v2.SetShortByIndex(4,5);
+	v3.SetIntByIndex(4,7);
+	v4.SetLongByIndex(4,19843);
+	v5.SetFloatByIndex(4,8.2);
+	v6.SetDoubleByIndex(4,4.6);
+	v7.SetStringByIndex(4,"ii");
+
+	cv1 := ddb.CreateVector(ddb.DT_BOOL,rowNum);
+	cv2 := ddb.CreateVector(ddb.DT_SHORT, rowNum);
+	cv3 := ddb.CreateVector(ddb.DT_INT, rowNum);
+	cv4 := ddb.CreateVector(ddb.DT_LONG, rowNum);
+	cv5 := ddb.CreateVector(ddb.DT_FLOAT, rowNum);
+	cv6 := ddb.CreateVector(ddb.DT_DOUBLE, rowNum);
+	cv7 := ddb.CreateVector(ddb.DT_STRING, rowNum);
+
+  carr1 := [] bool {true,false,true,false,false,false};
+	carr2 := [] int16 {11,14,13,12,5,10};
+	carr3 := [] int32 {11,14,13,12,7,10};
+	carr4 := [] int64 {33000,78546,54796,63215,19843,52369};
+	carr5 := [] float32 {1.6,7.0,2.8,1.7,8.2,4.8};
+	carr6 := [] float64 {101.6,97.2,12.88,51.7,4.6,74.8};
+	carr7 := [] string {"q","a","d","w","ii","r"};
+
+	cv1.SetBoolArray(start,rowNum,carr1);
+	cv2.SetShortArray(start,rowNum,carr2);
+	cv3.SetIntArray(start,rowNum,carr3);  
+	cv4.SetLongArray(start,rowNum,carr4);
+	cv5.SetFloatArray(start,rowNum,carr5);  
+	cv6.SetDoubleArray(start,rowNum,carr6);
+	cv7.SetStringArray(start,rowNum,carr7);   
+ 
+  ress:=assertEqual(v1.ToConstant(),cv1.ToConstant());
+  if ress == false {
+		fmt.Println(ress);
+	}
+  ress=assertEqual(v2.ToConstant(),cv2.ToConstant());
+  if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(v3.ToConstant(),cv3.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(v4.ToConstant(),cv4.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(v5.ToConstant(),cv5.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(v6.ToConstant(),cv6.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(v7.ToConstant(),cv7.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+
+	va1 := ddb.CreateBool(true);
+	va2 := ddb.CreateShort(1);
+	va3 := ddb.CreateInt(1);
+	va4 := ddb.CreateLong(1);
+	va5 := ddb.CreateFloat(1.0);
+	va6 := ddb.CreateDouble(1.0);
+	va7 := ddb.CreateString("1");
+  
+	va1.SetBool(false);
+	va2.SetShort(3);
+	va3.SetInt(3);
+	va4.SetLong(35646);
+	va5.SetFloat(3.2);
+	va6.SetDouble(5.6);
+	va7.SetString("rw");
+	
+	cva1 := ddb.CreateBool(false);
+	cva2 := ddb.CreateShort(3);
+	cva3 := ddb.CreateInt(3);
+	cva4 := ddb.CreateLong(35646);
+	cva5 := ddb.CreateFloat(3.2);
+	cva6 := ddb.CreateDouble(5.6);
+	cva7 := ddb.CreateString("rw");
+
+	ress=assertEqual(va1.ToConstant(),cva1.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(va2.ToConstant(),cva2.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(va3.ToConstant(),cva3.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(va4.ToConstant(),cva4.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(va5.ToConstant(),cva5.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(va6.ToConstant(),cva6.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+	ress=assertEqual(va7.ToConstant(),cva7.ToConstant());
+	if ress == false {
+		fmt.Println(ress);
+	}
+}
+
 func main() {
   loopTimes := 10;
   var conn ddb.DBConnection;
@@ -197,4 +350,6 @@ func main() {
   fmt.Println(result.GetString());
   content := conn.Run("select top 5 * from loadTable('dfs://testGo', `tb)");
   fmt.Println(content.GetString());
+
+  TestUpdateFuncs();
 }

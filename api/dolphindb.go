@@ -22,6 +22,8 @@ float Constant_getFloat(Constant* w);
 double Constant_getDouble(Constant* w);
 char* Constant_getString(Constant* w);
 
+Constant* Constant_get(Constant* w, int x);
+
 int Constant_isScalar(Constant* w);
 int Constant_isArray(Constant* w);
 int Constant_isPair(Constant* w);
@@ -32,6 +34,7 @@ int Constant_isSet(Constant* w);
 int Constant_isDictionary(Constant* w);
 
 int Constant_size(Constant* w);
+
 
 int Constant_setBoolArray(Constant* w, int start, int len, char* buf);
 int Constant_setIntArray(Constant* w, int start, int len, int* buf);
@@ -65,10 +68,14 @@ int Constant_setByIndex(Constant*w, int index, Constant* x);
 
 Constant*  toConstant(Constant* w);
 
+Constant*  toSet(Constant* w);
+Constant*  toMatrix(Constant* w);
+Constant*  toDictionary(Constant* w);
+
 Constant*  toVector(Constant* w);
 void Vector_setName(Constant* w, char* vname);
 char* Vector_getName(Constant* w);
-Constant* Vector_get(Constant* w, int x);
+
 int Vector_remove(Constant* v,int x);
 int Vector_append(Constant* v,Constant* w);
 int Vector_appendInt(Constant* v, int* x, int len);
@@ -79,15 +86,84 @@ int Vector_appendDouble(Constant* v, double* x, int len);
 int Vector_appendString(Constant* v, char* x, int len);
 int Vector_appendBool(Constant* v, char* x, int len);
 
+Constant* Vector_getColumnLabel(Constant* w);
+int Vector_isView(Constant* w);
+void Vector_initialize(Constant* w);
+int Vector_getCapacity(Constant* w);
+int Vector_reserve(Constant* w, int x);
+int Vector_getUnitLength(Constant* w);
+void Vector_clear(Constant* w);
+int Vector_removebyIndex(Constant* w, Constant* index);
+Constant* Vector_getInstance(Constant* w, int size);
+Constant* Vector_getSubVector(Constant* w, int start,int length);
+void Vector_fill(Constant* w, int start,int l, Constant* val);
+void Vector_next(Constant* w, int steps);
+void Vector_prev(Constant* w, int steps);
+void Vector_reverse(Constant* w);
+void Vector_reverseSegment(Constant* w, int start, int l);
+void Vector_replace(Constant* w, Constant* oldval, Constant* newval);
+int Vector_validIndex(Constant* w, int index);
+void Vector_addIndex(Constant* w, int start, int l, int offset);
+void Vector_neg(Constant* w);
+
 Constant*  toTable(Constant* w);
 void Table_setName(Constant* w, char* tname);
 char* Table_getName(Constant* w);
-Constant* Table_getColumn(Constant* w,int x);
+
 char* Table_getColumnName(Constant* w,int x);
 int Table_columns(Constant* w);
 int Table_rows(Constant* w);
 int Table_getColumnType(Constant* w,int x);
 Constant* Table_getColumnbyName(Constant* w,char* s);
+Constant* Table_getColumn(Constant* w,int x);
+
+char* Table_getScript(Constant* w);
+char* Table_getColumnQualifier(Constant* w, int index);
+void Table_setColumnName(Constant* w, int index, char* name);
+int Table_getColumnIndex(Constant* w, char* name);
+int Table_contain(Constant* w, char* name);
+Constant* Table_getValue(Constant* w);
+Constant* Table_getInstance(Constant* w, int size);
+int Table_sizeable(Constant* w);
+char* Table_getStringbyIndex(Constant* w, int index);
+Constant* Table_getWindow(Constant* w, int colStart, int colLength, int rowStart, int rowLength);
+Constant* Table_getMember(Constant* w,Constant* key);
+Constant* Table_values(Constant* w);
+Constant* Table_keys(Constant* w);
+int Table_getTableType(Constant* w);
+void Table_drop(Constant* w, Constant* v);
+
+void Set_clear(Constant* w);
+int Set_remove(Constant* w, Constant* val);
+int Set_append(Constant* w, Constant* val);
+int Set_inverse(Constant* w, Constant* val);
+void Set_contain(Constant* w, Constant* target, Constant* result);
+int Set_isSuperSet(Constant* w, Constant* target);
+char*  Set_getScript(Constant* w);
+Constant* Set_interaction(Constant* w, Constant* target);
+Constant* Set_getSubVector(Constant* w, int start, int length);
+
+void Matrix_setRowLabel(Constant* w, Constant* label);
+void Matrix_setColumnLabel(Constant* w, Constant* label);
+int Matrix_reshape(Constant* w, int cols, int rows);
+Constant* Matrix_getColumn(Constant* w,int x);
+char* Matrix_getStringbyIndex(Constant* w, int x);
+char* Matrix_getCellString(Constant* w, int x, int y);
+Constant* Matrix_getInstance(Constant* w, int size);
+int Matrix_setColumn(Constant* w,int index, Constant* col);
+
+int Dictionary_count(Constant* w);
+void Dictionary_clear(Constant* w);
+Constant* Dictionary_getMember(Constant* w, Constant* key);
+int Dictionary_getKeyType(Constant* w);
+Constant* Dictionary_keys(Constant* w);
+Constant* Dictionary_values(Constant* w);
+char* Dictionary_getScript(Constant* w);
+int Dictionary_remove(Constant* w, Constant* key);
+int Dictionary_set(Constant* w, Constant* key, Constant* value);
+void Dictionary_contain(Constant* w, Constant* target, Constant* result);
+
+int Constant_isLargeConstant(Constant* w);
 
 Constant* createInt(int val);
 Constant* createBool(int val);
@@ -110,6 +186,16 @@ Constant* createDateTime(int year, int month, int day, int hour, int minute, int
 Constant* createVector(int type, int size);
 Constant* createTable(Constant* colname,Constant* coltypes,int size, int capacity, int len);
 Constant* createTableByVector(Constant* colname,Constant* cols,int len);
+
+Constant* createConstant(int type);
+void Constant_setBinary(Constant* w, char* val);
+void Constant_setBinaryByIndex(Constant* w, int index, char* val);
+int Constant_setBinaryArray(Constant* w, int start, int len, char* buf);
+Constant* parseConstant(int type, char* word);
+
+unsigned int Constant_getHash(Constant* w);
+int Constant_getHashArray(Constant* w, int start, int len, unsigned int* buf);
+long long getEpochTime();
 #cgo LDFLAGS: -L./ -lwrapper -Wl,-rpath,./api/
 */
 import "C"
@@ -150,6 +236,10 @@ const ( DT_VOID = iota
 		DT_ANY
 		DT_COMPRESS
 		DT_DICTIONARY
+		DT_DATEHOUR
+		DT_DATEMINUTE
+		DT_IP
+		DT_INT128
 		DT_OBJECT);
 const (
 	DF_SCALAR = iota
@@ -184,7 +274,15 @@ type Table struct {
 	Constant;
 }
 
+type Set struct {
+	Constant;
+}
+
 type Matrix struct {
+	Constant;
+}
+
+type Dictionary struct {
 	Constant;
 }
 
@@ -332,7 +430,7 @@ func CreateTableByVector(colname []string, cols []Vector) Table {
 	
 }
 
-func (c * Constant) ToVector() Vector {
+func (c *Constant) ToVector() Vector {
    
 //	return Vector{Constant:Constant{ptr:(*C.DBConnection)(unsafe.Pointer(C.toVector(c.ptr)))}};
 return Vector{Constant:Constant{ptr:C.toVector(c.ptr)}};
@@ -347,9 +445,7 @@ func (v *Vector) SetName(vname string) {
 	C.Vector_setName(v.ptr, C.CString(vname));
 }
 
-func (v *Vector) Get(x int) Constant{
-	return Constant{ptr:C.Vector_get(v.ptr, C.int(x))};
-}
+
 
 func (v *Vector) Remove(x int) bool {
 	return tobool(C.Vector_remove(v.ptr, C.int(x)));
@@ -464,6 +560,190 @@ func (v *Vector) GetStringSlice() []string{
 } 
 
 
+
+
+func (v *Vector) GetColumnLabel() Constant{
+   return Constant{C.Vector_getColumnLabel(v.ptr)};
+}
+
+func (v *Vector) IsView() bool{
+  return tobool(C.Vector_isView(v.ptr));
+}
+
+func (v *Vector) Initialize(){
+    C.Vector_initialize(v.ptr);
+}
+
+func (v *Vector) GetCapacity() int{
+	return int(C.Vector_getCapacity(v.ptr));
+}
+
+func (v *Vector) Reserve(capacity int) int{
+	return int(C.Vector_reserve(v.ptr, C.int(capacity)));
+}
+
+func (v *Vector) GetUnitLength() int{
+	return int(C.Vector_getUnitLength(v.ptr));
+}
+
+func (v *Vector) Clear(){
+    C.Vector_clear(v.ptr);
+}
+
+func (v *Vector) RemovebyIndex(index Constant) bool{
+   return	tobool(C.Vector_removebyIndex(v.ptr,index.ptr));
+}
+
+func (v *Vector) GetInstance(size int) Constant{
+	return Constant{C.Vector_getInstance(v.ptr,C.int(size))	};
+}
+
+func (v *Vector) GetSubVector(start int, length int) Constant{
+	return Constant{C.Vector_getSubVector(v.ptr,C.int(start),C.int(length))	};
+}
+
+
+func (v *Vector) Fill(start int, length int, val Constant) {
+  C.Vector_fill(v.ptr, C.int(start), C.int(length), val.ptr)
+}
+
+func (v *Vector) Next(steps int) {
+	C.Vector_next(v.ptr, C.int(steps));
+  }
+
+func (v *Vector) Prev(steps int) {
+  C.Vector_prev(v.ptr, C.int(steps));
+}
+
+func (v *Vector) Reverse() {
+	C.Vector_reverse(v.ptr);
+  }
+ 
+func (v *Vector) ReverseSegMent(start int, length int) {
+	C.Vector_reverseSegment(v.ptr, C.int(start), C.int(length));
+  }
+
+func (v *Vector) Replace(oldval Constant, newval Constant){
+  C.Vector_replace(v.ptr, oldval.ptr, newval.ptr) 
+  }
+
+func (v *Vector) ValidIndex(index int) bool{
+	return	tobool(C.Vector_validIndex(v.ptr,C.int(index)))
+ }
+
+func (v *Vector) AddIndex(start int, length int, offset int) {
+	C.Vector_addIndex(v.ptr, C.int(start), C.int(length), C.int(offset));
+  }
+
+func (v *Vector) Neg() {
+	C.Vector_neg(v.ptr);
+ }  
+
+/*
+ char* Table_getScript(Constant* w);
+ char* Table_getColumnQualifier(Constant* w, int index);
+ void Table_setColumnName(Constant* w, int index, char* name);
+ int Table_getColumnIndex(Constant* w, char* name);
+ int Table_contain(Constant* w, char* name);
+ Constant* Table_getValue(Constant* w);
+ Constant* Table_getInstance(Constant* w, int size);
+ int Table_sizeable(Constant* w);
+ char* Table_getStringbyIndex(Constant* w, int index);
+ Constant* Table_getWindow(Constant* w, int colStart, int colLength, int rowStart, int rowLength);
+ Constant* Table_getMember(Constant* w,Constant* key);
+ Constant* Table_values(Constant* w);
+ Constant* Table_keys(Constant* w);
+ int Table_getTableType(Constant* w);
+ void Table_drop(Constant* w, Constant* v);
+*/
+func (t *Table) GetScript() string{
+	return C.GoString(C.Table_getScript(t.ptr));
+}
+
+func (t *Table) GetColumnQualifier(index int) string{
+	return C.GoString(C.Table_getColumnQualifier(t.ptr, C.int(index)));
+}
+
+func (t *Table) SetColumnName(index int, name string) {
+	C.Table_setColumnName(t.ptr, C.int(index),C.CString(name));
+}
+
+func (t *Table) GetColumnIndex( name string) int {
+  return int(C.Table_getColumnIndex(t.ptr, C.CString(name)));
+}
+
+func (t *Table) Contain(name string) bool {
+  return tobool( C.Table_contain(t.ptr, C.CString(name)));
+}
+
+func (t *Table) GetValue() Constant {
+  
+   return Constant{C.Table_getValue(t.ptr)};
+}
+
+func (t *Table) GetInstance(size int) Constant {
+  
+	return Constant{C.Table_getInstance(t.ptr, C.int(size))};
+ }
+ 
+func (t *Table) Sizeable(name string) bool {
+    return tobool( C.Table_sizeable(t.ptr));
+}
+
+func (t *Table) GetStringByIndex(index int) string{
+	return C.GoString(C.Table_getStringbyIndex(t.ptr, C.int(index)));
+}
+
+func (t *Table) GetWindow(colstart int, collen int, rowstart int, rowlen int) Constant {
+  
+	return Constant{C.Table_getWindow(t.ptr, C.int(colstart), C.int(collen), C.int(rowstart), C.int(rowlen))};
+ }
+
+func (t *Table) GetMember(key Constant) Constant {
+  
+    return Constant{C.Table_getMember(t.ptr, key.ptr)};
+}
+
+func (t *Table) Values() Constant {
+  
+    return Constant{C.Table_values(t.ptr)};
+}
+
+func (t *Table) Keys() Constant {
+  
+    return Constant{C.Table_keys(t.ptr)};
+}
+
+func (t *Table) GetTableType() int{
+	return int(C.Table_getTableType(t.ptr));
+}
+
+func (t *Table) Drop(cols []int ){
+   l := len(cols);
+   vec := CreateVector(DT_INT,0);
+   for i := 0; i < l;i++{
+
+
+		  vec.Append(CreateInt(cols[i]));
+	
+	
+		}
+	C.Table_drop(t.ptr, vec.ptr);
+}
+
+
+func (c * Constant) ToSet() Set{
+	return Set{Constant:Constant{ptr:C.toSet(c.ptr)}}
+}
+
+func (c * Constant) ToMatrix() Matrix{
+	return Matrix{Constant:Constant{ptr:C.toMatrix(c.ptr)}}
+}
+
+func (c * Constant) ToDictionary() Dictionary{
+	return Dictionary{Constant:Constant{ptr:C.toDictionary(c.ptr)}}
+}
+
 func (c * Constant) ToTable() Table {
    
 	//	return Vector{Constant:Constant{ptr:(*C.DBConnection)(unsafe.Pointer(C.toVector(c.ptr)))}};
@@ -496,9 +776,129 @@ func (t *Table) GetColumnType(x int) int {
 	return int(C.Table_getColumnType(t.ptr, C.int(x)));
 }
 
+/*
+void Matrix_setRowLabel(Constant* w, Constant* label);
+void Matrix_setColumnLabel(Constant* w, Constant* label);
+int Matrix_reshape(Constant* w, int cols, int rows);
+Constant* Matrix_getColumn(Constant* w,int x);
+char* Matrix_getStringbyIndex(Constant* w, int x);
+char* Matrix_getCellString(Constant* w, int x, int y);
+Constant* Matrix_getInstance(Constant* w, int size);
+int Matrix_setColumn(Constant* w,int index, Constant* col);
+*/
+func (m *Matrix) SetRowLabel(label Constant) {
+   
+	C.Matrix_setRowLabel(m.ptr, label.ptr)
+}
+func (m *Matrix) SetColumnLabel(label Constant) {
+   
+	C.Matrix_setColumnLabel(m.ptr, label.ptr)
+}
+
+func (m *Matrix) Reshape(cols int, rows int) bool{
+	return tobool(C.Matrix_reshape(m.ptr, C.int(cols), C.int(rows)  ));
+}
+
+func (m *Matrix) GetColumn(x int) Vector{
+	return Vector{Constant:Constant{ptr:C.Matrix_getColumn(m.ptr, C.int(x))}};
+}
+
+func (m *Matrix) GetStringbyIndex(x int) string{
+	return C.GoString(C.Matrix_getStringbyIndex(m.ptr, C.int(x) ));
+}
+
+func (m *Matrix) GetCellString(col int , row int) string{
+	return C.GoString(C.Matrix_getCellString(m.ptr, C.int(col), C.int(row)  ));
+}
+
+func (m *Matrix) GetInstance(size int) Constant{
+	return Constant{C.Matrix_getInstance(m.ptr, C.int(size))};
+}
+
+func (m *Matrix) SetColumn(index int,col Constant) bool{
+    return tobool(C.Matrix_setColumn(m.ptr, C.int(index),col.ptr));
+   
+}
 
 
 
+func (d *Dictionary) Count() int{
+
+  return int(C.Dictionary_count(d.ptr));
+}
+
+
+func (d *Dictionary) Clear() {
+
+	C.Dictionary_clear(d.ptr);
+}
+
+func(d *Dictionary)  GetMember(key Constant) Constant{
+	return Constant{C.Dictionary_getMember(d.ptr, key.ptr)};
+}
+
+func (d *Dictionary) GetKeyType() int{
+
+	return int(C.Dictionary_getKeyType(d.ptr));
+}
+
+func(d *Dictionary) Keys() Constant{
+	return Constant{C.Dictionary_keys(d.ptr)};
+}
+  
+func(d *Dictionary) Values() Constant{
+	return Constant{C.Dictionary_values(d.ptr)};
+}
+
+func (d *Dictionary) GetScript() string{
+	return C.GoString(C.Dictionary_getScript(d.ptr));
+}
+
+func (d *Dictionary) Remove(key Constant) bool{
+	return tobool(C.Dictionary_remove(d.ptr, key.ptr));
+}
+
+func (d *Dictionary) Set(key Constant, value Constant) bool{
+	return tobool(C.Dictionary_set(d.ptr, key.ptr, value.ptr));
+}
+
+func (d *Dictionary) Contain(target Constant, result Constant) {
+	C.Dictionary_contain(d.ptr, target.ptr, result.ptr);
+}
+
+func (s *Set) Clear() {
+   C.Set_clear(s.ptr);
+}
+
+func (s *Set) Remove(c Constant) bool{
+  return tobool(C.Set_remove(s.ptr, c.ptr));
+}
+func (s *Set) Append(c Constant) bool{
+	return tobool(C.Set_append(s.ptr, c.ptr));
+}
+func (s *Set) Inverse(c Constant) bool{
+	return tobool(C.Set_inverse(s.ptr, c.ptr));
+}
+
+func (s *Set) Contain(c Constant, r Constant) {
+	C.Set_contain(s.ptr, c.ptr, r.ptr);
+}
+
+func (s *Set) IsSuperSet(c Constant) bool{
+	return tobool(C.Set_isSuperSet(s.ptr, c.ptr));
+}
+
+func (s *Set) GetScript() string{
+	return C.GoString(C.Set_getScript(s.ptr));
+}
+
+func (s *Set) Interaction(c Constant) Constant{
+	return Constant{C.Set_interaction(s.ptr, c.ptr)};
+}
+
+func (s *Set) GetSubVector(start int, l int) Constant{
+	return Constant{C.Set_getSubVector(s.ptr, C.int(start), C.int(l) )};
+}
 
 
 func (conn *DBConnection) Init() {
@@ -537,6 +937,14 @@ func (conn *DBConnection) RunFunc(script string, args []Constant) Constant {
 
 }
 
+func (c *Constant) IsLargeConstant() bool{
+
+	return tobool(C.Constant_isLargeConstant(c.ptr));
+}
+
+func (c *Constant) Get(x int) Constant{
+	return Constant{ptr:C.Constant_get(c.ptr, C.int(x))};
+}
 
 func  (c *Constant) GetBool() bool {
 	return tobool(C.Constant_getBool(c.ptr));
@@ -730,6 +1138,13 @@ func (c *Constant) SetDouble(x float64) {
 
 }
 
+func (c *Constant) SetString(x string) {
+
+	C.Constant_setString(c.ptr,C.CString(x));
+
+}
+
+
 func (c *Constant) SetNull(x float64) {
 
 	C.Constant_setNull(c.ptr);
@@ -748,7 +1163,51 @@ func DelConstant(c Constant) {
 
 }
 
+func CreateConstant(typedol int) Constant{
+
+	return Constant{C.createConstant(C.int(typedol))};
+}
+
+func (c *Constant) SetBinary(val []byte){
+    if len(val) != 16 {panic("bytes length must be 16")};
+	C.Constant_setBinary(c.ptr, (*C.char)(unsafe.Pointer(&val[0])));
+}
+
+func (c *Constant) SetBinaryByIndex(index int, val []byte) {
+    if len(val) != 16 {panic("bytes length must be 16")};
+    C.Constant_setBinaryByIndex(c.ptr, C.int(index),(*C.char)(unsafe.Pointer(&val[0])));
+
+}
+
+func (c *Constant) SetBinaryArray(start int, l int, val []byte) bool{
+	if (len(val) != l *16) {panic("bytes length must be 16")};
+	
+	return tobool(C.Constant_setBinaryArray(c.ptr, C.int(start),C.int(l), (*C.char)(unsafe.Pointer(&val[0]))));
+	
+         
+   
+}
+
+func ParseConstant(typedol int, val string) Constant{
+
+	return Constant{C.parseConstant(C.int(typedol), C.CString(val))};
+}
+
+func (c *Constant) GetHash() uint32{
+   return uint32(C.Constant_getHash(c.ptr));
+}
+
+func (c *Constant) GetHashArray(start int, l int, buf []uint32) bool{
+	return tobool(C.Constant_getHashArray(c.ptr, C.int(start), C.int(l), (*C.uint)(unsafe.Pointer(&buf[0]))));
+ }
+ 
+func GetEpochTime() int64{
+	return int64(C.getEpochTime());
+}
+
+
 func main() {
+	
 	conn := new(DBConnection);
 	conn.Init();
 	fmt.Println(conn.Connect(hostname,port,user,pass));
@@ -760,6 +1219,18 @@ func main() {
 	//chuan := [] int32 {1,2,3,4,5};
 	//v1.AppendInt(chuan, 5);
 	//fmt.Println(v1.GetString());
+	//var tab1 Vector;
+	
+   
+	
+	set1 := conn.Run("set([5,5,3,4])");
+	set2 := set1.ToSet();
+	fmt.Println(set2.GetScript());
+	fmt.Println("form is", set1.GetForm());
+
+
+
+
 
 	v4 := CreateVector(DT_STRING,0);
 	s1 := [] string {"12321","21313","asd"};
@@ -769,6 +1240,8 @@ func main() {
 	v4.SetStringArray(0,3,s2);
 	fmt.Println(v4.GetString());
 	
+	//conn.Upload("v4",v4.ToConstant());
+
 	v5 := CreateVector(DT_BOOL,5);
 	b1 := [] bool {true,true,true};
 	v5.AppendBool(b1, 3);
@@ -782,7 +1255,10 @@ func main() {
 	colnames := [] string {"v1","v2"};
 	ta := CreateTableByVector(colnames, cols);
 		fmt.Println(ta.GetString());
-	
+	dropcol := [] int {0};
+	ta.Drop(dropcol);
+	fmt.Println(ta.GetString());
+
 	v6:= CreateVector(DT_STRING,5);
 	v6.SetStringByIndex(1,"1111");
 	v6.SetByIndex(2,CreateString("2222"));
@@ -791,9 +1267,28 @@ func main() {
 
 	cdel := CreateInt(1);
 	DelConstant(cdel);
+
+	xn := ParseConstant(DT_INT,"1");
+    fmt.Println(xn.GetString());
+
+	uuid := CreateConstant(DT_IP);
+	b := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
+    bx := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1,255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
+	uuid.SetBinary(b);
+	fmt.Println(uuid.GetString());
+	vu := CreateVector(DT_IP, 5);
+	//ud := []string{"192.168.34.232", "192.168.34.232" ,"192.168.34.232" ,"192.168.34.232" ,"192.168.34.232"};
+	
+	//fmt.Println(vu.GetString());
+    vu.SetBinaryByIndex(1,b)
+	vu.SetBinaryArray(0,2, bx);
+	
+	fmt.Println(vu.GetString());
+    
 //	coltypes:= [] int{DT_INT,DT_INT};
 //	tb :=  CreateTable(colnames, coltypes, 10, 15)
 //	fmt.Println(tb.GetString());
-        conn.Close();
+		conn.Close();
+		
 }
 

@@ -24,8 +24,8 @@ elseif(UNIX)
 endif ()
 include_directories(${API_SRC}/include)
 
-if (EXISTS "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0") # archlinux
-    set(LIBSSL /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0)
+if (EXISTS "/usr/lib/libssl.so.1.0.0") # archlinux
+    set(LIBSSL /usr/lib/libssl.so.1.0.0)
 else ()
     set(LIBSSL ssl)
 endif ()
@@ -41,8 +41,7 @@ macro(TEST module)
     add_executable(${module} ${API_SRC}/test/Streaming${module}.cpp)
     target_link_libraries(${module} 
         DolphinDBAPI 
-	/usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
-	/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
+        ${platform_lib} 
         pthread 
         uuid)
 endmacro()
