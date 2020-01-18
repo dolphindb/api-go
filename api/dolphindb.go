@@ -193,8 +193,8 @@ void Constant_setBinaryByIndex(Constant* w, int index, char* val);
 int Constant_setBinaryArray(Constant* w, int start, int len, char* buf);
 Constant* parseConstant(int type, char* word);
 
-unsigned int Constant_getHash(Constant* w);
-int Constant_getHashArray(Constant* w, int start, int len, unsigned int* buf);
+int Constant_getHash(Constant* w, int buckets);
+int Constant_getHashArray(Constant* w, int start, int len, int buckets, int* buf);
 long long getEpochTime();
 #cgo LDFLAGS: -L./ -lwrapper -Wl,-rpath,./api/
 */
@@ -1193,12 +1193,12 @@ func ParseConstant(typedol int, val string) Constant{
 	return Constant{C.parseConstant(C.int(typedol), C.CString(val))};
 }
 
-func (c *Constant) GetHash() uint32{
-   return uint32(C.Constant_getHash(c.ptr));
+func (c *Constant) GetHash(buckets int) int{
+   return int(C.Constant_getHash(c.ptr, C.int(buckets)));
 }
 
-func (c *Constant) GetHashArray(start int, l int, buf []uint32) bool{
-	return tobool(C.Constant_getHashArray(c.ptr, C.int(start), C.int(l), (*C.uint)(unsafe.Pointer(&buf[0]))));
+func (c *Constant) GetHashArray(start int, l int, buckets int,buf []int32) bool{
+	return tobool(C.Constant_getHashArray(c.ptr, C.int(start), C.int(l), C.int(buckets), (*C.int)(unsafe.Pointer(&buf[0]))));
  }
  
 func GetEpochTime() int64{

@@ -8,7 +8,7 @@ import (
 
 const(
 	host = "localhost";
-	port = 8921;
+	port = 8848;
 	user = "admin";
 	pass = "123456";
 )
@@ -89,6 +89,9 @@ func CreateDemoTableFast() ddb.Table{
   v5 := ddb.CreateVector(ddb.DT_FLOAT, rowNum);
   v6 := ddb.CreateVector(ddb.DT_DOUBLE, rowNum);
   v7 := ddb.CreateVector(ddb.DT_STRING, rowNum);
+  v8 := ddb.CreateVector(ddb.DT_UUID, rowNum);
+  v9 := ddb.CreateVector(ddb.DT_IP, rowNum);
+  v10 := ddb.CreateVector(ddb.DT_INT128, rowNum);
 
   var arr1 []bool;
   var arr2 []int16;
@@ -97,6 +100,7 @@ func CreateDemoTableFast() ddb.Table{
   var arr5 []float32;
   var arr6 []float64;
   var arr7 []string;
+  var arr8 []byte;
   
   arrSize := 100000;
   for i := 0; i<arrSize; i++{
@@ -107,19 +111,39 @@ func CreateDemoTableFast() ddb.Table{
     arr5 = append(arr5, 1.0);
     arr6 = append(arr6, 1.0);
     arr7 = append(arr7, "1");
+    arr8 = append(arr8, 0);
+    arr8 = append(arr8, 180);
+    arr8 = append(arr8, 225);
+    arr8 = append(arr8, 20);
+    arr8 = append(arr8, 0);
+    arr8 = append(arr8, 23);
+    arr8 = append(arr8, 152);
+    arr8 = append(arr8, 115);
+    arr8 = append(arr8, 0);
+    arr8 = append(arr8, 2);
+    arr8 = append(arr8, 15);
+    arr8 = append(arr8, 123);
+    arr8 = append(arr8, 0);
+    arr8 = append(arr8, 2);
+    arr8 = append(arr8, 45);
+    arr8 = append(arr8, 26);
   }
 
   start := 0;
   v1.SetBoolArray(start,arrSize,arr1);
   v2.SetShortArray(start,arrSize,arr2);
-  v3.SetIntArray(start,arrSize,arr3);  
+  v3.SetIntArray(start,arrSize,arr3);
   v4.SetLongArray(start,arrSize,arr4);
-  v5.SetFloatArray(start,arrSize,arr5);  
+  v5.SetFloatArray(start,arrSize,arr5);
   v6.SetDoubleArray(start,arrSize,arr6);
-  v7.SetStringArray(start,arrSize,arr7);    
+  v7.SetStringArray(start,arrSize,arr7);
+  v8.SetBinaryArray(start,arrSize,arr8);
+  v9.SetBinaryArray(start,arrSize,arr8);
+  v10.SetBinaryArray(start,arrSize,arr8);
 
-  cols := [] ddb.Vector {v1,v2,v3,v4,v5,v6,v7};
-  colnames := [] string {"tbool","tshort","tint","tlong","tfloat","tdouble","tstring"};
+
+  cols := [] ddb.Vector {v1,v2,v3,v4,v5,v6,v7,v8,v9,v10};
+  colnames := [] string {"tbool","tshort","tint","tlong","tfloat","tdouble","tstring","tuuid","tipaddr","tint128"};
   return ddb.CreateTableByVector(colnames, cols);
 }
 
@@ -133,6 +157,9 @@ func CreateDemoTableSlow() ddb.Table{
   v5 := ddb.CreateVector(ddb.DT_FLOAT, vecLen);
   v6 := ddb.CreateVector(ddb.DT_DOUBLE, vecLen);
   v7 := ddb.CreateVector(ddb.DT_STRING, vecLen);
+  v8 := ddb.CreateVector(ddb.DT_UUID, vecLen);
+  v9 := ddb.CreateVector(ddb.DT_IP, vecLen);
+  v10 := ddb.CreateVector(ddb.DT_INT128, vecLen);
 
   va1 := ddb.CreateBool(true);
   va2 := ddb.CreateShort(1);
@@ -141,6 +168,15 @@ func CreateDemoTableSlow() ddb.Table{
   va5 := ddb.CreateFloat(1.0);
   va6 := ddb.CreateDouble(1.0);
   va7 := ddb.CreateString("1");
+
+
+  va8 := ddb.CreateConstant(ddb.DT_UUID);
+  va9 := ddb.CreateConstant(ddb.DT_IP);
+  va10 := ddb.CreateConstant(ddb.DT_INT128);
+  b := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
+  va8.SetBinary(b);
+  va9.SetBinary(b);
+  va10.SetBinary(b);
 
   rowNum :=100000;
   for i := 0; i<rowNum; i++{
@@ -151,9 +187,13 @@ func CreateDemoTableSlow() ddb.Table{
     v5.Append(va5);
     v6.Append(va6);
     v7.Append(va7);
+    v8.Append(va8);
+    v9.Append(va9);
+    v10.Append(va10);
+
   }
-  cols := [] ddb.Vector {v1,v2,v3,v4,v5,v6,v7};
-  colnames := [] string {"tbool","tshort","tint","tlong","tfloat","tdouble","tstring"};
+  cols := [] ddb.Vector {v1,v2,v3,v4,v5,v6,v7,v8,v9,v10};
+  colnames := [] string {"tbool","tshort","tint","tlong","tfloat","tdouble","tstring","tuuid","tipaddr","tint128"};
   return ddb.CreateTableByVector(colnames, cols);
 }
 
@@ -225,8 +265,8 @@ func TestUpdateFuncs(){
 	cv4.SetLongArray(start,rowNum,carr4);
 	cv5.SetFloatArray(start,rowNum,carr5);  
 	cv6.SetDoubleArray(start,rowNum,carr6);
-	cv7.SetStringArray(start,rowNum,carr7);   
- 
+  cv7.SetStringArray(start,rowNum,carr7);   
+  
   ress:=assertEqual(v1.ToConstant(),cv1.ToConstant());
   if ress == false {
 		fmt.Println(ress);
@@ -315,7 +355,7 @@ func main() {
   var conn ddb.DBConnection;
   conn.Init();
   conn.Connect(host,port,user,pass);
-  script := "t = table(100:0, `tbool`tshort`tint`tlong`tfloat`tdouble`tstring, [BOOL,SHORT,INT,LONG,FLOAT,DOUBLE,STRING]); share t as tglobal;";
+  script := "t = table(100:0, `tbool`tshort`tint`tlong`tfloat`tdouble`tstring`tuuid`tipaddr`tint128, [BOOL,SHORT,INT,LONG,FLOAT,DOUBLE,STRING,UUID,IPADDR,INT128]); share t as tglobal;";
   script += "login(`admin, `123456); dbPath='dfs://testGo'; if(existsDatabase(dbPath))\ndropDatabase(dbPath); db=database(dbPath, VALUE, 1..5); tb=db.createPartitionedTable(t, `tb, `tint)" 
   conn.Run(script);
  
@@ -331,6 +371,12 @@ func main() {
   conn.Upload("tab", tb1);
   result := conn.Run("select count(*) from tab");
   fmt.Println(result.GetString());
+  resultuud := conn.Run("select top 5 tuuid from tab");
+  fmt.Println(resultuud.GetString());
+  resultipd := conn.Run("select top 5 tipaddr from tab");
+  fmt.Println(resultipd.GetString());
+  resultint := conn.Run("select top 5 tint128 from tab");
+  fmt.Println(resultint.GetString());
 
   t = time.Now()
   ta = CreateDemoTableFast();
@@ -350,6 +396,12 @@ func main() {
   fmt.Println(result.GetString());
   content := conn.Run("select top 5 * from loadTable('dfs://testGo', `tb)");
   fmt.Println(content.GetString());
+  contentuud := conn.Run("select top 5 tuuid from loadTable('dfs://testGo', `tb)");
+  fmt.Println(contentuud.GetString());
+  contentipd := conn.Run("select top 5 tipaddr from loadTable('dfs://testGo', `tb)");
+  fmt.Println(contentipd.GetString());
+  contentint := conn.Run("select top 5 tint128 from loadTable('dfs://testGo', `tb)");
+  fmt.Println(contentint.GetString());
 
   TestUpdateFuncs();
 }

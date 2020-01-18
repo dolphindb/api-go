@@ -676,10 +676,13 @@ void* parseConstant(int type, char* word) {
   return new Wrapper{Util::parseConstant(type, word)};
 }
 
-unsigned int Constant_getHash(Wrapper* w) { return w->_internal->getHash(); }
+int Constant_getHash(Wrapper* w, int buckets) {
+  return w->_internal->getHash(buckets);
+}
 
-int Constant_getHashArray(Wrapper* w, int start, int len, unsigned int* buf) {
-  return w->_internal->getHash(start, len, buf);
+int Constant_getHashArray(Wrapper* w, int start, int len, int buckets,
+                          int* buf) {
+  return w->_internal->getHash(start, len, buckets, buf);
 }
 
 long long getEpochTime() { return Util::getEpochTime(); }
@@ -753,6 +756,9 @@ int main() {
   dropcol.push_back(1);
   t->drop(dropcol);
   std::cout << (t->getString()) << std::endl;
+
+  ConstantSP x1 = Util::createInt(99);
+  std::cout << x1->getHash(5) << std::endl;
   // std::cout<< (v->reserve(2)) << std::endl;
   // ConstantSP m = conn.run("1..10$2:5");
   // std::cout<< (m->getForm()) << std::endl;
@@ -770,5 +776,6 @@ int main() {
     std::cout << t->_internal->getString() << std::endl;
     return 0;
   */
+
   return 0;
 }

@@ -145,15 +145,61 @@ Constant类提供的较为常用的方法如下：
 
 | 方法名        | 详情          |
 |:------------- |:-------------|
+|`<CreateDataType>`|构造DataType类型的常量，参数为该常量的值|
+|CreateConstant()|构造一个常量，参数为常量对象的数据类型|
 |GetForm()|获取对象的数据形式|
 |GetType()|获取对象的数据类型|
+|GetHash(buckets int)|返回一个Constant的哈希值(mod buckets)|
 |Size()|获取对象大小|
-|`<GetDataType>`|将Constant对象转换为GO中的基本数据类型|
-|`<IsDataForm>`|校验Constant对象的数据形式|
+|`<GetDataType>`|将DataType类型的常量转换为GO中对应的基本数据类型|
+|`<IsDataForm>`|判断常量的数据形式是否为DataForm|
+|`<SetDataType>`|对DataType类型的常量值进行赋值，参数为修改之后的值|
+|ParseConstant(DT_type int, val string)|将字符串val解析为DT_type类型，并返回一个对应类型的常量|
 |ToVector()|转换为Vector类型|
 |ToTable()|转换为Table类型|
 
 具体示例如下：
+
+* `<CreateDataType>`，`CreateConstant()`，`<SetDataType>`
+
+`<CreateDataType>`和`CreateConstant()`都是用于创建对应数据类型常量的方法，例如，创建一个值为"astr"字符串常量,有以下两种方式：
+
+```Go
+str1 := ddb.CreateString("astr");
+fmt.Println(str1.GetString());
+
+str2 := ddb.CreateConstant(ddb.DT_STRING);
+str2.SetString("astr");  
+```
+
+需要注意的是，目前对于16字节的字符串类型（包括DT_UUID，DT_IP和DT_INT128），还不支持直接通过`<CreateDataType>`的方式直接创建DataType类型的常量，需要先通过`CreateConstant`方法创建常量对象，再通过`SetBinary`方法赋值。
+
+```GO
+vuuid := ddb.CreateConstant(ddb.DT_UUID);
+vipaddr := ddb.CreateConstant(ddb.DT_IP);
+vint128 := ddb.CreateConstant(ddb.DT_INT128);
+
+b := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
+vuuid.SetBinary(b);
+vipaddr.SetBinary(b);
+vint128.SetBinary(b);
+```
+
+>请注意：在调用`SetBinary`方法为一个16字节字符串类型常量赋值时，参数必须是一个长度为16的byte类型数组，数组的每一位（取值范围为0~255）对应16字节字符串的每个字节。
+
+* `ParseConstant(DT_type int, val string)` 
+
+下例中，通过指定DT_type为DT_INT，val为“1”，将字符串“1”转变为int类型的常量对象。
+
+```GO
+xn := ddb.ParseConstant(DT_INT,"1");
+```
+
+该函数可以将一个字符串转化为16字节的字符串进行存储。下面的例子中，xn为一个DT_INT128类型的字符串。
+
+```GO
+xn := ddb.ParseConstant(ddb.DT_INT128,"08b80e4f20171412130ec0899884fef4");
+```
 
 * `GetForm()`、`GetType()`
 
@@ -167,6 +213,10 @@ x.GetType();
 输出结果为如下，其中，form=0代表是form为scalar，type=4代表type为int。
 
 >0 4
+
+* `GetHash(buckets int)`
+
+对常量对象调用GetHash方法，会对该常量做mod buckets运算，并返回运算结果。
 
 * `Size()`
 
@@ -260,6 +310,7 @@ if p2.GetInt()!= 1 { t.Error("Append Error"); }
 ```GO
 p1 := ddb.CreateVector(ddb.DT_INT,5);
 ```
+
 * `Append(Constant)`
 
 对Vector调用`Append(Constant)`方法可以向Vector尾部push一个对象，这有点类似于C++ vector的push_back方法
@@ -322,6 +373,22 @@ v4.SetStringArray(0,rowNum,arr4);
 
 查看v1.GetString()的结果，结果是一个Int类型的slice。
 >[1,1,1,1,1,1,1,1,1,1]
+
+需要注意的是，若要对16字节的字符串类型（包括DT_UUID，DT_IP和DT_INT128）向量赋值，需要以16位为单位进行赋值，即，数组的长度必须是16的倍数。下面的例子中，分别创建了长度为10的DT_UUID，DT_IP和DT_INT128类型的向量，并使用数组arr对这三个向量进行赋值，数组arr的长度为10*16。
+
+```Go
+rowNum := 10;
+vuuid := ddb.CreateVector(ddb.DT_UUID, rowNum);
+vipaddr := ddb.CreateVector(ddb.DT_IP, rowNum);
+vint128 := ddb.CreateVector(ddb.DT_INT128, rowNum);
+var arr []byte;
+for i := 0; i<rowNum; i++{
+  arr = append(arr,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1);
+}
+vuuid.SetBinaryArray(0,rowNum,arr);
+vipaddr.SetBinaryArray(0,rowNum,arr);
+vint128.SetBinaryArray(0,rowNum,arr);
+```
 
 #### 5.3 Table类
 
@@ -586,76 +653,46 @@ fmt.Println(price0.GetString());
 2.6
 ```
 
-### 8 新增的数据类型及函数
-DolphinDB新增了数据类型:IP与INT128，在go-api中标记为DT_IP与DT_128，可以使用
-```GO
-ipex := CreateConstant(DT_IP);
-vu := CreateVector(DT_IP, 5);
-```
-来创建它们。需要用长度为16的byte数组来set它们，否则会抛出错误。
-```GO
-b := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
-ipex.SetBinary(b);
-
-vu.SetBinaryByIndex(1, b);
-
-bx := []byte{255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1,255, 255, 255, 1,1,1,1,1, 255, 255, 255, 1,1,1,1,1};
-vu.SetBinaryArray(0, 2, bx);
-```
-
-`ParseConstant(DT_type int, val string)` 函数，将字符串解析为你需要的DolphinDB类型，并返回一个Constant值。
-```GO
-xn := ParseConstant(DT_INT,"1");
-```
-
-`GetEpochTime()`函数，int64类型，返回从1970年1月1日到当前时刻的毫秒数。
-
-`GetHash()`方法，返回一个Constant的哈希值。
-
 附录
 ---
 数据形式列表（`GetFrom()`函数返回值对应的数据形式）
 
 | 序号       | 数据形式          |
 |:------------- |:-------------|
-|0|DF_VECTOR
-|1|DF_PAIR
-|2|DF_MATRIX
-|3|DF_SET
-|4|DF_DICTIONARY
-|5|DF_TABLE
-|6|DF_CHART
-|7|DF_CHUNK
+|0|DF_SCALAR
+|1|DF_VECTOR
+|2|DF_PAIR
+|3|DF_MATRIX
+|4|DF_SET
+|5|DF_DICTIONARY
+|6|DF_TABLE
+|7|DF_CHART
+|8|DF_CHUNK
 
 数据类型列表（`GetType()`函数返回值对应的数据类型）
 
 | 序号       | 数据类型          |
 |:------------- |:-------------|
-|0|DT_BOOL
-|1|DT_CHAR
-|2|DT_SHORT
-|3|DT_INT
-|4|DT_LONG
-|5|DT_DATE
-|6|DT_MONTH
-|7|DT_TIME
-|8|DT_MINUTE
-|9|DT_SECOND
-|10|DT_DATETIME
-|11|DT_TIMESTAMP
-|12|DT_NANOTIME
-|13|DT_NANOTIMESTAMP
-|14|DT_FLOAT
-|15|DT_DOUBLE
-|16|DT_SYMBOL
-|17|DT_STRING
-|18|DT_UUID
-|19|DT_FUNCTIONDEF
-|20|DT_HANDLE
-|21|DT_CODE
-|22|DT_DATASOURCE
-|23|DT_RESOURCE
-|24|DT_ANY
-|25|DT_COMPRESS
-|26|DT_DICTIONARY
-|27|DT_OBJECT
+|1|DT_BOOL
+|2|DT_CHAR
+|3|DT_SHORT
+|4|DT_INT
+|5|DT_LONG
+|6|DT_DATE
+|7|DT_MONTH
+|8|DT_TIME
+|9|DT_MINUTE
+|10|DT_SECOND
+|11|DT_DATETIME
+|12|DT_TIMESTAMP
+|13|DT_NANOTIME
+|14|DT_NANOTIMESTAMP
+|15|DT_FLOAT
+|16|DT_DOUBLE
+|17|DT_SYMBOL
+|18|DT_STRING
+|19|DT_UUID
+|28|DT_DATEHOUR
+|29|DT_DATEMINUTE
+|30|DT_IP
+|31|DT_INT128
