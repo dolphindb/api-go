@@ -37,7 +37,7 @@ public:
     void emplace(T &&item) {
         lock_.lock();
         while (size_ >= capacity_) full_.wait(lock_);
-        buf_[tail_] = move(item);
+        buf_[tail_] = std::move(item);
         tail_ = (tail_ + 1) % capacity_;
         ++size_;
         if (size_ == 1) empty_.notifyAll();
@@ -52,7 +52,7 @@ public:
         while (size_ == 0) {
             if (!empty_.wait(lock_, milliSeconds)) return false;
         }
-        item = move(buf_[head_]);
+        item = std::move(buf_[head_]);
         buf_[head_] = T();
         head_ = (head_ + 1) % capacity_;
         --size_;

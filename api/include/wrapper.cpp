@@ -9,6 +9,9 @@
 
 #include "DolphinDB.h"
 
+
+#include "Streaming.h"
+#include <iostream>
 #include <cstdio>
 #include <cstring>
 using namespace dolphindb;
@@ -21,6 +24,42 @@ extern "C" {
 struct Wrapper {
   ConstantSP _internal;
 };
+
+struct WrapperMessageQueue  {
+   MessageQueueSP _internal;
+};
+
+int  MessageQueue_poll(WrapperMessageQueue* w,  Wrapper* msg,  int s) {
+     return w->_internal->poll(msg->_internal, s );
+  }
+
+void* Constant_new(){
+    return new Wrapper;
+}
+
+int Constant_isNull(Wrapper* w)
+{
+  return w->_internal->isNull();
+
+}
+
+char* def_action_name(){
+    return (char*)(DEFAULT_ACTION_NAME);
+}
+
+
+PollingClient* PollingClient_new(int listerport ) { return (new PollingClient(listerport));}
+
+void* PollingClient_subscribe( PollingClient* client, char* host, int port, char*  tableName,char*  actionName ,   long long offset)
+{
+ 
+       return new WrapperMessageQueue{client->subscribe(host, port, tableName, actionName, offset)};
+
+} 
+
+void PollingClient_unsubscribe(PollingClient* client, char* host, int port, char* tableName, char* actionName){
+   client->unsubscribe(host, port, tableName, actionName);
+}
 
 DBConnection* DBConnection_new() { return (new DBConnection()); }
 
@@ -776,6 +815,20 @@ int main() {
     std::cout << t->_internal->getString() << std::endl;
     return 0;
   */
+ /*
+  const string host = "localhost";
+const int port = 1621;
+    int listenport = 1029;
+    PollingClient client(listenport);
 
+    auto queue = client.subscribe(host, port, "st1", DEFAULT_ACTION_NAME, 0);
+    Message msg;
+    while (true) {
+        if (queue->poll(msg, 1000)) {
+            if  (msg->isNull()) break;
+            std::cout<< (msg->getString()) <<std::endl;
+        }
+    }
+    */
   return 0;
 }

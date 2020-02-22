@@ -96,7 +96,7 @@ fmt.Println(sum.GetString());
 若变量x已经通过GO程序在服务器端生成，
 
 ```GO
-conn.run("x = [1,3,5]");
+conn.Run("x = [1,3,5]");
 ```
 
 而参数y要在GO客户端生成，这时就需要使用“部分应用”方式，把参数x固化在`add`函数内。具体请参考[部分应用文档](https://www.dolphindb.com/cn/help/PartialApplication.html)。
@@ -106,7 +106,7 @@ a2 := [] int32 {9,8,7};
 y0 := ddb.CreateVector(ddb.DT_INT, 3);
 y0.SetIntArray(0,3,a2);
 y := y0.ToConstant();
-args = [] ddb.Constant{y};
+args := [] ddb.Constant{y};
 result1 := conn.RunFunc("add{x,}", args);
 fmt.Println(result1.GetString());
 ```
