@@ -655,7 +655,9 @@ fmt.Println(price0.GetString());
 
 附录
 ---
-数据形式列表（`GetFrom()`函数返回值对应的数据形式）
+* [Go API 使用样例](example/README_CN.md)
+
+* 数据形式列表（`GetFrom()`函数返回值对应的数据形式）
 
 | 序号       | 数据形式          |
 |:------------- |:-------------|
