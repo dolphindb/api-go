@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../api"
+	"../src"
 	"fmt"
 	"math/rand"
 	"time"

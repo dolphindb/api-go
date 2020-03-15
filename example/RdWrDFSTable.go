@@ -1,12 +1,12 @@
 package main
 
 import (
-	"../api"
+	"../src"
 	"fmt"
 )
 
 const (
-	host = "localhost"
+	host = "127.0.0.1"
 	port = 8848
 	user = "admin"
 	pass = "123456"

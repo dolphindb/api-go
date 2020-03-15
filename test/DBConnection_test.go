@@ -1,12 +1,12 @@
 package test
 
 import (
-	"../api"
+	"../src"
 	"testing"
 )
 
 const (
-	hostname = "localhost"
+	hostname = "127.0.0.1"
 	port     = 1621
 	user     = "admin"
 	pass     = "123456"

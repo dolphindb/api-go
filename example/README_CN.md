@@ -8,12 +8,12 @@
 
 ```bash
 $ cd api-go/
-$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/api
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/src
 ```
 
 - 搭建DolphinDB Server。 详见[DolphinDB 教程](https://github.com/dolphindb/Tutorials_CN/blob/master/single_machine_cluster_deploy.md)。
 
-启动DolphiniDB Server后，请根据本地实际的DolphinDB配置修改样例代码中的节点地址、端口、用户名和密码。本教程使用默认地址“localhost”，默认端口8848，用户名“admin”， 密码“123456“。
+启动DolphiniDB Server后，请根据本地实际的DolphinDB配置修改样例代码中的节点地址、端口、用户名和密码。本教程使用默认地址“127.0.0.1”，默认端口8848，用户名“admin”， 密码“123456“。
 
 #### 1.2 样例说明
 

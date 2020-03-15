@@ -1,7 +1,7 @@
 package test
 
 import (
-	"../api"
+	"../src"
 	"testing"
 )
 
