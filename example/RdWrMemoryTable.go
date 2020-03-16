@@ -17,7 +17,10 @@ const (
 func main() {
 	var conn ddb.DBConnection
 	conn.Init()
-	conn.Connect(host, port, username, password)
+	if !conn.Connect(host, port, username, password) {
+		fmt.Println("Failed to connect.")
+		return
+	}
 	script := "kt = keyedTable(`col_int, 2000:0, `col_int`col_short`col_long`col_float`col_double`col_bool`col_string,  [INT, SHORT, LONG, FLOAT, DOUBLE, BOOL, STRING]); "
 	conn.Run(script)
 
@@ -82,5 +85,27 @@ func main() {
 	fmt.Println(re1.GetString())
 
 	re3 := conn.Run("select * from kt where col_int =30")
-	fmt.Println(re3.GetString())
+	//fmt.Println(re3.GetString())
+
+	resTable := re3.ToTable();
+	for i := 0;i < resTable.Columns();i++ {
+		fmt.Printf("%v\t",resTable.GetColumnName(i));
+	}
+	fmt.Println("");
+
+	col0 := resTable.GetColumnByName("col_int");
+	col1 := resTable.GetColumnByName("col_short");
+	col2 := resTable.GetColumnByName("col_long");
+	col3 := resTable.GetColumnByName("col_float");
+	col4 := resTable.GetColumn(4);
+	col5 := resTable.GetColumn(5);
+	col6 := resTable.GetColumn(6);
+	for i := 0;i < resTable.Rows(); i++ {
+		col0i,col1i,col2i,col3i,col4i,col5i,col6i := col0.Get(i),col1.Get(i),col2.Get(i),col3.Get(i),col4.Get(i),col5.Get(i),col6.Get(i);
+		fmt.Printf("%v\t%v\t\t%v\t\t%v\t\t%v\t\t%v\t\t%v\n",col0i.GetInt(),col1i.GetShort(),col2i.GetLong(),col3i.GetFloat(),
+			col4i.GetDouble(), col5i.GetBool(), col6i.GetString())
+	}
+	
+
+
 }

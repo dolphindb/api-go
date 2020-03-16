@@ -35,7 +35,7 @@ import (
 func main() {
   var conn ddb.DBConnection;
   conn.Init();
-  conn.Connect("localhost",8920,"admin","123456");
+  conn.Connect("127.0.0.1",8920,"admin","123456");
 }
 ```
 
@@ -620,47 +620,55 @@ fmt.Println(result.GetString());
 ```
 name date       price
 ---- ---------- -----
-1    2019.01.01 1    
-1    2019.01.01 1    
-1    2019.01.01 1    
-1    2019.01.01 1    
-1    2019.01.01 1    
+a    2019.01.01 1    
+b    2019.01.02 2    
+c    2019.01.03 3    
+d    2019.01.04 4    
+e    2019.01.05 5    
 ```
 
-关于追加数据到DolphinDB分区表的实例可以参考api-go目录下appendData.go文件。
+关于追加数据到DolphinDB分区表的实例可以参考example目录下的[分布式表的数据写入例子](./example/RdWrDFSTable.go)和[分布式表的多线程并行写入例子](./example/DFSWritingWithMultiThread.go) 。
 
 ### 7.4 读取和使用数据表
 
 在GO API中，数据表保存为Table对象。由于Table是列式存储，所以若要在GO API中读取行数据需要先取出需要的列，再取出行。
+
+假设在DolphinDB中如下定义的表，并插入了一些数据在表中：
+```DolphinDB
+kt = keyedTable(`col_int, 2000:0, `col_int`col_short`col_long`col_float`col_double`col_bool`col_string,  [INT, SHORT, LONG, FLOAT, DOUBLE, BOOL, STRING]);
+```
+如下例子通过`run`函数查询表内数据，对返回值用`ToTable`方法将其转换为一个Table对象，然后用`GetColumnByName`或`GetColumn`得到列，再一行行打印数据。
+
 下面我们调用自定义的函数`CreateDemoTable`创建一个表，并且访问表中的元素。
 
 ```GO
-var conn ddb.DBConnection;
-conn.Init();
-conn.Connect(host,port,username,password);
-ta := CreateDemoTable();
-name := ta.GetColumn(0);
-date := ta.GetColumn(1);
-price := ta.GetColumn(2);
-name0 := name.Get(0);
-date0 := date.Get(1);
-price0 := price.Get(2);
-fmt.Println(name0.GetString());
-fmt.Println(date0.GetString());
-fmt.Println(price0.GetString());
+res := conn.Run("select top 3 * from kt")
+resTable := res.ToTable();
+col0 := resTable.GetColumnByName("col_int");
+col1 := resTable.GetColumnByName("col_short");
+col2 := resTable.GetColumnByName("col_long");
+col3 := resTable.GetColumnByName("col_float");
+col4 := resTable.GetColumn(4);
+col5 := resTable.GetColumn(5);
+col6 := resTable.GetColumn(6);
+for i := 0;i < resTable.Rows(); i++ {
+  col0i,col1i,col2i,col3i,col4i,col5i,col6i := col0.Get(i),col1.Get(i),col2.Get(i),col3.Get(i),col4.Get(i),col5.Get(i),col6.Get(i);
+  fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",col0i.GetInt(),col1i.GetShort(),col2i.GetLong(),col3i.GetFloat(),
+    col4i.GetDouble(), col5i.GetBool(), col6i.GetString())
+}
 ```
 输出结果为：
 ```Conosle
-0
-2019.01.01
-2.6
+0,255,10000,133.3,255,true,str
+1,255,10001,133.3,255,true,str
+2,255,10002,133.3,255,true,str
 ```
 
 附录
 ---
 * [Go API 使用样例](example/README_CN.md)
 
-* 数据形式列表（`GetFrom`函数返回值对应的数据形式）
+* 数据形式列表（`GetForm`函数返回值对应的数据形式）
 
 | 序号       | 数据形式          |
 |:------------- |:-------------|

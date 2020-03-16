@@ -96,8 +96,8 @@ func finsert(rows int, startp byte, pcount byte, starttime int, timeInc int, hos
 
 func main() {
 	runtime.GOMAXPROCS(10)
-	hosts := []string{"localhost", "localhost", "localhost", "localhost", "localhost"}
-	ports := []int{1321, 1322, 1323, 1324, 1325}
+	hosts := []string{"127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1","127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"}
+	ports := []int{8848, 8848, 8848, 8848, 8848,8848, 8848, 8848, 8848, 8848}
 	lh := len(hosts)
 	if lh != len(ports) {
 		panic("Hosts and ports should have equal length !")
@@ -107,16 +107,20 @@ func main() {
 	}
 
 	c := make(chan int, lh)
-	tablerows := 10000
-	inserttimes := 100
+	tableRows := 100000
+	insertTimes := 100
+	t1 := time.Now()	
 
 	for i := 0; i < lh; i++ {
-		go finsert(tablerows, byte(i*5-1), byte(5), int(ddb.GetEpochTime()/1000), i*5, hosts, ports, i, inserttimes, c)
+		go finsert(tableRows, byte(i*5), byte(5), int(ddb.GetEpochTime()/1000), i*5, hosts, ports, i, insertTimes, c)
 	}
 
 	for i := 0; i < lh; i++ {
 		<-c
 	}
+	elapsed := time.Since(t1).Seconds() 
+	rows := tableRows * insertTimes * lh
+	speed := float64(rows) / elapsed
 
-	fmt.Println("end")
+	fmt.Println("Inserted ",rows," rows, took a total of ", elapsed  ," s,",uint64(speed),"records per second  ")
 }
