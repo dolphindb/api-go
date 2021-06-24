@@ -5,14 +5,6 @@ import (
 	"testing"
 )
 
-/*
-const(
-	hostname = "localhost";
-	port = 8848;
-	user = "admin";
-	pass = "123456";
-)
-*/
 func TestConstant_GetInt(t *testing.T) {
 	var x int = 1
 	p := ddb.CreateInt(x)

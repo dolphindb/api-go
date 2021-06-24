@@ -1,31 +1,30 @@
 # DolphinDB Go API
 
-DolphinDB Go API 目前仅支持Linux开发环境。
+DolphinDB Go API supports Linux development environment as of now. 
 
-本教程主要介绍以下内容：
+This tutorial covers the following topics:
+- [1. Compilation](#1-compilation)
+- [2. Establish DolphinDB connection](#2-establish-dolphindb-connection)
+- [3. Execute DolphinDB script](#3-execute-dolphindb-script)
+- [4. Call DolphinDB functions](#4-call-dolphindb-functions)
+- [5. Data objects]
+- [6. Upload local objects to DolphinDB Server](#5-upload-local-objects-to-dolphindb-server)
+- [7. Read and write to DolphinDB tables](#7-write-to-dolphindb-tables)
 
-- 项目编译
-- 建立DolphinDB连接
-- 运行DolphinDB脚本
-- 运行DolphinDB函数
-- 数据对象介绍
-- 上传本地对象到DolphinDB服务器
-- 读写DolphinDB数据表
+## 1. Compilation
 
-### 1.项目编译
+### 1.1 Set the environment variable
 
-#### 1.1 添加环境变量
-
-下载整个项目，进入api-go目录，使用如下指令添加环境变量。请注意，执行export指令只能临时添加环境变量，若需要让变量持久生效，请根据Linux相关教程修改系统文件。
+Download the project, go to directory "api-go", and use the following script to set the environment variable. To make the change permanent, please modify the system file according to the Linux tutorial.
 
 ```bash
 $ cd api-go/
 $ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/src
 ```
 
-#### 1.2 导入API包
+### 1.2 Import the API package
 
-新建.go文件并导入DolphinDB GO API包，可参考api-go目录下example.go文件，包名已经简写为ddb。
+Create a new .go file and import the DolphinDB GO API package. Please refer to file example.go under directory "api-go". The package name has been abbreviated as ddb.
 
 ```GO
 package main
@@ -39,67 +38,64 @@ func main() {
 }
 ```
 
-### 2. 建立DolphinDB连接
+## 2. Establish DolphinDB connection
 
-DolphinDB GO API 提供的最核心的对象是DBConnection。GO应用可以通过它在DolphinDB服务器上执行脚本和函数，并在两者之间双向传递数据。DBConnection类提供如下主要方法：
+The most important object in DolphinDB Go API is DBConnection. It allows Go applications to execute script and functions on DolphinDB servers and transfer data between Go applications and DolphinDB servers in both directions. The DBConnection class provides the following main methods:
 
-| 方法名        | 详情          |
+| Method Name | Details |
 |:------------- |:-------------|
-|Connect(host, port, username, password)|将会话连接到DolphinDB服务器|
-|Run(script)|将脚本在DolphinDB服务器运行|
-|RunFunc(functionName,args)|调用DolphinDB服务器上的函数|
-|Upload(variableObjectMap)|将本地数据对象上传到DolphinDB服务器|
-|Init()|初始化链接信息|
-|Close()|关闭当前会话|
+|Connect(host, port, username, password)|Connect the session to DolphinDB server|
+|Run(script)|Run script on DolphinDB server|
+|RunFunc(functionName,args)|Call a function on DolphinDB server|
+|Upload(variableObjectMap)|Upload local data to DolphinDB server|
+|Init()|Initialize the connection|
+|Close()|Close the current session|
 
-如下脚本声明了一个`DBConnection`对象，并调用`Init`方法初始化对象。请注意，GO API 在定义DBConnection对象之后必须首先调用`Init`方法来进行初始化配置，否则会导致API的一些方法不能正常使用。
+The following script declares a `DBConnection` object and calls the `Init` method to initialize the object. Please note that we must first call the `Init` method in Go API to initialize the configuration after defining the DBConnection object, otherwise some methods of the API cannot be used normally.
 
 ```GO
 var conn DBConnection;
 conn.Init();
 ```
 
-GO API通过TCP/IP协议连接到DolphinDB。使用`Connect`方法创建连接时，需要提供DolphinDB Server的IP、端口号、用户名及密码，函数返回一个布尔值表示是否连接成功。
-
+The Go API connects to a DolphinDB server via TCP/IP. Use the IP address, port number, user name and password of the DolphinDB server in the `connect` method. 
 ```GO
 conn.Connect("127.0.0.1",8848,"admin","123456");
 ```
 
-### 3. 运行DolphinDB脚本
+## 3. Execute DolphinDB script
 
-通过`Run`方法运行DolphinDB脚本：
+Execute DolphinDB script with method `Run`.
 
 ```GO
 v := conn.Run("`IBM`GOOG`YHOO");
 fmt.Println(v.GetString());
 ```
-输出结果为：
+Output：
 >["IBM","GOOG","YHOO"]
 
-当需要调用DolphinDB内置或用户自定义函数时，若函数所需参数都在服务端，我们可以通过`Run`方法直接调用该函数。
-
-例如，对两个向量调用[add](http://www.dolphindb.cn/cn/help/add.html)函数时，若函数所需的两个参数x和y都在服务端被定义，则直接调用`Run`：
+When calling a DolphinDB built-in or user-defined function, if all parameters are located at DolphinDB server, we can use method `Run` to call the function directly. 
 
 ```GO
 sum := conn.Run("x = [1,3,5]; y = [2,4,6]; add(x,y)");
 fmt.Println(sum.GetString());
 ```
-输出结果为：
+Output:
 >[3,7,11]
 
-### 4. 运行函数
+## 4. Call DolphinDB functions
 
-当需要在远程DolphinDB服务器上执行DolphinDB内置或用户自定义函数，而函数所需的一个或多个参数需要由GO客户端提供时，我们可以通过`RunFunc`方法来调用这类函数。`RunFunc`的第一个参数为DolphinDB中的函数名，第二个参数是该函数所需的一个或者多个参数，为Constant类型的向量。下面仍以[add](http://www.dolphindb.cn/cn/help/add.html)函数为例，区分两种情况：
+When calling a DolphinDB built-in or user-defined function, if at least one parameter is entered from Go client, we can use method `RunFunc`. Here we use the DolphinDB function `add` as an example. 
 
-- 仅部分参数需由GO客户端赋值
+- If some parameters are given at Go client:
 
-若变量x已经通过GO程序在服务器端生成，
+If parameter "x" has been generated on DolphinDB server by the Go API, 
 
 ```GO
 conn.Run("x = [1,3,5]");
 ```
 
-而参数y要在GO客户端生成，这时就需要使用“部分应用”方式，把参数x固化在[add](http://www.dolphindb.cn/cn/help/add.html)函数内。具体请参考[部分应用文档](https://www.dolphindb.cn/cn/help/PartialApplication.html)。
+and parameter "y" is going to be generated at Go client, then we need to use "partial application" to embed parameter "x" in function `add`. For details, please refer to [Partial Application Documentation](https://www.dolphindb.com/help/PartialApplication.html).
 
 ```GO
 a2 := [] int32 {9,8,7};
@@ -110,12 +106,12 @@ args := [] ddb.Constant{y};
 result1 := conn.RunFunc("add{x,}", args);
 fmt.Println(result1.GetString());
 ```
-输出结果为：
+Output:
 > [10, 11, 12]
 
-* 所有参数都待由GO客户端赋值
+* If both parameters are to be given at Go client:
 
-当所有参数都待由GO客户端赋值时，直接通过`RunFunc`方法调用DolphinDB的内置函数：
+Use method  `RunFunc` to call DolphinDB functions:
 
 ```GO
 a1 := [] int32 {1,2,3};
@@ -130,16 +126,17 @@ args = [] ddb.Constant{x, y};
 result1 := conn.RunFunc("add", args);
 fmt.Println(result1.GetString());
 ```
-输出结果为：
+Output:
 >[10,10,10]
 
-上述例子中，我们使用GO API中的`CreateVector`函数分别创建两个向量，再调用`SetIntArray`函数将GO语言中int类型的切片赋值给ddb.DT_INT类型的向量。最后调用`ToConstant`函数将vector转换成Constant对象，作为参数上传到DolphinDB server端。
+In the above example, we use the `CreateVector` function in the Go API to create two vectors, and then call the `SetIntArray` function to assign the int type slice in Go to the ddb.DT_INT type vector. Finally, call the `ToConstant` function to convert the vector into a Constant object and upload it to the DolphinDB server as a parameter.
 
-### 5. 数据对象介绍
 
-DolphinDB GO API 通过Constant这一基本类型接受各种类型的数据，包括DT_INT、DT_FLOAT等。同时，GO API还提供Vector类和Table类来存放向量和表对象。
+## 5. 数据对象介绍
 
-#### 5.1 Constant类
+DolphinDB Go API 通过Constant这一基本类型接受各种类型的数据，包括DT_INT、DT_FLOAT等。同时，Go API还提供Vector类和Table类来存放向量和表对象。
+
+### 5.1 Constant类
 
 Constant类提供的较为常用的方法如下：
 
@@ -151,7 +148,7 @@ Constant类提供的较为常用的方法如下：
 |GetType()|获取对象的数据类型|
 |GetHash(buckets int)|返回一个Constant的哈希值(mod buckets)|
 |Size()|获取对象大小|
-|Get\<DataType>|将DataType类型的常量转换为GO中对应的基本数据类型|
+|Get\<DataType>|将DataType类型的常量转换为Go中对应的基本数据类型|
 |Is\<DataForm>|判断常量的数据形式是否为DataForm|
 |<Set\<DataType>|对DataType类型的常量值进行赋值，参数为修改之后的值|
 |ParseConstant(DT_type int, val string)|将字符串val解析为DT_type类型，并返回一个对应类型的常量|
@@ -185,7 +182,7 @@ vipaddr.SetBinary(b);
 vint128.SetBinary(b);
 ```
 
->请注意：在调用`SetBinary`方法为一个16字节字符串类型常量赋值时，参数必须是一个长度为16的byte类型数组，数组的每一位（取值范围为0~255）对应16字节字符串的每个字节。
+> 请注意：在调用`SetBinary`方法为一个16字节字符串类型常量赋值时，参数必须是一个长度为16的byte类型数组，数组的每一位（取值范围为0~255）对应16字节字符串的每个字节。
 
 * ParseConstant 
 
@@ -228,7 +225,7 @@ p.Size();
 
 * Get\<DataType>
 
-通过`Get<DataType>`系列方法，将Constant对象转换为GO语言中的常用类型
+通过`Get<DataType>`系列方法，将Constant对象转换为Go语言中的常用类型
 
 ```GO
 x := conn.Run("1+1");
@@ -268,7 +265,7 @@ p := conn.Run(script);
 p1 := p.ToTable();
 ```
 
-#### 5.2 Vector类
+### 5.2 Vector类
 
 Vector(向量)是DolphinDB中常用的类型，也可作为表中的一列，Vector类提供的较为常用的方法如下：
 
@@ -390,7 +387,7 @@ vipaddr.SetBinaryArray(0,rowNum,arr);
 vint128.SetBinaryArray(0,rowNum,arr);
 ```
 
-#### 5.3 Table类
+### 5.3 Table类
 
 Table类提供的较为常用的方法如下：
 
@@ -479,7 +476,7 @@ ta := ddb.CreateTableByVector(colnames, cols);
 fmt.Println(ta.GetString());
 ```
 
-### 6. 上传数据对象
+## 6. 上传数据对象
 
 调用`Upload`方法，可以将一个Constant对象上传到DolphinDB数据库，对于非Constant类型，可以调用`ToConstant`方法将其转换为Constant类型对象。
 
@@ -490,9 +487,9 @@ p2 := p1.ToConstant();
 conn.Upload("vector1",p2);
 ```
 
-### 7. 读写DolphinDB数据表
+## 7. 读写DolphinDB数据表
 
-使用GO API的一个重要场景是，用户从其他数据库系统或是第三方Web API中取得数据后存入DolphinDB数据库中。本节将介绍通过GO API将取到的数据上传并保存到DolphinDB的数据表中。
+使用Go API的一个重要场景是，用户从其他数据库系统或是第三方Web API中取得数据后存入DolphinDB数据库中。本节将介绍通过Go API将取到的数据上传并保存到DolphinDB的数据表中。
 
 DolphinDB数据表按存储方式分为三种:
 
@@ -502,7 +499,7 @@ DolphinDB数据表按存储方式分为三种:
 
 下面子分别介绍向三种形式的表中追加数据的实例。
 
-首先，我们定义一个`CreateDemoTable`函数，该函数在GO环境中创建一个表，该具备3个列，类型分别是DT_STRING, DT_DATE和DT_DOUBLE，列名分别为name, date和price，并向该表中插入10条数据。
+首先，我们定义一个`CreateDemoTable`函数，该函数在Go环境中创建一个表，该具备3个列，类型分别是DT_STRING, DT_DATE和DT_DOUBLE，列名分别为name, date和price，并向该表中插入10条数据。
 
 ```GO
 import (
@@ -536,7 +533,7 @@ func CreateDemoTable() ddb.Table{
 }
 ```
 
-### 7.1 保存数据到DolphinDB内存表
+## 7.1 保存数据到DolphinDB内存表
 
 在DolphinDB中，我们通过[table](http://www.dolphindb.cn/cn/help/table.html)函数来创建一个相同结构的内存表，指定表的容量和初始大小、列名和数据类型。由于内存表是会话隔离的，所以普通内存表只有当前会话可见。为了让多个客户端可以同时访问t，我们使用[share](http://www.dolphindb.cn/cn/help/share1.html)在会话间共享内存表。
 
@@ -549,7 +546,7 @@ t = table(100:0, `name`date`price, [STRING,DATE,DOUBLE]);
 share t as tglobal;
 ```
 
-在GO应用程序中，创建一个表，并调用`ToConstant`方法将表对象转换为Constant类型对象，再通过`RunFunc`函数调用DolphinDB内置的[tableInsert](http://www.dolphindb.cn/cn/help/tableInsert.html)函数将demotb表内数据插入到表tglobal中。
+在Go应用程序中，创建一个表，并调用`ToConstant`方法将表对象转换为Constant类型对象，再通过`RunFunc`函数调用DolphinDB内置的[tableInsert](http://www.dolphindb.cn/cn/help/tableInsert.html)函数将demotb表内数据插入到表tglobal中。
 
 ```GO
 ta := CreateDemoTable();
@@ -560,7 +557,7 @@ result := conn.Run("select * from tglobal");
 fmt.Println(result.GetString());
 ```
 
-### 7.2 保存数据到本地磁盘表
+## 7.2 保存数据到本地磁盘表
 
 本地磁盘表通用用于静态数据集的计算分析，既可以用于数据的输入，也可以作为计算的输出。它不支持事务，也不持支并发读写。
 
@@ -585,9 +582,9 @@ result := conn.Run("select * from tDiskGlobal");
 fmt.Println(result.GetString());
 ```
 
-### 7.3 保存数据到分布式表
+## 7.3 保存数据到分布式表
 
-分布式表是DolphinDB推荐在生产环境下使用的数据存储方式，它支持快照级别的事务隔离，保证数据一致性。分布式表支持多副本机制，既提供了数据容错能力，又能作为数据访问的负载均衡。下面的例子通过GO API把数据保存至分布式表。
+分布式表是DolphinDB推荐在生产环境下使用的数据存储方式，它支持快照级别的事务隔离，保证数据一致性。分布式表支持多副本机制，既提供了数据容错能力，又能作为数据访问的负载均衡。下面的例子通过Go API把数据保存至分布式表。
 
 请注意只有启用enableDFS=1的集群环境才能使用分布式表。
 
@@ -629,9 +626,9 @@ e    2019.01.05 5
 
 关于追加数据到DolphinDB分区表的实例可以参考example目录下的[分布式表的数据写入例子](./example/RdWrDFSTable.go)和[分布式表的多线程并行写入例子](./example/DFSWritingWithMultiThread.go) 。
 
-### 7.4 读取和使用数据表
+## 7.4 读取和使用数据表
 
-在GO API中，数据表保存为Table对象。由于Table是列式存储，所以若要在GO API中读取行数据需要先取出需要的列，再取出行。
+在Go API中，数据表保存为Table对象。由于Table是列式存储，所以若要在Go API中读取行数据需要先取出需要的列，再取出行。
 
 假设在DolphinDB中如下定义的表，并插入了一些数据在表中：
 ```DolphinDB

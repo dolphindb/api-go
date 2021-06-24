@@ -1,6 +1,8 @@
 package ddb
 
 /*
+#include <stdlib.h>
+
 typedef struct DBConnection DBConnection;
 typedef struct PollingClient PollingClient;
 typedef struct Constant Constant;
@@ -74,6 +76,11 @@ void Constant_setString(Constant* w, char* val);
 void Constant_setNull(Constant* w);
 
 void delConstant(Constant* w);
+void delVector(Constant* w);
+void delTable(Constant* w);
+void delMatrix(Constant* w);
+void delSet(Constant* w);
+void delDictionary(Constant* w);
 
 int Constant_setByIndex(Constant*w, int index, Constant* x);
 
@@ -210,8 +217,11 @@ long long getEpochTime();
 #cgo LDFLAGS: -L./ -lwrapper -Wl,-rpath,./api/
 */
 import "C"
-import "unsafe"
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+	"unsafe"
+)
 
 const (
 	hostname = "localhost"
@@ -267,6 +277,16 @@ const (
 	DF_CHUNK
 )
 
+func DelCString(s **C.char) {
+	C.free(unsafe.Pointer(*s))
+}
+
+func CgoNewString(s string) *C.char {
+	str := C.CString(s)
+	runtime.SetFinalizer(&str, DelCString)
+	return str
+}
+
 func tobool(x C.int) bool {
 	if int(x) != 0 {
 		return true
@@ -286,11 +306,11 @@ type MessageQueue struct {
 }
 
 func (client *PollingClient) Subscribe(host string, port int, tableName string, actionName string, offset int64) MessageQueue {
-	return MessageQueue{ptr: C.PollingClient_subscribe(client.ptr, C.CString(host), C.int(port), C.CString(tableName), C.CString(actionName), C.longlong(offset))}
+	return MessageQueue{ptr: C.PollingClient_subscribe(client.ptr, CgoNewString(host), C.int(port), CgoNewString(tableName), CgoNewString(actionName), C.longlong(offset))}
 }
 
 func (client *PollingClient) UnSubscribe(host string, port int, tableName string, actionName string) {
-	C.PollingClient_unsubscribe(client.ptr, C.CString(host), C.int(port), C.CString(tableName), C.CString(actionName))
+	C.PollingClient_unsubscribe(client.ptr, CgoNewString(host), C.int(port), CgoNewString(tableName), CgoNewString(actionName))
 }
 
 //void PollingClient_unsubscribe(PollingClient* client, char* host, int port, char* tableName, char* actionName);
@@ -336,9 +356,9 @@ type Dictionary struct {
 }
 
 func CreateInt(x int) Constant {
-
-	return Constant{C.createInt(C.int(x))}
-
+	obj := Constant{C.createInt(C.int(x))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateBool(x bool) Constant {
@@ -348,96 +368,100 @@ func CreateBool(x bool) Constant {
 	} else {
 		y = 0
 	}
-	return Constant{C.createBool(C.int(y))}
-
+	obj := Constant{C.createBool(C.int(y))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateShort(x int16) Constant {
-
-	return Constant{C.createShort(C.short(x))}
-
+	obj := Constant{C.createShort(C.short(x))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateLong(x int64) Constant {
-
-	return Constant{C.createLong(C.longlong(x))}
-
+	obj := Constant{C.createLong(C.longlong(x))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateFloat(x float32) Constant {
-
-	return Constant{C.createFloat(C.float(x))}
-
+	obj := Constant{C.createFloat(C.float(x))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 func CreateDouble(x float64) Constant {
-
-	return Constant{C.createDouble(C.double(x))}
-
+	obj := Constant{C.createDouble(C.double(x))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateString(x string) Constant {
-
-	return Constant{C.createString(C.CString(x))}
-
+	str := CgoNewString(x)
+	obj := Constant{C.createString(str)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateDate(year int, month int, day int) Constant {
-
-	return Constant{C.createDate(C.int(year), C.int(month), C.int(day))}
-
+	obj := Constant{C.createDate(C.int(year), C.int(month), C.int(day))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateMonth(year int, month int) Constant {
-
-	return Constant{C.createMonth(C.int(year), C.int(month))}
-
+	obj := Constant{C.createMonth(C.int(year), C.int(month))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateNanoTime(hour int, minute int, second int, nanosecond int) Constant {
-
-	return Constant{C.createNanoTime(C.int(hour), C.int(minute), C.int(second), C.int(nanosecond))}
-
+	obj := Constant{C.createNanoTime(C.int(hour), C.int(minute), C.int(second), C.int(nanosecond))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateTime(hour int, minute int, second int, millisecond int) Constant {
-
-	return Constant{C.createTime(C.int(hour), C.int(minute), C.int(second), C.int(millisecond))}
-
+	obj := Constant{C.createTime(C.int(hour), C.int(minute), C.int(second), C.int(millisecond))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateSecond(hour int, minute int, second int) Constant {
-
-	return Constant{C.createSecond(C.int(hour), C.int(minute), C.int(second))}
-
+	obj := Constant{C.createSecond(C.int(hour), C.int(minute), C.int(second))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateMinute(hour int, minute int) Constant {
-
-	return Constant{C.createMinute(C.int(hour), C.int(minute))}
-
+	obj := Constant{C.createMinute(C.int(hour), C.int(minute))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateNanoTimestamp(year int, month int, day, hour int, minute int, second int, nanosecond int) Constant {
-
-	return Constant{C.createNanoTimestamp(C.int(year), C.int(month), C.int(day), C.int(hour), C.int(minute), C.int(second), C.int(nanosecond))}
-
+	obj := Constant{C.createNanoTimestamp(C.int(year), C.int(month), C.int(day), C.int(hour), C.int(minute), C.int(second), C.int(nanosecond))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateTimestamp(year int, month int, day, hour int, minute int, second int, millisecond int) Constant {
-
-	return Constant{C.createTimestamp(C.int(year), C.int(month), C.int(day), C.int(hour), C.int(minute), C.int(second), C.int(millisecond))}
-
+	obj := Constant{C.createTimestamp(C.int(year), C.int(month), C.int(day), C.int(hour), C.int(minute), C.int(second), C.int(millisecond))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateDateTime(year int, month int, day, hour int, minute int, second int) Constant {
-
-	return Constant{C.createDateTime(C.int(year), C.int(month), C.int(day), C.int(hour), C.int(minute), C.int(second))}
-
+	obj := Constant{C.createDateTime(C.int(year), C.int(month), C.int(day), C.int(hour), C.int(minute), C.int(second))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func CreateVector(dttype int, size int) Vector {
-
-	return Vector{Constant: Constant{ptr: C.createVector(C.int(dttype), C.int(size))}}
+	obj0 := Constant{C.createVector(C.int(dttype), C.int(size))}
+	obj1 := Vector{Constant: obj0}
+	runtime.SetFinalizer(&obj1, DelVectorByPointer)
+	return obj1
 
 }
 
@@ -449,13 +473,15 @@ func CreateTable(colname []string, coltype []int, size int, capacity int) Table 
 	v := CreateVector(DT_INT, 0)
 
 	for i := 0; i < l; i++ {
-		//	   s = append(s,C.CString(colname[i]));
+		//	   s = append(s,CgoNewString(colname[i]));
 		s.Append(CreateString(colname[i]))
 		v.Append(CreateInt(coltype[i]))
 		//v = append(v, cols[i].ptr);
 
 	}
-	return Table{Constant: Constant{ptr: C.createTable(s.ptr, v.ptr, C.int(size), C.int(capacity), C.int(l))}}
+	obj := Table{Constant: Constant{ptr: C.createTable(s.ptr, v.ptr, C.int(size), C.int(capacity), C.int(l))}}
+	runtime.SetFinalizer(&obj, DelTableByPointer)
+	return obj
 	//	return Table{Constant:Constant{ptr:C.createTable(s.ptr, (*C.int)(unsafe.Pointer(&coltype[0]))  , C.int(size), C.int(capacity), C.int(l))}};
 	//	return Table{Constant:Constant{ptr:C.createTable((**C.char)(unsafe.Pointer(&colname[0])),(**C.Constant)(unsafe.Pointer(&v[0])), C.int(l))}};
 	//return 0;
@@ -470,22 +496,24 @@ func CreateTableByVector(colname []string, cols []Vector) Table {
 	v := CreateVector(DT_ANY, 0)
 
 	for i := 0; i < l; i++ {
-		//	   s = append(s,C.CString(colname[i]));
+		//	   s = append(s,CgoNewString(colname[i]));
 		s.Append(CreateString(colname[i]))
 		//v = append(v, cols[i].ptr);
 		v.Append(cols[i].ToConstant())
 	}
-	return Table{Constant: Constant{ptr: C.createTableByVector(s.ptr, v.ptr, C.int(l))}}
+	obj := Table{Constant: Constant{ptr: C.createTableByVector(s.ptr, v.ptr, C.int(l))}}
+	runtime.SetFinalizer(&obj, DelTableByPointer)
+	return obj
 	//	return Table{Constant:Constant{ptr:C.createTable((**C.char)(unsafe.Pointer(&colname[0])),(**C.Constant)(unsafe.Pointer(&v[0])), C.int(l))}};
 	//return 0;
 
 }
 
 func (c *Constant) ToVector() Vector {
-
 	//	return Vector{Constant:Constant{ptr:(*C.DBConnection)(unsafe.Pointer(C.toVector(c.ptr)))}};
-	return Vector{Constant: Constant{ptr: C.toVector(c.ptr)}}
-
+	obj := Vector{Constant: Constant{ptr: C.toVector(c.ptr)}}
+	runtime.SetFinalizer(&obj, DelVectorByPointer)
+	return obj
 }
 
 func (v *Vector) GetName() string {
@@ -493,7 +521,7 @@ func (v *Vector) GetName() string {
 }
 
 func (v *Vector) SetName(vname string) {
-	C.Vector_setName(v.ptr, C.CString(vname))
+	C.Vector_setName(v.ptr, CgoNewString(vname))
 }
 
 func (v *Vector) Remove(x int) bool {
@@ -537,12 +565,12 @@ func (v *Vector) AppendDouble(x []float64, len int) bool {
 func (v *Vector) AppendString(x []string, len int) bool {
 
 	for i := 0; i < len; i++ {
-		if tobool(C.Vector_appendString(v.ptr, C.CString(x[i]), C.int(1))) != true {
+		if tobool(C.Vector_appendString(v.ptr, CgoNewString(x[i]), C.int(1))) != true {
 			return false
 		}
 	}
 	return true
-	//return tobool(C.Vector_appendString(v.ptr, C.CString(x[0]),C.int(l)));
+	//return tobool(C.Vector_appendString(v.ptr, CgoNewString(x[0]),C.int(l)));
 }
 
 func (v *Vector) GetIntSlice() []int {
@@ -610,7 +638,9 @@ func (v *Vector) GetStringSlice() []string {
 }
 
 func (v *Vector) GetColumnLabel() Constant {
-	return Constant{C.Vector_getColumnLabel(v.ptr)}
+	obj := Constant{C.Vector_getColumnLabel(v.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (v *Vector) IsView() bool {
@@ -711,25 +741,27 @@ func (t *Table) GetColumnQualifier(index int) string {
 }
 
 func (t *Table) SetColumnName(index int, name string) {
-	C.Table_setColumnName(t.ptr, C.int(index), C.CString(name))
+	C.Table_setColumnName(t.ptr, C.int(index), CgoNewString(name))
 }
 
 func (t *Table) GetColumnIndex(name string) int {
-	return int(C.Table_getColumnIndex(t.ptr, C.CString(name)))
+	return int(C.Table_getColumnIndex(t.ptr, CgoNewString(name)))
 }
 
 func (t *Table) Contain(name string) bool {
-	return tobool(C.Table_contain(t.ptr, C.CString(name)))
+	return tobool(C.Table_contain(t.ptr, CgoNewString(name)))
 }
 
 func (t *Table) GetValue() Constant {
-
-	return Constant{C.Table_getValue(t.ptr)}
+	obj := Constant{C.Table_getValue(t.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (t *Table) GetInstance(size int) Constant {
-
-	return Constant{C.Table_getInstance(t.ptr, C.int(size))}
+	obj := Constant{C.Table_getInstance(t.ptr, C.int(size))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (t *Table) Sizeable(name string) bool {
@@ -741,23 +773,27 @@ func (t *Table) GetStringByIndex(index int) string {
 }
 
 func (t *Table) GetWindow(colstart int, collen int, rowstart int, rowlen int) Constant {
-
-	return Constant{C.Table_getWindow(t.ptr, C.int(colstart), C.int(collen), C.int(rowstart), C.int(rowlen))}
+	obj := Constant{C.Table_getWindow(t.ptr, C.int(colstart), C.int(collen), C.int(rowstart), C.int(rowlen))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (t *Table) GetMember(key Constant) Constant {
-
-	return Constant{C.Table_getMember(t.ptr, key.ptr)}
+	obj := Constant{C.Table_getMember(t.ptr, key.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (t *Table) Values() Constant {
-
-	return Constant{C.Table_values(t.ptr)}
+	obj := Constant{C.Table_values(t.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (t *Table) Keys() Constant {
-
-	return Constant{C.Table_keys(t.ptr)}
+	obj := Constant{C.Table_keys(t.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (t *Table) GetTableType() int {
@@ -776,35 +812,47 @@ func (t *Table) Drop(cols []int) {
 }
 
 func (c *Constant) ToSet() Set {
-	return Set{Constant: Constant{ptr: C.toSet(c.ptr)}}
+	obj := Set{Constant: Constant{ptr: C.toSet(c.ptr)}}
+	runtime.SetFinalizer(&obj, DelSetByPointer)
+	return obj
 }
 
 func (c *Constant) ToMatrix() Matrix {
-	return Matrix{Constant: Constant{ptr: C.toMatrix(c.ptr)}}
+	obj := Matrix{Constant: Constant{ptr: C.toMatrix(c.ptr)}}
+	runtime.SetFinalizer(&obj, DelMatrixByPointer)
+	return obj
 }
 
 func (c *Constant) ToDictionary() Dictionary {
-	return Dictionary{Constant: Constant{ptr: C.toDictionary(c.ptr)}}
+	obj := Dictionary{Constant: Constant{ptr: C.toDictionary(c.ptr)}}
+	runtime.SetFinalizer(&obj, DelDictionaryByPointer)
+	return obj
 }
 
 func (c *Constant) ToTable() Table {
 
 	//	return Vector{Constant:Constant{ptr:(*C.DBConnection)(unsafe.Pointer(C.toVector(c.ptr)))}};
-	return Table{Constant: Constant{ptr: C.toTable(c.ptr)}}
+	obj := Table{Constant: Constant{ptr: C.toTable(c.ptr)}}
+	runtime.SetFinalizer(&obj, DelTableByPointer)
+	return obj
 }
 
 func (t *Table) SetName(tname string) {
-	C.Table_setName(t.ptr, C.CString(tname))
+	C.Table_setName(t.ptr, CgoNewString(tname))
 }
 
 func (t *Table) GetName() string {
 	return C.GoString(C.Table_getName(t.ptr))
 }
 func (t *Table) GetColumn(x int) Vector {
-	return Vector{Constant: Constant{ptr: C.Table_getColumn(t.ptr, C.int(x))}}
+	obj := Vector{Constant: Constant{ptr: C.Table_getColumn(t.ptr, C.int(x))}}
+	runtime.SetFinalizer(&obj, DelVectorByPointer)
+	return obj
 }
 func (t *Table) GetColumnByName(name string) Vector {
-	return Vector{Constant: Constant{ptr: C.Table_getColumnbyName(t.ptr, C.CString(name))}}
+	obj := Vector{Constant: Constant{ptr: C.Table_getColumnbyName(t.ptr, CgoNewString(name))}}
+	runtime.SetFinalizer(&obj, DelVectorByPointer)
+	return obj
 }
 func (t *Table) GetColumnName(x int) string {
 	return C.GoString(C.Table_getColumnName(t.ptr, C.int(x)))
@@ -855,7 +903,9 @@ func (m *Matrix) GetCellString(col int, row int) string {
 }
 
 func (m *Matrix) GetInstance(size int) Constant {
-	return Constant{C.Matrix_getInstance(m.ptr, C.int(size))}
+	obj := Constant{C.Matrix_getInstance(m.ptr, C.int(size))}
+	runtime.SetFinalizer(&obj, DelMatrixByPointer)
+	return obj
 }
 
 func (m *Matrix) SetColumn(index int, col Constant) bool {
@@ -874,7 +924,9 @@ func (d *Dictionary) Clear() {
 }
 
 func (d *Dictionary) GetMember(key Constant) Constant {
-	return Constant{C.Dictionary_getMember(d.ptr, key.ptr)}
+	obj := Constant{C.Dictionary_getMember(d.ptr, key.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (d *Dictionary) GetKeyType() int {
@@ -883,11 +935,15 @@ func (d *Dictionary) GetKeyType() int {
 }
 
 func (d *Dictionary) Keys() Constant {
-	return Constant{C.Dictionary_keys(d.ptr)}
+	obj := Constant{C.Dictionary_keys(d.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (d *Dictionary) Values() Constant {
-	return Constant{C.Dictionary_values(d.ptr)}
+	obj := Constant{C.Dictionary_values(d.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (d *Dictionary) GetScript() string {
@@ -933,11 +989,15 @@ func (s *Set) GetScript() string {
 }
 
 func (s *Set) Interaction(c Constant) Constant {
-	return Constant{C.Set_interaction(s.ptr, c.ptr)}
+	obj := Constant{C.Set_interaction(s.ptr, c.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (s *Set) GetSubVector(start int, l int) Constant {
-	return Constant{C.Set_getSubVector(s.ptr, C.int(start), C.int(l))}
+	obj := Constant{C.Set_getSubVector(s.ptr, C.int(start), C.int(l))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (conn *DBConnection) Init() {
@@ -945,19 +1005,24 @@ func (conn *DBConnection) Init() {
 }
 
 func (conn *DBConnection) Connect(host string, port int, user string, password string) bool {
-	return tobool(C.DBConnection_connect(conn.ptr, C.CString(host), C.int(port), C.CString(user), C.CString(password)))
-	//C.CString(startup))	C.int(highAvailiability))
+	return tobool(C.DBConnection_connect(conn.ptr, CgoNewString(host), C.int(port), CgoNewString(user), CgoNewString(password)))
+	//CgoNewString(startup))	C.int(highAvailiability))
 }
 
 func (conn *DBConnection) Run(script string) Constant {
-	return Constant{ptr: C.DBConnection_run(conn.ptr, C.CString(script))}
+	obj := Constant{ptr: C.DBConnection_run(conn.ptr, CgoNewString(script))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
+
 func (conn *DBConnection) Upload(name string, c Constant) {
-	C.DBConnection_upload(conn.ptr, C.CString(name), c.ptr)
+	C.DBConnection_upload(conn.ptr, CgoNewString(name), c.ptr)
 }
+
 func (conn *DBConnection) Close() {
 	C.DBConnection_close(conn.ptr)
 }
+
 func (conn *DBConnection) RunFunc(script string, args []Constant) Constant {
 
 	l := len(args)
@@ -967,13 +1032,14 @@ func (conn *DBConnection) RunFunc(script string, args []Constant) Constant {
 	v := CreateVector(DT_ANY, 0)
 
 	for i := 0; i < l; i++ {
-		//	   s = append(s,C.CString(colname[i]));
+		//	   s = append(s,CgoNewString(colname[i]));
 		//		   s.Append(CreateString(colname[i]));
 		//v = append(v, cols[i].ptr);
 		v.Append(args[i])
 	}
-	return Constant{ptr: C.DBConnection_runfunc(conn.ptr, C.CString(script), v.ptr)}
-
+	obj := Constant{ptr: C.DBConnection_runfunc(conn.ptr, CgoNewString(script), v.ptr)}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (c *Constant) IsLargeConstant() bool {
@@ -982,7 +1048,9 @@ func (c *Constant) IsLargeConstant() bool {
 }
 
 func (c *Constant) Get(x int) Constant {
-	return Constant{ptr: C.Constant_get(c.ptr, C.int(x))}
+	obj := Constant{ptr: C.Constant_get(c.ptr, C.int(x))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (c *Constant) GetBool() bool {
@@ -1078,7 +1146,7 @@ func (c *Constant) SetDoubleArray(start int, len int, x []float64) bool {
 }
 func (c *Constant) SetStringArray(start int, len int, x []string) bool {
 	for i := 0; i < len; i++ {
-		if tobool(C.Constant_setStringArray(c.ptr, C.int(start+i), C.int(1), C.CString(x[i]))) != true {
+		if tobool(C.Constant_setStringArray(c.ptr, C.int(start+i), C.int(1), CgoNewString(x[i]))) != true {
 			return false
 		}
 
@@ -1131,9 +1199,7 @@ func (c *Constant) SetDoubleByIndex(index int, x float64) {
 }
 
 func (c *Constant) SetStringByIndex(index int, x string) {
-
-	C.Constant_setStringByIndex(c.ptr, C.int(index), C.CString(x))
-
+	C.Constant_setStringByIndex(c.ptr, C.int(index), CgoNewString(x))
 }
 
 func (c *Constant) SetNullByIndex(index int) {
@@ -1179,9 +1245,7 @@ func (c *Constant) SetDouble(x float64) {
 }
 
 func (c *Constant) SetString(x string) {
-
-	C.Constant_setString(c.ptr, C.CString(x))
-
+	C.Constant_setString(c.ptr, CgoNewString(x))
 }
 
 func (c *Constant) SetNull(x float64) {
@@ -1197,14 +1261,37 @@ func (c *Constant) SetByIndex(index int, val Constant) {
 }
 
 func DelConstant(c Constant) {
-
 	C.delConstant(c.ptr)
+}
 
+func DelConstantByPointer(c *Constant) {
+	C.delConstant(c.ptr)
+}
+
+func DelVectorByPointer(v *Vector) {
+	C.delVector(v.ptr)
+}
+
+func DelTableByPointer(t *Table) {
+	C.delTable(t.ptr)
+}
+
+func DelMatrixByPointer(t *Matrix) {
+	C.delMatrix(t.ptr)
+}
+
+func DelSetByPointer(t *Set) {
+	C.delSet(t.ptr)
+}
+
+func DelDictionaryByPointer(t *Dictionary) {
+	C.delDictionary(t.ptr)
 }
 
 func CreateConstant(typedol int) Constant {
-
-	return Constant{C.createConstant(C.int(typedol))}
+	obj := Constant{C.createConstant(C.int(typedol))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (c *Constant) SetBinary(val []byte) {
@@ -1232,8 +1319,9 @@ func (c *Constant) SetBinaryArray(start int, l int, val []byte) bool {
 }
 
 func ParseConstant(typedol int, val string) Constant {
-
-	return Constant{C.parseConstant(C.int(typedol), C.CString(val))}
+	obj := Constant{C.parseConstant(C.int(typedol), CgoNewString(val))}
+	runtime.SetFinalizer(&obj, DelConstantByPointer)
+	return obj
 }
 
 func (c *Constant) GetHash(buckets int) int {
@@ -1242,6 +1330,10 @@ func (c *Constant) GetHash(buckets int) int {
 
 func (c *Constant) GetHashArray(start int, l int, buckets int, buf []int32) bool {
 	return tobool(C.Constant_getHashArray(c.ptr, C.int(start), C.int(l), C.int(buckets), (*C.int)(unsafe.Pointer(&buf[0]))))
+}
+
+func (c *Constant) GetPtr() *C.Constant {
+	return c.ptr
 }
 
 func GetEpochTime() int64 {

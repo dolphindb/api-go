@@ -690,6 +690,11 @@ void Constant_setString(Wrapper* w, char* val) { w->_internal->setString(val); }
 void Constant_setNull(Wrapper* w) { w->_internal->setNull(); }
 
 void delConstant(Wrapper* w) { delete (w); }
+void delVector(WrapperVector* w) { delete w; }
+void delTable(WrapperTable* w) { delete w; }
+void delMatrix(WrapperMatrix* w) { delete w; }
+void delSet(WrapperSet* w) { delete w; }
+void delDictionary(WrapperDictionary* w) { delete w; }
 
 void* createConstant(int type) {
   return new Wrapper{Util::createConstant((DATA_TYPE)type)};

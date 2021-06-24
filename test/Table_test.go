@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+const (
+	hostname = "127.0.0.1"
+	port     = 28848
+	user     = "admin"
+	pass     = "123456"
+)
+
 func Test_ToTable(t *testing.T) {
 
 	var conn ddb.DBConnection
