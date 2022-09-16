@@ -14,7 +14,7 @@
     - [3.3.1. 构造数据类型](#331-构造数据类型)
       - [3.3.1.1. NewDataType 入参对照表](#3311-newdatatype-入参对照表)
       - [3.3.1.2. NewDataTypeListWithRaw 入参对照表](#3312-newdatatypelistwithraw-入参对照表)
-      - [3.3.1.3. Null 值对照表](#3313-null-值对照表)
+      - [3.3.1.3 Null 值对照表](#3313-null-值对照表)
     - [3.3.2. 完整示例](#332-完整示例)
   - [3.4. 初始化 DBConnectionPool](#34-初始化-dbconnectionpool)
 - [4. 读写 DolphinDB 数据表](#4-读写-dolphindb-数据表)
@@ -98,7 +98,7 @@ Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过它在 `Dolphin
 | CreateTable(CreateTableRequest)                       | 创建维度表 |
 | CreatePartitionedTable(CreatePartitionedTableRequest) | 创建分区表 |
 
-`Go API` 的实际用例参见 [example目录](https://github.com/dolphindb/api-go/tree/master/example)。
+`Go API` 的实际用例参见 [example目录](https://gitee.com/dolphindb/api-go/tree/release130/example)。
 
 ## 2. 安装依赖
 
