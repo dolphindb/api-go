@@ -98,7 +98,7 @@ Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过它在 `Dolphin
 | CreateTable(CreateTableRequest)                       | 创建维度表 |
 | CreatePartitionedTable(CreatePartitionedTableRequest) | 创建分区表 |
 
-`Go API` 的实际用例参见 [example目录](https://github.com/dolphindb/api-go/edit/release200/README.md)。
+`Go API` 的实际用例参见 [example目录](./example)。
 
 ## 2. 安装依赖
 
