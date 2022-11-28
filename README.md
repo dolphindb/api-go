@@ -1,4 +1,4 @@
-# DolphinDB Go API1111
+# DolphinDB Go API
 
 <p align='center'>
     <img src='./images/ddb.svg' alt='DolphinDB' width='256'>
