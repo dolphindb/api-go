@@ -36,7 +36,7 @@ func CheckDataForm(db api.DolphinDB) {
 	util.AssertEqual(res.GetDataForm(), model.DfVector)
 
 	// test render datatform vector with arrayvector
-	dls, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{1, 2, 3, 4, 5, 6, 7, 8, 9})
+	dls, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3, 4, 5, 6, 7, 8, 9})
 	util.AssertNil(err)
 
 	vct := model.NewVector(dls)
@@ -153,7 +153,7 @@ func CheckDataType(db api.DolphinDB) {
 	util.AssertEqual(res.String(), s.String())
 
 	// test render datatype bool
-	dal, err := model.NewDataTypeListWithRaw(model.DtAny, []model.DataForm{s})
+	dal, err := model.NewDataTypeListFromRawData(model.DtAny, []model.DataForm{s})
 	util.AssertNil(err)
 
 	vc := model.NewVector(dal)

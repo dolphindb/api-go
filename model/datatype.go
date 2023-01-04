@@ -42,6 +42,16 @@ type dataType struct {
 	bo protocol.ByteOrder
 }
 
+type Decimal64 struct {
+	Scale int32
+	Value float64
+}
+
+type Decimal32 struct {
+	Scale int32
+	Value float64
+}
+
 var nullDataForm = &Scalar{
 	category: &Category{
 		DataForm: DfScalar,
@@ -97,6 +107,8 @@ func (d *dataType) renderData(in interface{}) error {
 		d.data, err = renderDateHour(in)
 	case DtDatetime:
 		d.data, err = renderDateTime(in)
+	case DtDateMinute:
+		d.data, err = renderDateMinute(in)
 	case DtDouble:
 		d.data, err = renderDouble(in)
 	case DtFloat:
@@ -109,6 +121,10 @@ func (d *dataType) renderData(in interface{}) error {
 		d.data, err = renderInt128(in)
 	case DtIP:
 		d.data, err = renderIP(in, d.bo)
+	case DtDecimal32:
+		d.data, err = renderDecimal32(in)
+	case DtDecimal64:
+		d.data, err = renderDecimal64(in)
 	case DtLong:
 		d.data, err = renderLong(in)
 	case DtMinute:
@@ -178,6 +194,10 @@ func (d *dataType) SetNull() {
 		d.data = NullShort
 	case DtUUID, DtInt128, DtIP:
 		d.data = emptyInt64List
+	case DtDecimal32:
+		d.data = [2]int32{0, NullInt}
+	case DtDecimal64:
+		d.data = [2]int64{0, NullLong}
 	case DtAny:
 		d.data = nullDataForm
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -188,6 +208,17 @@ func (d *dataType) SetNull() {
 func (d *dataType) IsNull() bool {
 	if d.t == DtVoid {
 		return true
+	}
+
+	switch d.t {
+	case DtVoid:
+		return true
+	case DtDecimal32:
+		t := d.data.([2]int32)
+		return t[1] == NullInt
+	case DtDecimal64:
+		t := d.data.([2]int64)
+		return t[1] == NullLong
 	}
 
 	res := false
@@ -243,6 +274,8 @@ func (d *dataType) String() string {
 			res = t1.Format("2006.01.02T15")
 		case DtDatetime:
 			res = t1.Format("2006.01.02T15:04:05")
+		case DtDateMinute:
+			res = t1.Format("2006.01.02T15:04")
 		case DtMinute:
 			res = t1.Format("15:04m")
 		case DtMonth:
@@ -260,11 +293,20 @@ func (d *dataType) String() string {
 		}
 	}
 
-	if d.t == DtBlob {
+	switch d.t {
+	case DtBlob:
 		return fmt.Sprintf("%s", res)
+	case DtDecimal32:
+		r := res.(*Decimal32)
+		format := fmt.Sprintf("%%.%df", r.Scale)
+		return fmt.Sprintf(format, r.Value)
+	case DtDecimal64:
+		r := res.(*Decimal64)
+		format := fmt.Sprintf("%%.%df", r.Scale)
+		return fmt.Sprintf(format, r.Value)
+	default:
+		return fmt.Sprintf("%v", res)
 	}
-
-	return fmt.Sprintf("%v", res)
 }
 
 func (d *dataType) Value() interface{} {
@@ -291,6 +333,8 @@ func value(dt DataTypeByte, raw interface{}, bo protocol.ByteOrder) interface{} 
 		res = parseComplex(raw)
 	case DtDate:
 		res = parseDate(raw)
+	case DtDateMinute:
+		res = parseDateMinute(raw)
 	case DtDateHour:
 		res = parseDateHour(raw)
 	case DtDatetime:
@@ -307,6 +351,12 @@ func value(dt DataTypeByte, raw interface{}, bo protocol.ByteOrder) interface{} 
 		res = parseInt128(raw)
 	case DtIP:
 		res = parseIP(raw, bo)
+	case DtDecimal32:
+		t := raw.([2]int32)
+		res = decimal32(t[0], t[1])
+	case DtDecimal64:
+		t := raw.([2]int64)
+		res = decimal64(t[0], t[1])
 	case DtLong:
 		res = raw.(int64)
 	case DtMinute:
@@ -342,7 +392,7 @@ func (d *dataType) HashBucket(buckets int) int {
 	switch d.t {
 	case DtDuration:
 		return 0
-	case DtFloat:
+	case DtFloat, DtComplex, DtPoint:
 		return -1
 	case DtInt, DtDate, DtTime, DtMonth, DtMinute, DtSecond, DtDateHour, DtDatetime:
 		return d.intHashBucket(buckets)
@@ -350,11 +400,9 @@ func (d *dataType) HashBucket(buckets int) int {
 		return d.int128HashBucket(buckets)
 	case DtChar:
 		return d.charHashBucket(buckets)
-	case DtPoint:
-		return -1
 	case DtShort:
 		return d.shortHashBucket(buckets)
-	case DtLong, DtNanoTime, DtNanoTimestamp, DtTimestamp, DtComplex:
+	case DtLong, DtNanoTime, DtNanoTimestamp, DtTimestamp:
 		return d.longHashBucket(buckets)
 	case DtString, DtSymbol:
 		return d.stringHashBucket(buckets)
@@ -372,7 +420,7 @@ func (d *dataType) stringHashBucket(buckets int) int {
 		switch {
 		case c >= '\u0001' && c <= '\u007f':
 			byteCount++
-		case c == '\u0000' || (c >= '\u0080' && c <= '\u07ff'):
+		case c == '\u0000' || c <= '\u07ff':
 			byteCount += 2
 		default:
 			byteCount += 3
@@ -429,7 +477,7 @@ func (d *dataType) hashSpecialChar(val string, h uint32) uint32 {
 		case c >= '\u0001' && c <= '\u007f':
 			k += uint32(c << (8 * cursor))
 			cursor++
-		case c == '\u0000' || (c >= '\u0080' && c <= '\u07ff'):
+		case c == '\u0000' || c <= '\u07ff':
 			k += uint32((0xc0 | (0x1f & (c >> 6))) << (8 * cursor))
 			cursor++
 			if cursor == 4 {

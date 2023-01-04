@@ -10,7 +10,7 @@ func (d *dataType) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 	var err error
 
 	switch d.t {
-	case DtString, DtCode, DtFunction, DtHandle, DtDictionary, DtSymbol:
+	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
 		err = writeString(w, d.data.(string))
 	case DtBlob:
 		err = writeBlob(w, bo, d.data.([]byte))
@@ -24,6 +24,10 @@ func (d *dataType) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 		err = writeShort(w, bo, d.data.(int16))
 	case DtVoid:
 		err = w.WriteByte(0)
+	case DtDecimal32:
+		err = writeInt2(w, bo, d.data.([2]int32))
+	case DtDecimal64:
+		err = writeDecimal64(w, bo, d.data.([2]int64))
 	case DtDouble:
 		err = writeDouble(w, bo, d.data.(float64))
 	case DtFloat:
@@ -45,6 +49,30 @@ func writeInt(w *protocol.Writer, bo protocol.ByteOrder, data int32) error {
 	buf := make([]byte, protocol.Uint32Size)
 	bo.PutUint32(buf, uint32(data))
 	return w.Write(buf)
+}
+
+func writeInt2(w *protocol.Writer, bo protocol.ByteOrder, data [2]int32) error {
+	buf := make([]byte, protocol.Uint64Size)
+	bo.PutUint32(buf, uint32(data[0]))
+	bo.PutUint32(buf[4:], uint32(data[1]))
+	return w.Write(buf)
+}
+
+func writeDecimal64(w *protocol.Writer, bo protocol.ByteOrder, data [2]int64) error {
+	buf := make([]byte, 12)
+	bo.PutUint32(buf, uint32(data[0]))
+	bo.PutUint64(buf[4:], uint64(data[1]))
+	return w.Write(buf)
+}
+
+func writeDecimal64s(w *protocol.Writer, bo protocol.ByteOrder, data []int64) error {
+	buf := make([]byte, 4)
+	bo.PutUint32(buf, uint32(data[0]))
+	if err := w.Write(buf); err != nil {
+		return err
+	}
+
+	return w.Write(protocol.ByteSliceFromInt64Slice(data[1:]))
 }
 
 func writeShort(w *protocol.Writer, bo protocol.ByteOrder, data int16) error {
@@ -86,10 +114,6 @@ func writeDuration(w *protocol.Writer, bo protocol.ByteOrder, du [2]uint32) erro
 	return w.Write(buf)
 }
 
-func writeDurations(w *protocol.Writer, du []uint32) error {
-	return w.Write(protocol.ByteSliceFromUint32Slice(du))
-}
-
 func writeDouble2(w *protocol.Writer, bo protocol.ByteOrder, du [2]float64) error {
 	buf := make([]byte, protocol.TwoUint64Size)
 	bo.PutUint64(buf, math.Float64bits(du[0]))
@@ -97,19 +121,11 @@ func writeDouble2(w *protocol.Writer, bo protocol.ByteOrder, du [2]float64) erro
 	return w.Write(buf)
 }
 
-func writeDouble2s(w *protocol.Writer, du []float64) error {
-	return w.Write(protocol.ByteSliceFromFloat64Slice(du))
-}
-
 func writeLong2(w *protocol.Writer, bo protocol.ByteOrder, du [2]uint64) error {
 	buf := make([]byte, protocol.TwoUint64Size)
 	bo.PutUint64(buf, du[0])
 	bo.PutUint64(buf[8:], du[1])
 	return w.Write(buf)
-}
-
-func writeLong2s(w *protocol.Writer, du []uint64) error {
-	return w.Write(protocol.ByteSliceFromUint64Slice(du))
 }
 
 func writeString(w *protocol.Writer, str string) error {
@@ -144,11 +160,10 @@ func writeBlob(w *protocol.Writer, bo protocol.ByteOrder, byt []byte) error {
 	return w.Write(byt)
 }
 
-func writeBlobs(w *protocol.Writer, blobData [][]byte) error {
-	ind := 0
+func writeBlobs(w *protocol.Writer, bo protocol.ByteOrder, blobData [][]byte) error {
 	buf := make([]byte, 4)
 	for _, v := range blobData {
-		protocol.LittleEndian.PutUint32(buf, uint32(len(v)))
+		bo.PutUint32(buf, uint32(len(v)))
 		err := w.Write(buf)
 		if err != nil {
 			return err
@@ -157,8 +172,6 @@ func writeBlobs(w *protocol.Writer, blobData [][]byte) error {
 		if err != nil {
 			return err
 		}
-
-		ind += 4
 	}
 
 	return nil
@@ -198,6 +211,10 @@ func read(r protocol.Reader, t DataTypeByte, bo protocol.ByteOrder) (*dataType, 
 		dt.data, err = readString(r)
 	case DtBlob:
 		dt.data, err = readBlob(r, bo)
+	case DtDecimal32:
+		dt.data, err = readInt2(r, bo)
+	case DtDecimal64:
+		dt.data, err = readDecimal64(r, bo)
 	case DtAny:
 		dt.data, err = ParseDataForm(r, bo)
 	}
@@ -212,6 +229,24 @@ func readShort(r protocol.Reader, bo protocol.ByteOrder) (int16, error) {
 	}
 
 	return int16(bo.Uint16(buf)), nil
+}
+
+func readInt2(r protocol.Reader, bo protocol.ByteOrder) ([2]int32, error) {
+	buf, err := r.ReadCertainBytes(8)
+	if err != nil {
+		return [2]int32{}, err
+	}
+
+	return [2]int32{int32(bo.Uint32(buf)), int32(bo.Uint32(buf[4:]))}, nil
+}
+
+func readDecimal64(r protocol.Reader, bo protocol.ByteOrder) ([2]int64, error) {
+	buf, err := r.ReadCertainBytes(12)
+	if err != nil {
+		return [2]int64{}, err
+	}
+
+	return [2]int64{int64(bo.Uint32(buf)), int64(bo.Uint64(buf[4:]))}, nil
 }
 
 func readShortsWithLittleEndian(count int, r protocol.Reader) ([]int16, error) {
@@ -486,6 +521,65 @@ func readLong2sWithBigEndian(count int, r protocol.Reader, bo protocol.ByteOrder
 	return res, nil
 }
 
+func readInt2sWithLittleEndian(count int, r protocol.Reader) ([]int32, error) {
+	buf, err := r.ReadCertainBytes(4 + 4*count)
+	if err != nil || len(buf) == 0 {
+		return nil, err
+	}
+
+	return protocol.Int32SliceFromByteSlice(buf), nil
+}
+
+func readInt2sWithBigEndian(count int, r protocol.Reader, bo protocol.ByteOrder) ([]int32, error) {
+	res := make([]int32, 0, count)
+	buf, err := r.ReadCertainBytes(4 + 4*count)
+	if err != nil || len(buf) == 0 {
+		return nil, err
+	}
+
+	ind := 0
+	for i := 0; i < count+1; i++ {
+		res = append(res, int32(bo.Uint32(buf[ind:])))
+		ind += 4
+	}
+
+	return res, nil
+}
+
+func readDecimal64sWithLittleEndian(count int, r protocol.Reader) ([]int64, error) {
+	res := make([]int64, 0, count)
+	buf, err := r.ReadCertainBytes(4 + 8*count)
+	if err != nil || len(buf) == 0 {
+		return nil, err
+	}
+
+	ind := 4
+	res = append(res, int64(protocol.LittleEndian.Uint32(buf)))
+	for i := 0; i < count; i++ {
+		res = append(res, int64(protocol.LittleEndian.Uint64(buf[ind:])))
+		ind += 8
+	}
+
+	return res, nil
+}
+
+func readDecimal64sWithBigEndian(count int, r protocol.Reader, bo protocol.ByteOrder) ([]int64, error) {
+	res := make([]int64, 0, count)
+	buf, err := r.ReadCertainBytes(4 + 8*count)
+	if err != nil || len(buf) == 0 {
+		return nil, err
+	}
+
+	ind := 4
+	res = append(res, int64(bo.Uint32(buf)))
+	for i := 0; i < count; i++ {
+		res = append(res, int64(bo.Uint64(buf[ind:])))
+		ind += 8
+	}
+
+	return res, nil
+}
+
 func readString(r protocol.Reader) (string, error) {
 	byt, err := r.ReadBytes(protocol.StringSep)
 	if err != nil || len(byt) == 0 {
@@ -528,8 +622,25 @@ func readBlob(r protocol.Reader, bo protocol.ByteOrder) ([]byte, error) {
 }
 
 func readBlobs(count int, r protocol.Reader, bo protocol.ByteOrder) ([][]byte, error) {
-	buf := protocol.NewBuffer(count, r)
-	return buf.ReadBlobs(bo)
+	res := make([][]byte, count)
+	for i := 0; i < count; i++ {
+		byt, err := r.ReadCertainBytes(4)
+		if err != nil {
+			return nil, err
+		}
+
+		length := int(bo.Uint32(byt))
+		if length == 0 {
+			continue
+		}
+
+		res[i], err = r.ReadCertainBytes(length)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
 }
 
 func readAny(count int, r protocol.Reader, bo protocol.ByteOrder) ([]DataForm, error) {
@@ -586,6 +697,10 @@ func (d *dataTypeList) littleEndianRead(count int, r protocol.Reader) error {
 		d.stringData, err = readStrings(count, r)
 	case DtBlob:
 		d.blobData, err = readBlobs(count, r, d.bo)
+	case DtDecimal32:
+		d.decimal32Data, err = readInt2sWithLittleEndian(count, r)
+	case DtDecimal64:
+		d.decimal64Data, err = readDecimal64sWithLittleEndian(count, r)
 	case DtAny:
 		d.anyData, err = readAny(count, r, d.bo)
 	}
@@ -618,6 +733,10 @@ func (d *dataTypeList) bigEndianRead(count int, r protocol.Reader) error {
 		d.stringData, err = readStrings(count, r)
 	case DtBlob:
 		d.blobData, err = readBlobs(count, r, d.bo)
+	case DtDecimal32:
+		d.decimal32Data, err = readInt2sWithBigEndian(count, r, d.bo)
+	case DtDecimal64:
+		d.decimal64Data, err = readDecimal64sWithBigEndian(count, r, d.bo)
 	case DtAny:
 		d.anyData, err = readAny(count, r, d.bo)
 	}

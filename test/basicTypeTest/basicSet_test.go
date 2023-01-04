@@ -1058,7 +1058,7 @@ func Test_Set_DownLoad_DataType_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 			form := result.GetDataForm()
 			So(form, ShouldEqual, 4)
 			row := result.Rows()
@@ -1077,7 +1077,7 @@ func Test_Set_DownLoad_DataType_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 			form := result.GetDataForm()
 			So(form, ShouldEqual, 4)
 			row := result.Rows()
@@ -1096,7 +1096,7 @@ func Test_Set_DownLoad_DataType_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 			form := result.GetDataForm()
 			So(form, ShouldEqual, 4)
 			row := result.Rows()
@@ -1185,7 +1185,7 @@ func Test_Set_DownLoad_DataType_ipaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 			form := result.GetDataForm()
 			So(form, ShouldEqual, 4)
 			row := result.Rows()
@@ -1204,7 +1204,7 @@ func Test_Set_DownLoad_DataType_ipaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 			form := result.GetDataForm()
 			So(form, ShouldEqual, 4)
 			row := result.Rows()
@@ -1222,7 +1222,7 @@ func Test_Set_DownLoad_DataType_ipaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 			form := result.GetDataForm()
 			So(form, ShouldEqual, 4)
 			row := result.Rows()
@@ -1315,7 +1315,7 @@ func Test_Set_UpLoad_DataType_int(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_int:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtInt, []int32{1, 2, 3, 4, 5})
+			data, _ := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3, 4, 5})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1337,7 +1337,7 @@ func Test_Set_UpLoad_DataType_short(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_setshort:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtShort, []int16{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, _ := model.NewDataTypeListFromRawData(model.DtShort, []int16{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1359,7 +1359,7 @@ func Test_Set_UpLoad_DataType_char(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_char:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtChar, []uint8{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, _ := model.NewDataTypeListFromRawData(model.DtChar, []uint8{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1379,7 +1379,7 @@ func Test_Set_UpLoad_DataType_long(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_long:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtLong, []int64{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, _ := model.NewDataTypeListFromRawData(model.DtLong, []int64{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1401,7 +1401,7 @@ func Test_Set_UpLoad_DataType_float(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_short:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtFloat, []float32{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, _ := model.NewDataTypeListFromRawData(model.DtFloat, []float32{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1423,7 +1423,7 @@ func Test_Set_UpLoad_DataType_double(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_double:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, 7, 8, 9})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, 7, 8, 9})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1445,7 +1445,7 @@ func Test_Set_UpLoad_DataType_date(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_date:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1467,7 +1467,7 @@ func Test_Set_UpLoad_DataType_month(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_month:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1489,7 +1489,7 @@ func Test_Set_UpLoad_DataType_time(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_time:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1511,7 +1511,7 @@ func Test_Set_UpLoad_DataType_minute(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_minute:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1533,7 +1533,7 @@ func Test_Set_UpLoad_DataType_second(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_second:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1555,7 +1555,7 @@ func Test_Set_UpLoad_DataType_datetime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_datetime:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1577,7 +1577,7 @@ func Test_Set_UpLoad_DataType_timestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_timestamp:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1599,7 +1599,7 @@ func Test_Set_UpLoad_DataType_nanotime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_nanotime:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1621,7 +1621,7 @@ func Test_Set_UpLoad_DataType_nanotimestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_nanotimestamp:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1643,7 +1643,7 @@ func Test_Set_UpLoad_DataType_datehour(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_datehour:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1665,7 +1665,7 @@ func Test_Set_UpLoad_DataType_point(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_point:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtPoint, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+			data, _ := model.NewDataTypeListFromRawData(model.DtPoint, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1687,7 +1687,7 @@ func Test_Set_UpLoad_DataType_complex(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_complex:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+			data, _ := model.NewDataTypeListFromRawData(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1709,7 +1709,7 @@ func Test_Set_UpLoad_DataType_string(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_string:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtString, []string{"hello", "#$%", "数据类型", "what"})
+			data, _ := model.NewDataTypeListFromRawData(model.DtString, []string{"hello", "#$%", "数据类型", "what"})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1731,7 +1731,7 @@ func Test_Set_UpLoad_DataType_blob(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_blob:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtBlob, [][]byte{{6}, {12}, {56}, {128}})
+			data, _ := model.NewDataTypeListFromRawData(model.DtBlob, [][]byte{{6}, {12}, {56}, {128}})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1753,7 +1753,7 @@ func Test_Set_UpLoad_DataType_uuid(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_uuid:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
+			data, _ := model.NewDataTypeListFromRawData(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1775,7 +1775,7 @@ func Test_Set_UpLoad_DataType_ipaddr(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_ipaddr:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtIP, []string{"192.163.1.12", "0.0.0.0", "127.0.0.1"})
+			data, _ := model.NewDataTypeListFromRawData(model.DtIP, []string{"192.163.1.12", "0.0.0.0", "127.0.0.1"})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1797,7 +1797,7 @@ func Test_Set_UpLoad_DataType_int128(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_set_int128:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33", "e1671797c52e15f763380b45e841ec34"})
+			data, _ := model.NewDataTypeListFromRawData(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33", "e1671797c52e15f763380b45e841ec34"})
 			set := model.NewSet(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": set})
 			res, _ := db.RunScript("s")
@@ -1824,7 +1824,7 @@ func Test_Set_UpLoad_DataType_big_array(t *testing.T) {
 			intv = append(intv, i)
 		}
 		intv = append(intv, model.NullInt)
-		col, err := model.NewDataTypeListWithRaw(model.DtInt, intv)
+		col, err := model.NewDataTypeListFromRawData(model.DtInt, intv)
 		So(err, ShouldBeNil)
 		set := model.NewSet(model.NewVector(col))
 		_, err = db.Upload(map[string]model.DataForm{"s": set})

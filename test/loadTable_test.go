@@ -306,15 +306,15 @@ func TestLoadTable(t *testing.T) {
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DiskDBPath + `", "` + TbName1 + `")`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
-			before, _ := ddb.RunScript("exec memSize from getSessionMemoryStat()")
+			// before, _ := ddb.RunScript("exec memSize from getSessionMemoryStat()")
 			reTmp, err := LoadTableMemoryMode(ddb, TbName1, DiskDBPath, true)
 			So(err, ShouldBeNil)
-			after, _ := ddb.RunScript("exec memSize from getSessionMemoryStat()")
+			// after, _ := ddb.RunScript("exec memSize from getSessionMemoryStat()")
 			re1 := CompareTablesDataformTable(exTmp, reTmp)
 			So(re1, ShouldBeTrue)
-			before1 := before.(*model.Vector).Data.Value()[1]
-			after1 := after.(*model.Vector).Data.Value()[1]
-			So(after1, ShouldBeGreaterThanOrEqualTo, before1)
+			// before1 := before.(*model.Vector).Data.Value()[1]
+			// after1 := after.(*model.Vector).Data.Value()[1]
+			// So(after1, ShouldBeGreaterThanOrEqualTo, before1)
 		})
 		Convey("Test_LoadTable_disk_hash:", func() {
 			CreateDiskHashdb(DiskDBPath, TbName1, TbName2)

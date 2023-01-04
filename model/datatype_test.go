@@ -51,7 +51,7 @@ func TestDatatype(t *testing.T) {
 
 	buckets := []int{13, 43, 71, 97, 4097}
 	v, b := -127, -128
-	dl, _ := NewDataTypeListWithRaw(DtChar, []uint8{127, uint8(v), 12, 0, uint8(b)})
+	dl, _ := NewDataTypeListFromRawData(DtChar, []uint8{127, uint8(v), 12, 0, uint8(b)})
 	expectCharHashBuckets := []int{10, 12, 12, 0, -1, 41, 18, 12, 0, -1, 56, 24, 12, 0, -1, 30, 5, 12, 0, -1, 127, 129, 12, 0, -1}
 	count := 0
 	for i := 0; i < 5; i++ {
@@ -67,6 +67,28 @@ func TestDatatype(t *testing.T) {
 
 	str = dt.String()
 	assert.Equal(t, str, "1.00000+1.00000i")
+
+	dt.SetNull()
+	str = dt.String()
+	assert.Equal(t, str, "")
+
+	dt, err = NewDataType(DtDecimal32, &Decimal32{4, 0.1})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.DataType(), DtDecimal32)
+
+	str = dt.String()
+	assert.Equal(t, str, "0.1000")
+
+	dt.SetNull()
+	str = dt.String()
+	assert.Equal(t, str, "")
+
+	dt, err = NewDataType(DtDecimal64, &Decimal64{12, 0.1})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.DataType(), DtDecimal64)
+
+	str = dt.String()
+	assert.Equal(t, str, "0.100000000000")
 
 	dt.SetNull()
 	str = dt.String()
@@ -152,7 +174,7 @@ func TestDatatype(t *testing.T) {
 	str = dt.String()
 	assert.Equal(t, str, "")
 
-	dl, _ = NewDataTypeListWithRaw(DtInt, []int32{2147483647, -2147483647, 99, 0, -12})
+	dl, _ = NewDataTypeListFromRawData(DtInt, []int32{2147483647, -2147483647, 99, 0, -12})
 	expectIntHashBuckets := []int{10, 12, 8, 0, 10, 7, 9, 13, 0, 4, 39, 41, 28, 0, 68, 65, 67, 2, 0, 23, 127, 129, 99, 0, 244}
 	count = 0
 	for i := 0; i < 5; i++ {
@@ -173,7 +195,7 @@ func TestDatatype(t *testing.T) {
 	str = dt.String()
 	assert.Equal(t, str, "00000000000000000000000000000000")
 
-	dl, _ = NewDataTypeListWithRaw(DtInt128, []string{"4b7545dc735379254fbf804dec34977f", "6f29ffbf80722c9fd386c6e48ca96340", "dd92685907f08a99ec5f8235c15a1588",
+	dl, _ = NewDataTypeListFromRawData(DtInt128, []string{"4b7545dc735379254fbf804dec34977f", "6f29ffbf80722c9fd386c6e48ca96340", "dd92685907f08a99ec5f8235c15a1588",
 		"4f5387611b41d1385e272e6e866f862d", "130d6d5a0536c99ac7f9a01363b107c0"})
 	expectInt128HashBuckets := []int{11, 6, 2, 3, 6, 42, 6, 30, 10, 32, 7, 47, 48, 31, 44, 15, 45, 75, 49, 44, 1116, 3479, 4032, 2053, 3150}
 	count = 0
@@ -206,7 +228,7 @@ func TestDatatype(t *testing.T) {
 	str = dt.String()
 	assert.Equal(t, str, "")
 
-	dl, _ = NewDataTypeListWithRaw(DtLong, []int64{9223372036854775807, -9223372036854775807, 12, 0, -12})
+	dl, _ = NewDataTypeListFromRawData(DtLong, []int64{9223372036854775807, -9223372036854775807, 12, 0, -12})
 	expectLongHashBuckets := []int{7, 9, 12, 0, 4, 41, 0, 12, 0, 29, 4, 6, 12, 0, 69, 78, 80, 12, 0, 49, 4088, 4090, 12, 0, 4069}
 	count = 0
 	for i := 0; i < 5; i++ {
@@ -297,7 +319,7 @@ func TestDatatype(t *testing.T) {
 	str = dt.String()
 	assert.Equal(t, str, "")
 
-	dl, _ = NewDataTypeListWithRaw(DtShort, []int16{32767, -32767, 12, 0, -12})
+	dl, _ = NewDataTypeListFromRawData(DtShort, []int16{32767, -32767, 12, 0, -12})
 	expectShortHashBuckets := []int{7, 2, 12, 0, 10, 1, 15, 12, 0, 4, 36, 44, 12, 0, 68, 78, 54, 12, 0, 23, 4088, 265, 12, 0, 244}
 	count = 0
 	for i := 0; i < 5; i++ {
@@ -351,7 +373,7 @@ func TestDatatype(t *testing.T) {
 	str = dt.String()
 	assert.Equal(t, str, "")
 
-	dl, _ = NewDataTypeListWithRaw(DtString, []string{"!@#$%^&*()", "我是中文测试内容", "我是!@#$%^中文&*()", "e1281ls.zxl.d.,cxnv./';'sla", "abckdlskdful", ""})
+	dl, _ = NewDataTypeListFromRawData(DtString, []string{"!@#$%^&*()", "我是中文测试内容", "我是!@#$%^中文&*()", "e1281ls.zxl.d.,cxnv./';'sla", "abckdlskdful", ""})
 	expectStringHashBuckets := []int{8, 11, 9, 12, 1, 0, 25, 3, 40, 28, 18, 0, 31, 14, 49, 8, 48, 0, 52, 92, 54, 4, 47, 0, 3892, 1574, 148, 3118, 1732, 0}
 	count = 0
 	for i := 0; i < 5; i++ {

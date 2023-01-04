@@ -88,7 +88,7 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*chanx.UnboundedC
 
 	defer conn.Close()
 
-	topic, err := s.getTopicFromServer(req.TableName, req.ActionName, conn)
+	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return nil, err
@@ -98,29 +98,41 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*chanx.UnboundedC
 		s.listeningHost = conn.GetLocalAddress()
 	}
 
-	pubReq, err := generatePublishTableParams(req, s.listeningHost, s.listeningPort)
+	err = s.publishTable(topic, req, conn)
 	if err != nil {
-		fmt.Printf("Failed to generate the params of PublishTable: %s\n", err.Error())
 		return nil, err
 	}
 
+	return addQueue(topic)
+}
+
+func (s *subscriber) publishTable(topic string, req *SubscribeRequest, conn dialer.Conn) error {
+	if s.listeningHost == "" || strings.ToLower(s.listeningHost) == localhost {
+		s.listeningHost = conn.GetLocalAddress()
+	}
+
+	pubReq, err := generatePublishTableParams(req, s.listeningHost, s.listeningPort)
+	if err != nil {
+		fmt.Printf("Failed to generate the params of PublishTable: %s\n", err.Error())
+		return err
+	}
 	df, err := conn.RunFunc("publishTable", pubReq)
 	if err != nil {
 		fmt.Printf("Failed to publish table: %s\n", err.Error())
-		return nil, err
+		return err
 	}
 
 	if df.GetDataForm() == model.DfVector && df.GetDataType() == model.DtAny {
 		err = s.handleAnyVector(topic, df, req)
 		if err != nil {
 			fmt.Printf("Failed to handle vector: %s\n", err.Error())
-			return nil, err
+			return err
 		}
 	} else {
 		s.packSite(topic, req)
 	}
 
-	return addQueue(topic)
+	return nil
 }
 
 func (s *subscriber) packSite(topic string, req *SubscribeRequest) {
@@ -139,7 +151,19 @@ func (s *subscriber) packSite(topic string, req *SubscribeRequest) {
 	trueTopicToSites.Store(topic, []*site{si})
 }
 
-func (s *subscriber) getTopicFromServer(tableName, actionName string, conn dialer.Conn) (string, error) {
+func (s *subscriber) getTopicFromServer(address, tableName, actionName string) (string, error) {
+	conn, err := newConnectedConn(address)
+	if err != nil {
+		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		return "", err
+	}
+
+	defer conn.Close()
+
+	return getTopicFromServer(tableName, actionName, conn)
+}
+
+func getTopicFromServer(tableName, actionName string, conn dialer.Conn) (string, error) {
 	params, err := generatorGetSubscriptionTopicParams(tableName, actionName)
 	if err != nil {
 		fmt.Printf("Failed to generate the params of GetSubscriptionTopic: %s\n", err.Error())
@@ -201,20 +225,27 @@ func (s *subscriber) activeCloseConnection(si *site) error {
 
 	defer conn.Close()
 
-	df, err := conn.RunScript("version()")
+	verNum, err := s.getVersion(conn)
 	if err != nil {
-		fmt.Printf("Failed to call vesion(): %s\n", err.Error())
 		return err
 	}
 
-	sca := df.(*model.Scalar)
-	verStr := sca.DataType.String()
-	verNum := getVersionNum(verStr)
+	err = s.activeClosePublishConnection(verNum, conn)
+	if err != nil {
+		fmt.Printf("Failed to call activeClosePublishConnection: %s\n", err.Error())
+		return err
+	}
+
+	time.Sleep(1 * time.Second)
+	return nil
+}
+
+func (s *subscriber) activeClosePublishConnection(verNum int, conn dialer.Conn) error {
 	if s.listeningHost == "" || strings.ToLower(s.listeningHost) == localhost {
 		s.listeningHost = conn.GetLocalAddress()
 	}
 
-	params, err := s.packParams(verNum)
+	params, err := s.packActiveClosePublishConnectionParams(verNum)
 	if err != nil {
 		fmt.Printf("Failed to pack params: %s\n", err.Error())
 		return err
@@ -226,11 +257,22 @@ func (s *subscriber) activeCloseConnection(si *site) error {
 		return err
 	}
 
-	time.Sleep(1 * time.Second)
 	return nil
 }
 
-func (s *subscriber) packParams(verNum int) ([]model.DataForm, error) {
+func (s *subscriber) getVersion(conn dialer.Conn) (int, error) {
+	df, err := conn.RunScript("version()")
+	if err != nil {
+		fmt.Printf("Failed to call vesion(): %s\n", err.Error())
+		return 0, err
+	}
+
+	sca := df.(*model.Scalar)
+	verStr := sca.DataType.String()
+	return getVersionNum(verStr), nil
+}
+
+func (s *subscriber) packActiveClosePublishConnectionParams(verNum int) ([]model.DataForm, error) {
 	params := make([]model.DataForm, 3)
 
 	localIP, err := model.NewDataType(model.DtString, s.listeningHost)
@@ -270,6 +312,42 @@ func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 
 	defer conn.Close()
 
+	err = s.stopPublishTable(req, conn)
+	if err != nil {
+		return err
+	}
+
+	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
+	if err != nil {
+		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		return nil
+	}
+
+	fmt.Println("Successfully unsubscribe from the table ", topic)
+
+	s.cleanTopic(topic)
+
+	return nil
+}
+
+func (s *subscriber) cleanTopic(topic string) {
+	queueMap.Delete(topic)
+
+	fmt.Println("Successfully unsubscribe from the table ", topic)
+
+	raw, ok := trueTopicToSites.Load(topic)
+	if !ok {
+		return
+	}
+
+	sites := raw.([]*site)
+
+	for _, v := range sites {
+		v.closed = true
+	}
+}
+
+func (s *subscriber) stopPublishTable(req *SubscribeRequest, conn dialer.Conn) error {
 	if s.listeningHost == "" || strings.ToLower(s.listeningHost) == localhost {
 		s.listeningHost = conn.GetLocalAddress()
 	}
@@ -286,26 +364,44 @@ func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 		return err
 	}
 
-	topic, err := s.getTopicFromServer(req.TableName, req.ActionName, conn)
-	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
-		return nil
+	return nil
+}
+
+func tryReconnect(topic string, ac AbstractClient) {
+	topicRaw, ok := haTopicToTrueTopic.Load(topic)
+	if !ok {
+		return
 	}
 
-	queueMap.Delete(topic)
+	queueMap.Delete(topicRaw)
 
-	fmt.Println("Successfully unsubscribe from the table ", topic)
+	sites, isSuccess := loadSites(topicRaw)
+	if !isSuccess {
+		return
+	}
 
+	site := getActiveSite(sites)
+	if site != nil {
+		if ac.doReconnect(site) {
+			waitReconnectTopic.Delete(topicRaw)
+			return
+		}
+
+		waitReconnectTopic.Store(topicRaw, topicRaw)
+	}
+}
+
+func loadSites(topic interface{}) ([]*site, bool) {
 	raw, ok := trueTopicToSites.Load(topic)
 	if !ok {
-		return nil
+		return nil, false
 	}
 
 	sites := raw.([]*site)
 
-	for _, v := range sites {
-		v.closed = true
+	if len(sites) == 0 || (len(sites) == 1 && !sites[0].reconnect) {
+		return nil, false
 	}
 
-	return nil
+	return sites, true
 }

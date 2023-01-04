@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
@@ -37,16 +38,61 @@ var dataTypeStringMap = map[DataTypeByte]string{
 	DtAny:           "any",
 	DtCompress:      "compress",
 	DtDictionary:    "dictionary",
-	DtDateHour:      "dateHour",
-	DtDateMinute:    "dateMinute",
-	DtIP:            "IP",
+	DtDateHour:      "datehour",
+	DtDateMinute:    "dateminute",
+	DtIP:            "ipaddr",
 	DtInt128:        "int128",
 	DtBlob:          "blob",
 	dt33:            "Dt33",
 	DtComplex:       "complex",
 	DtPoint:         "point",
 	DtDuration:      "duration",
+	DtDecimal32:     "decimal32",
+	DtDecimal64:     "decimal64",
 	DtObject:        "object",
+}
+
+var dataTypeByteMap = map[string]DataTypeByte{
+	"void":          DtVoid,
+	"bool":          DtBool,
+	"char":          DtChar,
+	"short":         DtShort,
+	"int":           DtInt,
+	"long":          DtLong,
+	"date":          DtDate,
+	"month":         DtMonth,
+	"time":          DtTime,
+	"minute":        DtMinute,
+	"second":        DtSecond,
+	"datetime":      DtDatetime,
+	"timestamp":     DtTimestamp,
+	"nanotime":      DtNanoTime,
+	"nanotimestamp": DtNanoTimestamp,
+	"float":         DtFloat,
+	"double":        DtDouble,
+	"symbol":        DtSymbol,
+	"string":        DtString,
+	"uuid":          DtUUID,
+	"function":      DtFunction,
+	"handle":        DtHandle,
+	"code":          DtCode,
+	"datasource":    DtDatasource,
+	"resource":      DtResource,
+	"any":           DtAny,
+	"compress":      DtCompress,
+	"dictionary":    DtDictionary,
+	"datehour":      DtDateHour,
+	"dateminute":    DtDateMinute,
+	"ipaddr":        DtIP,
+	"int128":        DtInt128,
+	"blob":          DtBlob,
+	"Dt33":          dt33,
+	"complex":       DtComplex,
+	"point":         DtPoint,
+	"duration":      DtDuration,
+	"decimal32":     DtDecimal32,
+	"decimal64":     DtDecimal64,
+	"object":        DtObject,
 }
 
 var dataFormStringMap = map[DataFormByte]string{
@@ -108,6 +154,20 @@ func GetDataFormString(t DataFormByte) string {
 	return dataFormStringMap[t]
 }
 
+func parseTags(raw string) map[string]string {
+	res := make(map[string]string)
+	strs := strings.Split(raw, ";")
+	for _, v := range strs {
+		if !strings.Contains(v, ":") {
+			continue
+		}
+		rawTag := strings.Split(v, ":")
+		res[strings.TrimSpace(rawTag[0])] = strings.TrimSpace(rawTag[1])
+	}
+
+	return res
+}
+
 // GetCategory returns the category string according to the dt.
 func GetCategory(d DataTypeByte) CategoryString {
 	if d > 128 {
@@ -131,6 +191,8 @@ func GetCategory(d DataTypeByte) CategoryString {
 		return LITERAL
 	case d == DtInt128 || d == DtUUID || d == DtIP:
 		return BINARY
+	case d == DtDecimal32, d == DtDecimal64:
+		return DENARY
 	case d == DtAny:
 		return MIXED
 	case d == DtVoid:
@@ -258,6 +320,20 @@ func stringToUint64(s string) uint64 {
 	}
 
 	return v
+}
+
+func stringsToUint64(s []string, bo protocol.ByteOrder) uint64 {
+	res := make([]byte, 8)
+	for k, v := range s {
+		u16, err := strconv.ParseUint(v, 16, 16)
+		if err != nil {
+			return 0
+		}
+
+		bo.PutUint16(res[6-2*k:], uint16(u16))
+	}
+
+	return bo.Uint64(res)
 }
 
 func contains(raw []string, s string) (int, bool) {

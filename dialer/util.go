@@ -2,6 +2,9 @@ package dialer
 
 import (
 	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
@@ -55,4 +58,28 @@ func generatorRequestFlag(clear bool) int {
 	}
 
 	return flag
+}
+
+func readFile(path string) (string, error) {
+	var err error
+	if !filepath.IsAbs(path) {
+		path, err = filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	fl, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+
+	defer fl.Close()
+
+	byt, err := ioutil.ReadAll(fl)
+	if err != nil {
+		return "", err
+	}
+
+	return string(byt), err
 }

@@ -11,7 +11,7 @@ import (
 const pairExpect = "pair<string>([key1, key2])"
 
 func TestPair(t *testing.T) {
-	data, err := NewDataTypeListWithRaw(DtString, []string{"key1", "key2"})
+	data, err := NewDataTypeListFromRawData(DtString, []string{"key1", "key2"})
 	assert.Nil(t, err)
 
 	pair := NewPair(NewVector(data))

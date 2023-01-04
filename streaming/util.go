@@ -138,7 +138,7 @@ func getAllTopicBySite(site string) []string {
 	return res
 }
 
-func getNeedReconnect(site string) int {
+func getReconnectItemState(site string) int {
 	raw, ok := reconnectTable.Load(site)
 	if ok && raw != nil {
 		item := raw.(*reconnectItem)
@@ -199,7 +199,7 @@ func setReconnectTimestamp(site string, v int64) {
 	}
 }
 
-func setNeedReconnect(topic string, v int) {
+func setReconnectItem(topic string, v int) {
 	if topic == "" {
 		return
 	}
@@ -259,7 +259,7 @@ func IsClosed(topic string) bool {
 }
 
 func generatorGetSubscriptionTopicParams(tableName, actionName string) ([]model.DataForm, error) {
-	l, err := model.NewDataTypeListWithRaw(model.DtString, []string{tableName, actionName})
+	l, err := model.NewDataTypeListFromRawData(model.DtString, []string{tableName, actionName})
 	if err != nil {
 		fmt.Printf("Failed to instantiate DataTypeList: %s\n", err.Error())
 		return nil, err

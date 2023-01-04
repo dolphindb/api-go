@@ -115,12 +115,12 @@ func insertDataTotable(n int, tableName string) {
 		intarr = append(intarr, int32(i%10))
 		floatarr3 = append(floatarr3, float64(i))
 	}
-	sym, _ := model.NewDataTypeListWithRaw(model.DtString, symarr)
-	tradeDatev, _ := model.NewDataTypeListWithRaw(model.DtDatetime, datetimearr)
-	tradePrice, _ := model.NewDataTypeListWithRaw(model.DtDouble, floatarr1)
-	vwap, _ := model.NewDataTypeListWithRaw(model.DtDouble, floatarr2)
-	volume, _ := model.NewDataTypeListWithRaw(model.DtInt, intarr)
-	valueTrade, _ := model.NewDataTypeListWithRaw(model.DtDouble, floatarr3)
+	sym, _ := model.NewDataTypeListFromRawData(model.DtString, symarr)
+	tradeDatev, _ := model.NewDataTypeListFromRawData(model.DtDatetime, datetimearr)
+	tradePrice, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr1)
+	vwap, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr2)
+	volume, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr)
+	valueTrade, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr3)
 	tmp := model.NewTable([]string{"sym", "tradeDate", "tradePrice", "vwap", "volume", "valueTrade"},
 		[]*model.Vector{model.NewVector(sym), model.NewVector(tradeDatev), model.NewVector(tradePrice),
 			model.NewVector(vwap), model.NewVector(volume), model.NewVector(valueTrade)})
@@ -1734,7 +1734,7 @@ func TestMultiGoroutineTable_insert_dfs_part_null(t *testing.T) {
 		So(reTable.GetColumnByName("symbolv").String(), ShouldEqual, "vector<symbol>([])")
 		So(reTable.GetColumnByName("stringv").String(), ShouldEqual, "vector<string>([])")
 		So(reTable.GetColumnByName("uuidv").String(), ShouldEqual, "vector<uuid>([00000000-0000-0000-0000-000000000000])")
-		So(reTable.GetColumnByName("ipaddrv").String(), ShouldEqual, "vector<IP>([0.0.0.0])")
+		So(reTable.GetColumnByName("ipaddrv").String(), ShouldEqual, "vector<ipaddr>([0.0.0.0])")
 		So(reTable.GetColumnByName("int128v").String(), ShouldEqual, "vector<int128>([00000000000000000000000000000000])")
 		So(reTable.GetColumnByName("id").String(), ShouldEqual, "vector<int>([])")
 		_, err = ddb.RunScript("dropDatabase(\"dfs://test_MultithreadedTableWriter\")")
@@ -2290,7 +2290,7 @@ func TestMultiGoroutineTable_insert_arrayVector_otherType(t *testing.T) {
 		reArray3v := reTable.GetColumnByName("ipaddrv")
 		So(reArray1v.String(), ShouldEqual, "vector<uuidArray>([[5d212a78-cc48-e3b1-4235-b4d91473ee87, 5d212a78-cc48-e3b1-4235-b4d91473ee87, 00000000-0000-0000-0000-000000000000], [00000000-0000-0000-0000-000000000000]])")
 		So(reArray2v.String(), ShouldEqual, "vector<int128Array>([[e1671797c52e15f763380b45e841ec32, 00000000000000000000000000000000, e1671797c52e15f763380b45e841ec32], [00000000000000000000000000000000]])")
-		So(reArray3v.String(), ShouldEqual, "vector<IPArray>([[192.168.1.13, 192.168.1.84, 0.0.0.0], [0.0.0.0]])")
+		So(reArray3v.String(), ShouldEqual, "vector<ipaddrArray>([[192.168.1.13, 192.168.1.84, 0.0.0.0], [0.0.0.0]])")
 		_, err = ddb.RunScript("undef(`t1,SHARED)")
 		So(err, ShouldBeNil)
 	})
@@ -2423,7 +2423,7 @@ func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 		reTable := re.(*model.Table)
 		So(reTable.GetColumnByName("uuidv").String(), ShouldEqual, "vector<uuid>([00000000-0004-e72c-0000-000000007eb1, 00000000-0004-e72c-0000-000000007eb1, 00000000-0004-e72c-0000-000000007eb1])")
 		So(reTable.GetColumnByName("int128v").String(), ShouldEqual, "vector<int128>([e1671797c52e15f763380b45e841ec32, e1671797c52e15f763380b45e841ec32, e1671797c52e15f763380b45e841ec32])")
-		So(reTable.GetColumnByName("ipaddrv").String(), ShouldEqual, "vector<IP>([192.168.100.20, 192.168.100.20, 192.168.100.20])")
+		So(reTable.GetColumnByName("ipaddrv").String(), ShouldEqual, "vector<ipaddr>([192.168.100.20, 192.168.100.20, 192.168.100.20])")
 		status := mtt.GetStatus()
 		So(len(tb), ShouldEqual, status.UnSentRows+status.SentRows)
 		_, err = ddb.RunScript("undef(`t1,SHARED)")
@@ -4026,8 +4026,8 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 				floatarr1 = append(floatarr1, float64(12.9))
 				intarr1 = append(intarr1, int32(1))
 			}
-			valueTrade1, _ := model.NewDataTypeListWithRaw(model.DtDouble, floatarr1)
-			volume1, _ := model.NewDataTypeListWithRaw(model.DtInt, intarr1)
+			valueTrade1, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr1)
+			volume1, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr1)
 			tmp1 := model.NewTable([]string{"volume", "valueTrade"},
 				[]*model.Vector{model.NewVector(volume1), model.NewVector(valueTrade1)})
 			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp1})
@@ -4039,8 +4039,8 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 				floatarr2 = append(floatarr2, float64(22.9))
 				intarr2 = append(intarr2, int32(2))
 			}
-			valueTrade2, _ := model.NewDataTypeListWithRaw(model.DtDouble, floatarr2)
-			volume2, _ := model.NewDataTypeListWithRaw(model.DtInt, intarr2)
+			valueTrade2, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr2)
+			volume2, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr2)
 			tmp2 := model.NewTable([]string{"volume", "valueTrade"},
 				[]*model.Vector{model.NewVector(volume2), model.NewVector(valueTrade2)})
 			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp2})
@@ -4160,8 +4160,8 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 				floatarr1 = append(floatarr1, float64(22.9))
 				intarr = append(intarr, int32(16))
 			}
-			valueTrade, _ := model.NewDataTypeListWithRaw(model.DtDouble, floatarr1)
-			volume, _ := model.NewDataTypeListWithRaw(model.DtInt, intarr)
+			valueTrade, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr1)
+			volume, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr)
 			tmp := model.NewTable([]string{"volume", "valueTrade"},
 				[]*model.Vector{model.NewVector(volume), model.NewVector(valueTrade)})
 			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp})
@@ -4297,8 +4297,8 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 				floatarr1 = append(floatarr1, float64(22.9))
 				intarr = append(intarr, int32(16))
 			}
-			valueTrade, _ := model.NewDataTypeListWithRaw(model.DtDouble, floatarr1)
-			volume, _ := model.NewDataTypeListWithRaw(model.DtInt, intarr)
+			valueTrade, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr1)
+			volume, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr)
 			tmp := model.NewTable([]string{"volume", "valueTrade"},
 				[]*model.Vector{model.NewVector(volume), model.NewVector(valueTrade)})
 			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp})
@@ -4823,7 +4823,7 @@ func TestMultiGoroutineTable_insert_dfstable_200cols(t *testing.T) {
 			"\tdropDatabase(Database)\t\n" +
 			"}\n" +
 			"db=database(Database, VALUE, date(1..2),,'TSDB');\n" +
-			"createPartitionedTable(dbHandle=db, table=t, tableName=`pt1, partitionColumns=[\"tradeDate\"],sortColumns=`tradeDate,compressMethods={tradeDate:\"delta\"});"
+			"createPartitionedTable(dbHandle=db, table=t, tableName=`pt1, partitionColumns=[\"tradeDate\"],sortColumns=`sym,compressMethods={tradeDate:\"delta\"});"
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{

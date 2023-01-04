@@ -11,10 +11,10 @@ import (
 const dictExpect = "dict<string, string>([\n  string[3]([key1, key2, key3]),\n  string[3]([value1, value2, value3]),\n])"
 
 func TestDictionary(t *testing.T) {
-	keys, err := NewDataTypeListWithRaw(DtString, []string{"key1", "key2", "key3"})
+	keys, err := NewDataTypeListFromRawData(DtString, []string{"key1", "key2", "key3"})
 	assert.Nil(t, err)
 
-	values, err := NewDataTypeListWithRaw(DtString, []string{"value1", "value2", "value3"})
+	values, err := NewDataTypeListFromRawData(DtString, []string{"value1", "value2", "value3"})
 	assert.Nil(t, err)
 
 	dict := NewDictionary(NewVector(keys), NewVector(values))

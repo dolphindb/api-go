@@ -874,6 +874,92 @@ func Test_Table_DownLoad_DataType_datehour(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+func Test_Table_DownLoad_DataType_decimal32(t *testing.T) {
+	Convey("Test_Table_with_decimal32:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_Table_with_decimal32_not_null:", func() {
+			s, err := db.RunScript("c1=decimal32(take(1.23324,10),2);c2=decimal32(take(1.23324,10),7);t=table(c1,c2);t")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			c1 := result.GetColumnByName("c1").Data.Value()
+			c2 := result.GetColumnByName("c2").Data.Value()
+			for i := 0; i < len(c1); i++ {
+				So(c1[i].(*model.Decimal32).Scale, ShouldEqual, 2)
+				So(c2[i].(*model.Decimal32).Scale, ShouldEqual, 7)
+				So(c1[i].(*model.Decimal32).Value, ShouldEqual, 1.23)
+				So(c2[i].(*model.Decimal32).Value, ShouldEqual, 1.2332399)
+			}
+		})
+		Convey("Test_Table_only_one_decimal32_columns:", func() {
+			s, err := db.RunScript("c1=decimal32(take(1.23324,10),2);t=table(c1);t")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			c1 := result.GetColumnByName("c1").Data.Value()
+			for i := 0; i < len(c1); i++ {
+				So(c1[i].(*model.Decimal32).Scale, ShouldEqual, 2)
+				So(c1[i].(*model.Decimal32).Value, ShouldEqual, 1.23)
+			}
+		})
+		Convey("Test_Table_only_one_decimal32_null_columns:", func() {
+			s, err := db.RunScript("c1=decimal32(NULL,2);c2=decimal32(NULL,7);t=table([c1] as c1,[c2] as c2);t")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			c1 := result.GetColumnByName("c1").Data.Value()
+			c2 := result.GetColumnByName("c2").Data.Value()
+			for i := 0; i < len(c1); i++ {
+				So(c1[i].(*model.Decimal32).Scale, ShouldEqual, 2)
+				So(c2[i].(*model.Decimal32).Scale, ShouldEqual, 7)
+				So(result.GetColumnByName("c2").IsNull(i), ShouldBeTrue)
+				So(result.GetColumnByName("c1").IsNull(i), ShouldBeTrue)
+			}
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Table_DownLoad_DataType_decimal64(t *testing.T) {
+	Convey("Test_Table_with_decimal64:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_Table_with_decimal64_not_null:", func() {
+			s, err := db.RunScript("c1=decimal64(take(1.23644,10),2);c2=decimal64(take(1.23644,10),11);t=table(c1,c2);t")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			c1 := result.GetColumnByName("c1").Data.Value()
+			c2 := result.GetColumnByName("c2").Data.Value()
+			for i := 0; i < len(c1); i++ {
+				So(c1[i].(*model.Decimal64).Scale, ShouldEqual, 2)
+				So(c2[i].(*model.Decimal64).Scale, ShouldEqual, 11)
+				So(c1[i].(*model.Decimal64).Value, ShouldEqual, 1.23)
+				So(c2[i].(*model.Decimal64).Value, ShouldEqual, 1.23644)
+			}
+		})
+		Convey("Test_Table_only_one_decimal64_columns:", func() {
+			s, err := db.RunScript("c1=decimal64(take(1.23644,10),2);t=table(c1);t")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			c1 := result.GetColumnByName("c1").Data.Value()
+			for i := 0; i < len(c1); i++ {
+				So(c1[i].(*model.Decimal64).Scale, ShouldEqual, 2)
+				So(c1[i].(*model.Decimal64).Value, ShouldEqual, 1.23)
+			}
+		})
+		Convey("Test_Table_only_one_decimal64_null_columns:", func() {
+			s, err := db.RunScript("c1=decimal64(NULL,2);c2=decimal64(NULL,7);t=table([c1] as c1,[c2] as c2);t")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			c1 := result.GetColumnByName("c1").Data.Value()
+			c2 := result.GetColumnByName("c2").Data.Value()
+			for i := 0; i < len(c1); i++ {
+				So(c1[i].(*model.Decimal64).Scale, ShouldEqual, 2)
+				So(c2[i].(*model.Decimal64).Scale, ShouldEqual, 7)
+				So(result.GetColumnByName("c2").IsNull(i), ShouldBeTrue)
+				So(result.GetColumnByName("c1").IsNull(i), ShouldBeTrue)
+			}
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
 func Test_Table_DownLoad_DataType_uuid(t *testing.T) {
 	Convey("Test_Table_with_uuid:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
@@ -1815,7 +1901,7 @@ func Test_Table_UpLoad_DataType_string(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_string:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtString, []string{"col1", "col2", "col3"})
+			col, err := model.NewDataTypeListFromRawData(model.DtString, []string{"col1", "col2", "col3"})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -1843,9 +1929,9 @@ func Test_Table_UpLoad_DataType_int(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_int:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{1024, model.NullInt, 369})
+			col, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1024, model.NullInt, 369})
 			So(err, ShouldBeNil)
-			col1, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{147, 258, 369})
+			col1, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{147, 258, 369})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col", "ss"}, []*model.Vector{model.NewVector(col), model.NewVector(col1)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -1871,7 +1957,7 @@ func Test_Table_UpLoad_DataType_char(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_char:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtChar, []byte{127, 2, 13})
+			col, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{127, 2, 13})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -1892,7 +1978,7 @@ func Test_Table_UpLoad_DataType_short(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_short:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtShort, []int16{127, -12552, 1024})
+			col, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{127, -12552, 1024})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -1916,7 +2002,7 @@ func Test_Table_UpLoad_DataType_long(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_long:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtLong, []int64{1048576, -1024, 13169})
+			col, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{1048576, -1024, 13169})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -1940,7 +2026,7 @@ func Test_Table_UpLoad_DataType_float(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_float:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtFloat, []float32{1048576.02, -1024.365, 13169.14196})
+			col, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{1048576.02, -1024.365, 13169.14196})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -1964,7 +2050,7 @@ func Test_Table_UpLoad_DataType_double(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_double:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1048576.02011, -1024.365, 13169.14196})
+			col, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1048576.02011, -1024.365, 13169.14196})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -1988,7 +2074,7 @@ func Test_Table_UpLoad_DataType_bool(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_bool:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtBool, []byte{1, 0, 1})
+			col, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{1, 0, 1})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2012,7 +2098,7 @@ func Test_Table_UpLoad_DataType_date(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_date:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2036,7 +2122,7 @@ func Test_Table_UpLoad_DataType_month(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_month:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2060,7 +2146,7 @@ func Test_Table_UpLoad_DataType_time(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_time:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2084,7 +2170,7 @@ func Test_Table_UpLoad_DataType_minute(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_minute:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2108,7 +2194,7 @@ func Test_Table_UpLoad_DataType_second(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_second:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2132,7 +2218,7 @@ func Test_Table_UpLoad_DataType_datetime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_datetime:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2156,7 +2242,7 @@ func Test_Table_UpLoad_DataType_timestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_timestamp:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2180,7 +2266,7 @@ func Test_Table_UpLoad_DataType_nanotime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_nanotime:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2204,7 +2290,7 @@ func Test_Table_UpLoad_DataType_nanotimestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_nanotimestamp:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2228,7 +2314,7 @@ func Test_Table_UpLoad_DataType_datehour(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_datehour:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			col, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2247,12 +2333,44 @@ func Test_Table_UpLoad_DataType_datehour(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+func Test_Table_UpLoad_DataType_decimal32(t *testing.T) {
+	Convey("Test_Table_upload_with_decimal32:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_Table_with_decimal32:", func() {
+			col, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{2, []float64{2.215512, -1.3, model.NullDecimal32Value}})
+			So(err, ShouldBeNil)
+			tb := model.NewTable([]string{"c1"}, []*model.Vector{model.NewVector(col)})
+			_, err = db.Upload(map[string]model.DataForm{"s": tb})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("t=table(decimal32([2.215512, -1.3, NULL], 2) as c1);eqObj(t.values(),s.values())")
+			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Table_UpLoad_DataType_decimal64(t *testing.T) {
+	Convey("Test_Table_upload_with_decimal64:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_Table_with_decimal64:", func() {
+			col, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{11, []float64{2.215512, -1.3, model.NullDecimal64Value}})
+			So(err, ShouldBeNil)
+			tb := model.NewTable([]string{"c1"}, []*model.Vector{model.NewVector(col)})
+			_, err = db.Upload(map[string]model.DataForm{"s": tb})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("t=table(decimal64([2.215512, -1.3, NULL], 11) as c1);eqObj(t.values(),s.values())")
+			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
 func Test_Table_UpLoad_DataType_blob(t *testing.T) {
 	Convey("Test_Table_upload_with_blob:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_blob:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtBlob, [][]byte{{6}, {12}, {56}, {128}})
+			col, err := model.NewDataTypeListFromRawData(model.DtBlob, [][]byte{{6}, {12}, {56}, {128}})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2273,7 +2391,7 @@ func Test_Table_UpLoad_DataType_uuid(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_uuid:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
+			col, err := model.NewDataTypeListFromRawData(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2297,7 +2415,7 @@ func Test_Table_UpLoad_DataType_ipaddr(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_ipaddr:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtIP, []string{"192.163.1.12", "0.0.0.0", "127.0.0.1"})
+			col, err := model.NewDataTypeListFromRawData(model.DtIP, []string{"192.163.1.12", "0.0.0.0", "127.0.0.1"})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2321,7 +2439,7 @@ func Test_Table_UpLoad_DataType_int128(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_int128:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33", "e1671797c52e15f763380b45e841ec34"})
+			col, err := model.NewDataTypeListFromRawData(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33", "e1671797c52e15f763380b45e841ec34"})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2345,7 +2463,7 @@ func Test_Table_UpLoad_DataType_point(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_point:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtPoint, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+			col, err := model.NewDataTypeListFromRawData(model.DtPoint, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2369,7 +2487,7 @@ func Test_Table_UpLoad_DataType_complex(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_complex:", func() {
-			col, err := model.NewDataTypeListWithRaw(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+			col, err := model.NewDataTypeListFromRawData(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"complex"}, []*model.Vector{model.NewVector(col)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2393,53 +2511,53 @@ func Test_Table_UpLoad_DataType_has_all_type_part1(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_Table_with_all_datatype:", func() {
-			complexv, err := model.NewDataTypeListWithRaw(model.DtComplex, [][2]float64{{1, 1}, model.NullComplex, {1001022.4, -30028.75}})
+			complexv, err := model.NewDataTypeListFromRawData(model.DtComplex, [][2]float64{{1, 1}, model.NullComplex, {1001022.4, -30028.75}})
 			So(err, ShouldBeNil)
-			stringv, err := model.NewDataTypeListWithRaw(model.DtString, []string{"col1", "", "col3"})
+			stringv, err := model.NewDataTypeListFromRawData(model.DtString, []string{"col1", "", "col3"})
 			So(err, ShouldBeNil)
-			intv, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{1024, model.NullInt, 369})
+			intv, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1024, model.NullInt, 369})
 			So(err, ShouldBeNil)
-			charv, err := model.NewDataTypeListWithRaw(model.DtChar, []byte{127, model.NullChar, 13})
+			charv, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{127, model.NullChar, 13})
 			So(err, ShouldBeNil)
-			shortv, err := model.NewDataTypeListWithRaw(model.DtShort, []int16{127, model.NullShort, 1024})
+			shortv, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{127, model.NullShort, 1024})
 			So(err, ShouldBeNil)
-			longv, err := model.NewDataTypeListWithRaw(model.DtLong, []int64{1048576, model.NullLong, 13169})
+			longv, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{1048576, model.NullLong, 13169})
 			So(err, ShouldBeNil)
-			floatv, err := model.NewDataTypeListWithRaw(model.DtFloat, []float32{1048576.02, model.NullFloat, 13169.14196})
+			floatv, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{1048576.02, model.NullFloat, 13169.14196})
 			So(err, ShouldBeNil)
-			doublev, err := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1048576.02011, model.NullDouble, 13169.14196})
+			doublev, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1048576.02011, model.NullDouble, 13169.14196})
 			So(err, ShouldBeNil)
-			boolv, err := model.NewDataTypeListWithRaw(model.DtBool, []byte{1, model.NullBool, 1})
+			boolv, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{1, model.NullBool, 1})
 			So(err, ShouldBeNil)
-			pointv, err := model.NewDataTypeListWithRaw(model.DtPoint, [][2]float64{{1, 1}, model.NullPoint, {1001022.4, -30028.75}})
+			pointv, err := model.NewDataTypeListFromRawData(model.DtPoint, [][2]float64{{1, 1}, model.NullPoint, {1001022.4, -30028.75}})
 			So(err, ShouldBeNil)
-			symbolv, err := model.NewDataTypeListWithRaw(model.DtSymbol, []string{"*", "", "87"})
+			symbolv, err := model.NewDataTypeListFromRawData(model.DtSymbol, []string{"*", "", "87"})
 			So(err, ShouldBeNil)
-			datev, err := model.NewDataTypeListWithRaw(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			datev, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			monthv, err := model.NewDataTypeListWithRaw(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			monthv, err := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			timev, err := model.NewDataTypeListWithRaw(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			timev, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			minutev, err := model.NewDataTypeListWithRaw(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			minutev, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			secondv, err := model.NewDataTypeListWithRaw(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			secondv, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			datetimev, err := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			datetimev, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			timestampv, err := model.NewDataTypeListWithRaw(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			timestampv, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			nanotimev, err := model.NewDataTypeListWithRaw(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			nanotimev, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			nanotimestampv, err := model.NewDataTypeListWithRaw(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			nanotimestampv, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			datehourv, err := model.NewDataTypeListWithRaw(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			datehourv, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), model.NullTime, time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			uuidv, err := model.NewDataTypeListWithRaw(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
+			uuidv, err := model.NewDataTypeListFromRawData(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
 			So(err, ShouldBeNil)
-			ipaddrv, err := model.NewDataTypeListWithRaw(model.DtIP, []string{"192.163.1.12", "", "127.0.0.1"})
+			ipaddrv, err := model.NewDataTypeListFromRawData(model.DtIP, []string{"192.163.1.12", "", "127.0.0.1"})
 			So(err, ShouldBeNil)
-			int128v, err := model.NewDataTypeListWithRaw(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "", "e1671797c52e15f763380b45e841ec34"})
+			int128v, err := model.NewDataTypeListFromRawData(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "", "e1671797c52e15f763380b45e841ec34"})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"complex", "string", "int", "char", "short", "long", "float", "double", "point", "bool", "date", "month", "time", "minute", "second", "datetime", "timestamp", "nanotime", "nanotimestamp", "datehour", "uuid", "ipaddr", "int128", "symbol"}, []*model.Vector{model.NewVector(complexv), model.NewVector(stringv), model.NewVector(intv), model.NewVector(charv), model.NewVector(shortv), model.NewVector(longv), model.NewVector(floatv), model.NewVector(doublev), model.NewVector(pointv), model.NewVector(boolv), model.NewVector(datev), model.NewVector(monthv), model.NewVector(timev), model.NewVector(minutev), model.NewVector(secondv), model.NewVector(datetimev), model.NewVector(timestampv), model.NewVector(nanotimev), model.NewVector(nanotimestampv), model.NewVector(datehourv), model.NewVector(uuidv), model.NewVector(ipaddrv), model.NewVector(int128v), model.NewVector(symbolv)})
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
@@ -2677,20 +2795,20 @@ func Test_Table_UpLoad_big_array(t *testing.T) {
 			intv = append(intv, i)
 		}
 		intv = append(intv, model.NullInt)
-		col, err := model.NewDataTypeListWithRaw(model.DtInt, intv)
+		col, err := model.NewDataTypeListFromRawData(model.DtInt, intv)
 		So(err, ShouldBeNil)
 		stringv := []string{}
 		for i = 0; i < 3000000*12; i += 12 {
 			stringv = append(stringv, string("hello"))
 		}
 		stringv = append(stringv, model.NullString)
-		col1, err := model.NewDataTypeListWithRaw(model.DtString, stringv)
+		col1, err := model.NewDataTypeListFromRawData(model.DtString, stringv)
 		So(err, ShouldBeNil)
 		allnull := []string{}
 		for i = 0; i < 3000001*12; i += 12 {
 			allnull = append(allnull, model.NullString)
 		}
-		allnullv, err := model.NewDataTypeListWithRaw(model.DtString, allnull)
+		allnullv, err := model.NewDataTypeListFromRawData(model.DtString, allnull)
 		So(err, ShouldBeNil)
 		tb := model.NewTable([]string{"int_v", "str_v", "all_null"}, []*model.Vector{model.NewVector(col), model.NewVector(col1), model.NewVector(allnullv)})
 		_, err = db.Upload(map[string]model.DataForm{"s": tb})

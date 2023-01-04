@@ -1,9 +1,12 @@
 package streaming
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/smallnest/chanx"
 )
 
 // GoroutineClient is an implementation of AbstractClient for streaming subscription.
@@ -46,6 +49,20 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 		return err
 	}
 
+	handlerLooper := t.initHandlerLooper(queue, req)
+
+	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
+	if err != nil {
+		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		return err
+	}
+
+	t.handlerLoppers.Store(topicStr, handlerLooper)
+
+	return nil
+}
+
+func (t *GoroutineClient) initHandlerLooper(queue *chanx.UnboundedChan, req *SubscribeRequest) *handlerLopper {
 	handlerLooper := &handlerLopper{
 		queue:     queue,
 		handler:   req.Handler,
@@ -59,23 +76,7 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 
 	go handlerLooper.run()
 
-	conn, err := newConnectedConn(req.Address)
-	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
-		return err
-	}
-
-	defer conn.Close()
-
-	topicStr, err := t.getTopicFromServer(req.TableName, req.ActionName, conn)
-	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
-		return err
-	}
-
-	t.handlerLoppers.Store(topicStr, handlerLooper)
-
-	return nil
+	return handlerLooper
 }
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.
@@ -86,28 +87,11 @@ func (t *GoroutineClient) UnSubscribe(req *SubscribeRequest) error {
 		return err
 	}
 
-	conn, err := newConnectedConn(req.Address)
+	topicStr, err := t.stopHandlerLopper(req.Address, req.TableName, req.ActionName)
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
 		return err
 	}
-
-	defer conn.Close()
-
-	topicStr, err := t.getTopicFromServer(req.TableName, req.ActionName, conn)
-	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
-		return err
-	}
-
-	raw, ok := t.handlerLoppers.Load(topicStr)
-	if !ok {
-		return nil
-	}
-
-	handlerLopper := raw.(*handlerLopper)
 	t.handlerLoppers.Delete(topicStr)
-	handlerLopper.stop()
 
 	return err
 }
@@ -136,33 +120,41 @@ func (t *GoroutineClient) Close() {
 	})
 
 	t.handlerLoppers = sync.Map{}
-	t.stop()
+
+	select {
+	case <-t.exit:
+	default:
+		close(t.exit)
+	}
 }
 
 func (t *GoroutineClient) doReconnect(s *site) bool {
-	conn, err := newConnectedConn(s.address)
+	topic, err := t.stopHandlerLopper(s.address, s.tableName, s.actionName)
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
 		return false
 	}
 
-	topic, err := t.getTopicFromServer(s.tableName, s.actionName, conn)
+	isSuccess := t.reSubscribe(topic, s)
+	if !isSuccess {
+		return isSuccess
+	}
+
+	fmt.Printf("%s %s Successfully reconnected and subscribed.\n", time.Now().UTC().String(), topic)
+	return true
+}
+
+func (t *GoroutineClient) reSubscribe(topic string, s *site) bool {
+	err := t.Subscribe(transSiteToNewSubscribeRequest(s))
 	if err != nil {
-		fmt.Printf("Failed to get topic from server during reconnection using doReconnect: %s\n", err.Error())
+		fmt.Printf("%s %s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String(), topic)
 		return false
 	}
 
-	raw, ok := t.handlerLoppers.Load(topic)
-	if !ok || raw == nil {
-		fmt.Println("Goroutine for subscription is not started")
-		return false
-	}
+	return true
+}
 
-	handlerLopper := raw.(*handlerLopper)
-
-	handlerLopper.stop()
-
-	req := &SubscribeRequest{
+func transSiteToNewSubscribeRequest(s *site) *SubscribeRequest {
+	return &SubscribeRequest{
 		Address:    s.address,
 		TableName:  s.tableName,
 		ActionName: s.actionName,
@@ -171,58 +163,23 @@ func (t *GoroutineClient) doReconnect(s *site) bool {
 		Filter:     s.filter,
 		Reconnect:  s.reconnect,
 	}
+}
 
-	err = t.Subscribe(req)
+func (t *GoroutineClient) stopHandlerLopper(address, tableName, actionName string) (string, error) {
+	topic, err := t.getTopicFromServer(address, tableName, actionName)
 	if err != nil {
-		fmt.Printf("%s %s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String(), topic)
-		return false
+		fmt.Printf("Failed to get topic from server during reconnection using doReconnect: %s\n", err.Error())
+		return "", err
 	}
 
-	fmt.Printf("%s %s Successfully reconnected and subscribed.\n", time.Now().UTC().String(), topic)
-	return true
-}
-
-func (t *GoroutineClient) stop() {
-	select {
-	case <-t.exit:
-	default:
-		close(t.exit)
-	}
-}
-
-func (t *GoroutineClient) tryReconnect(topic string) bool {
-	topicRaw, ok := haTopicToTrueTopic.Load(topic)
-	if !ok {
-		return false
+	raw, ok := t.handlerLoppers.Load(topic)
+	if !ok || raw == nil {
+		fmt.Println("Goroutine for subscription is not started")
+		return "", errors.New("Goroutine for subscription is not started")
 	}
 
-	queueMap.Delete(topicRaw)
+	handlerLopper := raw.(*handlerLopper)
 
-	raw, ok := trueTopicToSites.Load(topicRaw)
-	if !ok {
-		return false
-	}
-
-	sites := raw.([]*site)
-
-	if len(sites) == 0 {
-		return false
-	}
-
-	if len(sites) == 1 && !sites[0].reconnect {
-		return false
-	}
-
-	site := getActiveSite(sites)
-	if site != nil {
-		if t.doReconnect(site) {
-			waitReconnectTopic.Delete(topicRaw)
-			return true
-		}
-
-		waitReconnectTopic.Store(topicRaw, topicRaw)
-		return false
-	}
-
-	return false
+	handlerLopper.stop()
+	return topic, nil
 }

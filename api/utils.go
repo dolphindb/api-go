@@ -16,7 +16,7 @@ func generateTableName() string {
 }
 
 func generateCreateDatabaseParam(d *DatabaseRequest) string {
-	buf := strings.Builder{}
+	buf := &strings.Builder{}
 
 	if d.Directory != "" {
 		buf.WriteString("directory='")
@@ -55,6 +55,52 @@ func generateCreateDatabaseParam(d *DatabaseRequest) string {
 	}
 
 	return strings.TrimSuffix(buf.String(), ",")
+}
+
+func generateCreatePatitionedTable(handle, dbName string, p *CreatePartitionedTableRequest) string {
+	buf := &strings.Builder{}
+
+	buf.WriteString(fmt.Sprintf("%s=%s.createPartitionedTable(%s, `%s, `%s", handle, dbName,
+		p.SrcTable, p.PartitionedTableName, strings.Join(p.PartitionColumns, "`")))
+
+	if len(p.CompressMethods) > 0 {
+		buf.WriteString(",compressMethods={")
+		cm := make([]string, 0, len(p.CompressMethods))
+		for k, v := range p.CompressMethods {
+			cm = append(cm, fmt.Sprintf(`%s:"%s"`, k, v))
+		}
+		buf.WriteString(strings.Join(cm, ","))
+		buf.WriteString("}")
+	}
+
+	if len(p.SortColumns) > 0 {
+		buf.WriteString(fmt.Sprintf(",sortColumns=`%s", strings.Join(p.SortColumns, "`")))
+	}
+
+	if len(p.KeepDuplicates) > 0 {
+		buf.WriteString(",keepDuplicates=" + p.KeepDuplicates)
+	}
+	buf.WriteString(")")
+	return buf.String()
+}
+
+func generateCreateTable(handle, dbName string, t *CreateTableRequest) string {
+	by := &strings.Builder{}
+	by.WriteString(handle)
+	by.WriteString("=")
+	by.WriteString(dbName)
+	by.WriteString(".createTable(")
+	by.WriteString(t.SrcTable)
+	by.WriteString(",`")
+	by.WriteString(t.DimensionTableName)
+
+	if len(t.SortColumns) > 0 {
+		by.WriteString(",sortColumns=`")
+		by.WriteString(strings.Join(t.SortColumns, "`"))
+	}
+
+	by.WriteString(")")
+	return by.String()
 }
 
 func generateSaveTableParam(d *SaveTableRequest) string {

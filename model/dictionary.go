@@ -109,18 +109,12 @@ func (dict *Dictionary) Set(key, value DataType) {
 	}
 
 	keyStr := key.String()
-	if _, err := dict.Get(keyStr); err == nil {
-		keys := dict.Keys.Data.StringList()
-		ind := -1
-		for k, v := range keys {
-			if v == keyStr {
-				ind = k
-				break
-			}
+	keys := dict.Keys.Data.StringList()
+	for k, v := range keys {
+		if v == keyStr {
+			_ = dict.Values.Data.Set(k, value)
+			return
 		}
-
-		_ = dict.Values.Data.Set(ind, value)
-		return
 	}
 
 	dict.Keys.Data.Append(key)
@@ -143,16 +137,11 @@ func (dict *Dictionary) String() string {
 	by := strings.Builder{}
 	by.WriteString(fmt.Sprintf("dict<%s, %s>([\n", keyType, valType))
 
-	var val []string
-	if dict.Keys != nil && dict.Keys.Data != nil {
-		val = dict.Keys.formatString()
-		by.WriteString(fmt.Sprintf("  %s[%d]([%s]),\n", keyType, dict.Keys.RowCount, strings.Join(val, ", ")))
-	}
+	val := dict.Keys.formatString()
+	by.WriteString(fmt.Sprintf("  %s[%d]([%s]),\n", keyType, dict.Keys.RowCount, strings.Join(val, ", ")))
 
-	if dict.Values != nil && dict.Values.Data != nil {
-		val = dict.Values.formatString()
-		by.WriteString(fmt.Sprintf("  %s[%d]([%s]),\n", valType, dict.Keys.RowCount, strings.Join(val, ", ")))
-	}
+	val = dict.Values.formatString()
+	by.WriteString(fmt.Sprintf("  %s[%d]([%s]),\n", valType, dict.Keys.RowCount, strings.Join(val, ", ")))
 
 	by.WriteString("])")
 

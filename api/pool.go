@@ -84,26 +84,25 @@ func (d *DBConnectionPool) Execute(tasks []*Task) error {
 		}
 
 		wg.Add(1)
-		if v.Args != nil {
-			go func(task *Task) {
-				conn := <-d.connections
-				task.result, task.err = conn.RunFunc(task.Script, task.Args)
-				d.connections <- conn
-				wg.Done()
-			}(v)
-		} else {
-			go func(task *Task) {
-				conn := <-d.connections
-				task.result, task.err = conn.RunScript(task.Script)
-				d.connections <- conn
-				wg.Done()
-			}(v)
-		}
+		go func(task *Task) {
+			conn := <-d.connections
+			task.result, task.err = d.RunTask(conn, task)
+			d.connections <- conn
+			wg.Done()
+		}(v)
 	}
 
 	wg.Wait()
 
 	return nil
+}
+
+func (d *DBConnectionPool) RunTask(conn dialer.Conn, task *Task) (model.DataForm, error) {
+	if task.Args != nil {
+		return conn.RunFunc(task.Script, task.Args)
+	}
+
+	return conn.RunScript(task.Script)
 }
 
 // GetPoolSize return the size of DBConnectionPool.

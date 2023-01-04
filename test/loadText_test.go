@@ -23,6 +23,7 @@ func TestLoadTest(t *testing.T) {
 		})
 		Convey("test_loadText_para_filename", func() {
 			tmp, err := ddb.RunScript("select * from loadText(\"" + data + "\")")
+			So(err, ShouldBeNil)
 			ex := tmp.(*model.Table)
 			So(err, ShouldBeNil)
 			re, err := LoadTextFileName(ddb, data)

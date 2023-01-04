@@ -109,7 +109,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtChar, []byte{0, 1})
+	dtl, err = NewDataTypeListFromRawData(DtChar, []byte{0, 1})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 2)
 	assert.Equal(t, dtl.DataType(), DtChar)
@@ -127,7 +127,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtInt, []int32{1, 2, 3, 4})
+	dtl, err = NewDataTypeListFromRawData(DtInt, []int32{1, 2, 3, 4})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 4)
 
@@ -139,7 +139,7 @@ func TestDataTypeList(t *testing.T) {
 	sl = dtl.StringList()
 	assert.Equal(t, sl, []string{"2", "4"})
 
-	dtl, err = NewDataTypeListWithRaw(DtBool, []byte{1})
+	dtl, err = NewDataTypeListFromRawData(DtBool, []byte{1})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtBool)
@@ -153,7 +153,35 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtBlob, [][]byte{{0, 1, 1}})
+	dtl, err = NewDataTypeListFromRawData(DtDecimal32, &Decimal32s{4, []float64{0.0001}})
+	assert.Nil(t, err)
+	assert.Equal(t, dtl.Len(), 1)
+	assert.Equal(t, dtl.DataType(), DtDecimal32)
+
+	sl = dtl.StringList()
+	assert.Equal(t, sl[0], "0.0001")
+	assert.False(t, dtl.IsNull(0))
+
+	dtl.SetNull(0)
+	sl = dtl.StringList()
+	assert.Equal(t, sl[0], "")
+	assert.True(t, dtl.IsNull(0))
+
+	dtl, err = NewDataTypeListFromRawData(DtDecimal64, &Decimal64s{4, []float64{0.0001}})
+	assert.Nil(t, err)
+	assert.Equal(t, dtl.Len(), 1)
+	assert.Equal(t, dtl.DataType(), DtDecimal64)
+
+	sl = dtl.StringList()
+	assert.Equal(t, sl[0], "0.0001")
+	assert.False(t, dtl.IsNull(0))
+
+	dtl.SetNull(0)
+	sl = dtl.StringList()
+	assert.Equal(t, sl[0], "")
+	assert.True(t, dtl.IsNull(0))
+
+	dtl, err = NewDataTypeListFromRawData(DtBlob, [][]byte{{0, 1, 1}})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtBlob)
@@ -185,7 +213,7 @@ func TestDataTypeList(t *testing.T) {
 	w.Flush()
 	assert.Equal(t, by.Bytes(), []byte{0x0})
 
-	dtl, err = NewDataTypeListWithRaw(DtComplex, [][2]float64{{1, 1}})
+	dtl, err = NewDataTypeListFromRawData(DtComplex, [][2]float64{{1, 1}})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtComplex)
@@ -206,7 +234,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtDouble+64, []float64{1})
+	dtl, err = NewDataTypeListFromRawData(DtDouble+64, []float64{1})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtDouble)
@@ -231,7 +259,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtTime, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtTime, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtTime)
@@ -245,7 +273,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtDateHour, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtDateHour, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtDateHour)
@@ -259,7 +287,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtDate, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtDate, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtDate)
@@ -273,7 +301,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtDatetime, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtDatetime, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtDatetime)
@@ -287,7 +315,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtMinute, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtMinute, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtMinute)
@@ -301,7 +329,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtMonth, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtMonth, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtMonth)
@@ -315,7 +343,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtNanoTime, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtNanoTime, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtNanoTime)
@@ -329,7 +357,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtSecond, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtSecond, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtSecond)
@@ -343,7 +371,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtTimestamp, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtTimestamp, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtTimestamp)
@@ -357,7 +385,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtNanoTimestamp, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
+	dtl, err = NewDataTypeListFromRawData(DtNanoTimestamp, []time.Time{time.Date(2022, 5, 1, 2, 2, 2, 20, time.UTC)})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtNanoTimestamp)
@@ -371,7 +399,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtUUID, []string{"e5eca940-5b99-45d0-bf1c-620f6b1b9d5b"})
+	dtl, err = NewDataTypeListFromRawData(DtUUID, []string{"e5eca940-5b99-45d0-bf1c-620f6b1b9d5b"})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtUUID)
@@ -385,7 +413,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "00000000-0000-0000-0000-000000000000")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33"})
+	dtl, err = NewDataTypeListFromRawData(DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33"})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 2)
 	assert.Equal(t, dtl.DataType(), DtInt128)
@@ -400,7 +428,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "00000000000000000000000000000000")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtPoint, [][2]float64{{1, 1}})
+	dtl, err = NewDataTypeListFromRawData(DtPoint, [][2]float64{{1, 1}})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtPoint)
@@ -414,7 +442,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], emptyPoint)
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtDuration, []string{"10H"})
+	dtl, err = NewDataTypeListFromRawData(DtDuration, []string{"10H"})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtDuration)
@@ -435,7 +463,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtIP, []string{"346b:6c2a:3347:d244:7654:5d5a:bcbb:5dc7"})
+	dtl, err = NewDataTypeListFromRawData(DtIP, []string{"346b:6c2a:3347:d244:7654:5d5a:bcbb:5dc7"})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 1)
 	assert.Equal(t, dtl.DataType(), DtIP)
@@ -449,7 +477,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "0.0.0.0")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtIP, []string{"127.0.0.1", "127.0.0.2"})
+	dtl, err = NewDataTypeListFromRawData(DtIP, []string{"127.0.0.1", "127.0.0.2"})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 2)
 	assert.Equal(t, dtl.DataType(), DtIP)
@@ -472,7 +500,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "0.0.0.0")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtFloat, []float32{1, 2})
+	dtl, err = NewDataTypeListFromRawData(DtFloat, []float32{1, 2})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 2)
 	assert.Equal(t, dtl.DataType(), DtFloat)
@@ -497,7 +525,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtLong, []int64{1, 2})
+	dtl, err = NewDataTypeListFromRawData(DtLong, []int64{1, 2})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 2)
 	assert.Equal(t, dtl.DataType(), DtLong)
@@ -515,7 +543,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtShort, []int16{1, 2})
+	dtl, err = NewDataTypeListFromRawData(DtShort, []int16{1, 2})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.Len(), 2)
 	assert.Equal(t, dtl.DataType(), DtShort)
@@ -533,143 +561,143 @@ func TestDataTypeList(t *testing.T) {
 	assert.Equal(t, sl[0], "")
 	assert.True(t, dtl.IsNull(0))
 
-	_, err = NewDataTypeListWithRaw(DtLong, []int32{1, 2})
+	_, err = NewDataTypeListFromRawData(DtLong, []int32{1, 2})
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "the type of input must be []int64 when datatype is DtLong")
 }
 
 func TestNewDataTypeListWithRawWithNullValue(t *testing.T) {
-	dt, err := NewDataTypeListWithRaw(DtBool, []byte{1, NullBool})
+	dt, err := NewDataTypeListFromRawData(DtBool, []byte{1, NullBool})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtChar, []byte{97, NullChar})
+	dt, err = NewDataTypeListFromRawData(DtChar, []byte{97, NullChar})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtShort, []int16{1, NullShort})
+	dt, err = NewDataTypeListFromRawData(DtShort, []int16{1, NullShort})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtLong, []int64{1, NullLong})
+	dt, err = NewDataTypeListFromRawData(DtLong, []int64{1, NullLong})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtDate, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtDate, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtMonth, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtMonth, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtTime, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtTime, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtMinute, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtMinute, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtSecond, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtSecond, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtDatetime, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtDatetime, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtTimestamp, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtTimestamp, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtNanoTime, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtNanoTime, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtNanoTimestamp, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtNanoTimestamp, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtFloat, []float32{1.0, NullFloat})
+	dt, err = NewDataTypeListFromRawData(DtFloat, []float32{1.0, NullFloat})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtDouble, []float64{1.0, NullDouble})
+	dt, err = NewDataTypeListFromRawData(DtDouble, []float64{1.0, NullDouble})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtSymbol, []string{"sym", NullString})
+	dt, err = NewDataTypeListFromRawData(DtSymbol, []string{"sym", NullString})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtString, []string{"str", NullString})
+	dt, err = NewDataTypeListFromRawData(DtString, []string{"str", NullString})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtUUID, []string{"e5eca940-5b99-45d0-bf1c-620f6b1b9d5b", NullUUID})
+	dt, err = NewDataTypeListFromRawData(DtUUID, []string{"e5eca940-5b99-45d0-bf1c-620f6b1b9d5b", NullUUID})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "00000000-0000-0000-0000-000000000000")
 
-	dt, err = NewDataTypeListWithRaw(DtAny, []DataForm{nil, NullAny})
+	dt, err = NewDataTypeListFromRawData(DtAny, []DataForm{nil, NullAny})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtCompress, []byte{0, NullCompress})
+	dt, err = NewDataTypeListFromRawData(DtCompress, []byte{0, NullCompress})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtDateHour, []time.Time{originalTime, NullTime})
+	dt, err = NewDataTypeListFromRawData(DtDateHour, []time.Time{originalTime, NullTime})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtIP, []string{"127.0.0.1", NullIP})
+	dt, err = NewDataTypeListFromRawData(DtIP, []string{"127.0.0.1", NullIP})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "0.0.0.0")
 
-	dt, err = NewDataTypeListWithRaw(DtInt128, []string{"e1671797c52e15f763380b45e841ec32", NullInt128})
+	dt, err = NewDataTypeListFromRawData(DtInt128, []string{"e1671797c52e15f763380b45e841ec32", NullInt128})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "00000000000000000000000000000000")
 
-	dt, err = NewDataTypeListWithRaw(DtBlob, [][]byte{{0, 1}, NullBlob})
+	dt, err = NewDataTypeListFromRawData(DtBlob, [][]byte{{0, 1}, NullBlob})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtComplex, [][2]float64{{1, 1}, NullComplex})
+	dt, err = NewDataTypeListFromRawData(DtComplex, [][2]float64{{1, 1}, NullComplex})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 
-	dt, err = NewDataTypeListWithRaw(DtPoint, [][2]float64{{1, 1}, NullPoint})
+	dt, err = NewDataTypeListFromRawData(DtPoint, [][2]float64{{1, 1}, NullPoint})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), emptyPoint)
 
-	dt, err = NewDataTypeListWithRaw(DtDuration, []string{"10m", NullDuration})
+	dt, err = NewDataTypeListFromRawData(DtDuration, []string{"10m", NullDuration})
 	assert.Nil(t, err)
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")

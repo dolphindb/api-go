@@ -2,11 +2,13 @@ package model
 
 import (
 	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/shopspring/decimal"
 )
 
 var originalTime = time.Date(1970, time.Month(1), 1, 0, 0, 0, 0, time.UTC)
@@ -30,12 +32,22 @@ func renderDouble2(val interface{}) ([2]float64, error) {
 }
 
 func renderBool(val interface{}) (uint8, error) {
-	b, ok := val.(byte)
-	if !ok {
-		return 0, errors.New("the type of in must be byte when datatype is DtBool")
+	switch v := val.(type) {
+	case byte:
+		return renderBoolFromByte(v), nil
+	case bool:
+		return boolToByte(v), nil
+	default:
+		return 0, errors.New("the type of in must be byte or bool when datatype is DtBool")
+	}
+}
+
+func boolToByte(val bool) byte {
+	if val {
+		return 1
 	}
 
-	return renderBoolFromByte(b), nil
+	return 0
 }
 
 func renderBlob(val interface{}) ([]byte, error) {
@@ -83,6 +95,15 @@ func renderDateTime(val interface{}) (int32, error) {
 	return renderDateTimeFromTime(ti), nil
 }
 
+func renderDateMinute(val interface{}) (int32, error) {
+	ti, ok := val.(time.Time)
+	if !ok {
+		return 0, errors.New("the type of in must be time.Time when datatype is DtDateMinute")
+	}
+
+	return renderDateMinuteFromTime(ti), nil
+}
+
 func renderDouble(val interface{}) (float64, error) {
 	f, ok := val.(float64)
 	if !ok {
@@ -126,6 +147,34 @@ func renderIP(val interface{}, bo protocol.ByteOrder) ([2]uint64, error) {
 	}
 
 	return renderIPFromString(str, bo), nil
+}
+
+func renderDecimal32(val interface{}) ([2]int32, error) {
+	d, ok := val.(*Decimal32)
+	if !ok {
+		return [2]int32{}, errors.New("the type of in must be *Decimal32 when datatype is DtDecimal32")
+	}
+
+	d1 := decimal.NewFromFloat(d.Value)
+	d2 := decimal.NewFromFloat(math.Pow10(int(d.Scale)))
+	res := d1.Mul(d2)
+	f, _ := res.Float64()
+
+	return [2]int32{d.Scale, int32(f)}, nil
+}
+
+func renderDecimal64(val interface{}) ([2]int64, error) {
+	d, ok := val.(*Decimal64)
+	if !ok {
+		return [2]int64{}, errors.New("the type of in must be *Decimal64 when datatype is DtDecimal64")
+	}
+
+	d1 := decimal.NewFromFloat(d.Value)
+	d2 := decimal.NewFromFloat(math.Pow10(int(d.Scale)))
+	res := d1.Mul(d2)
+	f, _ := res.Float64()
+
+	return [2]int64{int64(d.Scale), int64(f)}, nil
 }
 
 func renderLong(val interface{}) (int64, error) {
@@ -275,6 +324,15 @@ func renderDateHourFromTime(ti time.Time) int32 {
 	return int32(d.Unix() / 3600)
 }
 
+func renderDateMinuteFromTime(ti time.Time) int32 {
+	if ti == NullTime {
+		return NullInt
+	}
+	ti = ti.UTC()
+	d := time.Date(ti.Year(), ti.Month(), ti.Day(), ti.Hour(), ti.Minute(), 0, 0, time.UTC)
+	return int32(d.Unix() / 60)
+}
+
 func renderDateTimeFromTime(ti time.Time) int32 {
 	if ti == NullTime {
 		return NullInt
@@ -301,8 +359,8 @@ func renderIPFromString(str string, bo protocol.ByteOrder) [2]uint64 {
 	if strings.Contains(str, ":") {
 		val := strings.Split(str, ":")
 		return [2]uint64{
-			stringToUint64(strings.Join(val[4:], "")),
-			stringToUint64(strings.Join(val[:4], "")),
+			stringsToUint64(val[4:], bo),
+			stringsToUint64(val[:4], bo),
 		}
 	}
 

@@ -52,11 +52,21 @@ func NewTableAppender(opt *TableAppenderOption) *TableAppender {
 		return nil
 	}
 
+	err = packTableAppenderWithColDefs(ret, ta)
+	if err != nil {
+		fmt.Printf("Failed to get colDefs from table: %s\n", err.Error())
+		return nil
+	}
+
+	return ta
+}
+
+func packTableAppenderWithColDefs(ret model.DataForm, ta *TableAppender) error {
 	tableInfo := ret.(*model.Dictionary)
 	dt, err := tableInfo.Get("colDefs")
 	if err != nil {
 		fmt.Printf("Failed to get colDefs from table: %s\n", err.Error())
-		return nil
+		return err
 	}
 
 	schema := dt.Value().(*model.Table)
@@ -69,7 +79,8 @@ func NewTableAppender(opt *TableAppenderOption) *TableAppender {
 	}
 
 	ta.nameList = schema.GetColumnByName("name").Data.StringList()
-	return ta
+
+	return nil
 }
 
 // Close closes the connection.

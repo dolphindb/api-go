@@ -3,10 +3,7 @@ package dialer
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -184,8 +181,7 @@ func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, erro
 // }
 
 func (c *conn) GetLocalAddress() string {
-	addr := c.LocalAddr().String()
-	return strings.Split(addr, ":")[0]
+	return strings.Split(c.LocalAddr().String(), ":")[0]
 }
 
 // Get init scripts which will be run after you call connect
@@ -253,29 +249,14 @@ func (c *conn) RunScript(s string) (model.DataForm, error) {
 
 // RunFile sends script from a specific file to dolphindb and return the execution result.
 func (c *conn) RunFile(path string) (model.DataForm, error) {
-	var err error
-	if !filepath.IsAbs(path) {
-		path, err = filepath.Abs(path)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	fl, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	defer fl.Close()
-
-	byt, err := ioutil.ReadAll(fl)
+	script, err := readFile(path)
 	if err != nil {
 		return nil, err
 	}
 
 	_, di, err := c.run(&requestParams{
 		commandType: scriptCmd,
-		Command:     generateScriptCommand(string(byt)),
+		Command:     generateScriptCommand(script),
 	})
 
 	return di, err
@@ -346,11 +327,6 @@ func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, erro
 
 	w := protocol.NewWriter(c.Conn)
 	err = writeRequest(w, params, c.behaviorOpt)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = w.Flush()
 	if err != nil {
 		return nil, nil, err
 	}

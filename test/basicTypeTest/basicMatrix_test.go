@@ -731,7 +731,7 @@ func Test_Matrix_DownLoad_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		Convey("Test_matrix_datehour_null:", func() {
 			s, err := db.RunScript("a = take(datehour(['','','','','',''])+1..6,6)$3:2;a")
@@ -745,7 +745,7 @@ func Test_Matrix_DownLoad_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -978,7 +978,7 @@ func Test_Matrix_UpLoad_DataType_int(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_int_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1006,7 +1006,7 @@ func Test_Matrix_UpLoad_DataType_short(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_char_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtShort, []int16{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1034,7 +1034,7 @@ func Test_Matrix_UpLoad_DataType_char(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_char_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtChar, []byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1058,7 +1058,7 @@ func Test_Matrix_UpLoad_DataType_long(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_long_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtLong, []int64{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			data, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1086,7 +1086,7 @@ func Test_Matrix_UpLoad_DataType_float(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_float_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtFloat, []float32{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, 7, 8, 9})
+			data, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, 7, 8, 9})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1114,7 +1114,7 @@ func Test_Matrix_UpLoad_DataType_double(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_double_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, 7, 8, 9})
+			data, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, 7, 8, 9})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1142,7 +1142,7 @@ func Test_Matrix_UpLoad_DataType_date(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_date_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1170,7 +1170,7 @@ func Test_Matrix_UpLoad_DataType_month(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_month_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1198,7 +1198,7 @@ func Test_Matrix_UpLoad_DataType_time(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_time_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1226,7 +1226,7 @@ func Test_Matrix_UpLoad_DataType_minute(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_minute_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1254,7 +1254,7 @@ func Test_Matrix_UpLoad_DataType_second(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_second_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1282,7 +1282,7 @@ func Test_Matrix_UpLoad_DataType_datetime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_datetime_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1310,7 +1310,7 @@ func Test_Matrix_UpLoad_DataType_timestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_timestamp_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1338,7 +1338,7 @@ func Test_Matrix_UpLoad_DataType_nanotime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_nanotime_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1366,7 +1366,7 @@ func Test_Matrix_UpLoad_DataType_nanotimestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_nanotimestamp_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1394,7 +1394,7 @@ func Test_Matrix_UpLoad_DataType_datehour(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_datehour_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1422,11 +1422,11 @@ func Test_Matrix_UpLoad_DataType_complex(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_matrix_complex_upload:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+			data, err := model.NewDataTypeListFromRawData(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
 			So(err, ShouldBeNil)
-			rl, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{1})
+			rl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1})
 			So(err, ShouldBeNil)
-			cl, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{1, 2, 3})
+			cl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3})
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), model.NewVector(rl), model.NewVector(cl))
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
@@ -1462,7 +1462,7 @@ func Test_Matrix_UpLoad_DataType_big_array(t *testing.T) {
 				intv = append(intv, i)
 			}
 			intv = append(intv, model.NullInt)
-			data, err := model.NewDataTypeListWithRaw(model.DtInt, intv)
+			data, err := model.NewDataTypeListFromRawData(model.DtInt, intv)
 			So(err, ShouldBeNil)
 			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
 			_, err = db.Upload(map[string]model.DataForm{"s": mtx})

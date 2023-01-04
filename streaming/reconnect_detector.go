@@ -20,7 +20,7 @@ func (r *reconnectDetector) run() {
 
 		waitReconnectTopic.Range(func(k, v interface{}) bool {
 			val := k.(string)
-			r.tryReconnect(val)
+			tryReconnect(val, r.AbstractClient)
 			return true
 		})
 
@@ -29,42 +29,47 @@ func (r *reconnectDetector) run() {
 }
 
 func (r *reconnectDetector) handleReconnectSites(site string) error {
-	if getNeedReconnect(site) == 1 {
-		s := getSiteByName(site)
-		if s == nil {
-			return nil
-		}
+	if getReconnectItemState(site) == 1 {
+		return r.reconnectWithSite(site)
+	}
 
+	ts := getReconnectTimestamp(site)
+	if time.Now().UnixNano()/1000000 >= ts+3000 {
+		s := getSiteByName(site)
 		err := r.activeCloseConnection(s)
 		if err != nil {
 			fmt.Printf("Failed to reconnect closed connection: %s\n", err.Error())
 			return err
 		}
 
-		lastTopic := ""
-		for _, topic := range getAllTopicBySite(site) {
-			r.tryReconnect(topic)
-			lastTopic = topic
+		for _, v := range getAllTopicBySite(site) {
+			tryReconnect(v, r.AbstractClient)
 		}
 
-		setNeedReconnect(lastTopic, 2)
-	} else {
-		ts := getReconnectTimestamp(site)
-		if time.Now().UnixNano()/1000000 >= ts+3000 {
-			s := getSiteByName(site)
-			err := r.activeCloseConnection(s)
-			if err != nil {
-				fmt.Printf("Failed to reconnect closed connection: %s\n", err.Error())
-				return err
-			}
-
-			for _, v := range getAllTopicBySite(site) {
-				r.tryReconnect(v)
-			}
-
-			setReconnectTimestamp(site, time.Now().UnixNano()/1000000)
-		}
+		setReconnectTimestamp(site, time.Now().UnixNano()/1000000)
 	}
 
+	return nil
+}
+
+func (r *reconnectDetector) reconnectWithSite(site string) error {
+	s := getSiteByName(site)
+	if s == nil {
+		return nil
+	}
+
+	err := r.activeCloseConnection(s)
+	if err != nil {
+		fmt.Printf("Failed to reconnect closed connection: %s\n", err.Error())
+		return err
+	}
+
+	lastTopic := ""
+	for _, topic := range getAllTopicBySite(site) {
+		tryReconnect(topic, r.AbstractClient)
+		lastTopic = topic
+	}
+
+	setReconnectItem(lastTopic, 2)
 	return nil
 }

@@ -148,7 +148,7 @@ func (mtx *Matrix) String() string {
 		by.WriteString("  cols: null,\n")
 	}
 
-	if mtx.Data != nil && mtx.Data.Data != nil {
+	if mtx.Data.Data != nil {
 		val := mtx.Data.formatString()
 		by.WriteString(fmt.Sprintf("  data: %sArray(%d) [\n", GetDataTypeString(mtx.Data.GetDataType()),
 			mtx.Data.ColumnCount*mtx.Data.RowCount))

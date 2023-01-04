@@ -745,7 +745,7 @@ func Test_Pair_DownLoad_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		Convey("Test_pair_datehour_pre_one_null :", func() {
 			s, err := db.RunScript("a=(:datehour(2006.01.02 15:04:04.999999999));a")
@@ -757,7 +757,7 @@ func Test_Pair_DownLoad_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		Convey("Test_pair_datehour_last_one_null:", func() {
 			s, err := db.RunScript("a=(datehour(1969.12.31 23:59:59.999999999):);a")
@@ -769,7 +769,117 @@ func Test_Pair_DownLoad_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Pair_DownLoad_decimal32(t *testing.T) {
+	Convey("Test_pair_decimal32:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_pair_decimal32_not_null:", func() {
+			s, err := db.RunScript("a=(decimal32(-3.15554,2):decimal32(1.4,2));a")
+			So(err, ShouldBeNil)
+			result := s.(*model.Pair)
+			val := result.Vector.Data.Value()
+			for i := 0; i < len(val); i++ {
+				decimal32Val := val[i].(*model.Decimal32)
+				So(decimal32Val.Scale, ShouldEqual, 2)
+			}
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.15")
+			So(result.Vector.Data.StringList()[1], ShouldEqual, "1.40")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 37)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32")
+		})
+		Convey("Test_pair_decimal32_pre_one_null :", func() {
+			s, err := db.RunScript("a=(decimal32(NULL,2):decimal32(1.4,2));a")
+			So(err, ShouldBeNil)
+			result := s.(*model.Pair)
+			val := result.Vector.Data.Value()
+			for i := 0; i < len(val); i++ {
+				decimal32Val := val[i].(*model.Decimal32)
+				So(decimal32Val.Scale, ShouldEqual, 2)
+			}
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "")
+			So(result.Vector.Data.StringList()[1], ShouldEqual, "1.40")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 37)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32")
+		})
+		Convey("Test_pair_decimal32_last_one_null:", func() {
+			s, err := db.RunScript("a=(decimal32(-3.15554,2):decimal32(NULL,2));a")
+			So(err, ShouldBeNil)
+			result := s.(*model.Pair)
+			val := result.Vector.Data.Value()
+			for i := 0; i < len(val); i++ {
+				decimal32Val := val[i].(*model.Decimal32)
+				So(decimal32Val.Scale, ShouldEqual, 2)
+			}
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.15")
+			So(result.Vector.Data.StringList()[1], ShouldEqual, "")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 37)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Pair_DownLoad_decimal64(t *testing.T) {
+	Convey("Test_pair_decimal64:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_pair_decimal64_not_null:", func() {
+			s, err := db.RunScript("a=(decimal64(-3.15554,11):decimal64(1.4,11));a")
+			So(err, ShouldBeNil)
+			result := s.(*model.Pair)
+			val := result.Vector.Data.Value()
+			for i := 0; i < len(val); i++ {
+				decimal64Val := val[i].(*model.Decimal64)
+				So(decimal64Val.Scale, ShouldEqual, 11)
+			}
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.15554000000")
+			So(result.Vector.Data.StringList()[1], ShouldEqual, "1.40000000000")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 38)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64")
+		})
+		Convey("Test_pair_decimal64_pre_one_null :", func() {
+			s, err := db.RunScript("a=(decimal64(NULL,11):decimal64(1.4,11));a")
+			So(err, ShouldBeNil)
+			result := s.(*model.Pair)
+			val := result.Vector.Data.Value()
+			for i := 0; i < len(val); i++ {
+				decimal64Val := val[i].(*model.Decimal64)
+				So(decimal64Val.Scale, ShouldEqual, 11)
+			}
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "")
+			So(result.Vector.Data.StringList()[1], ShouldEqual, "1.40000000000")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 38)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64")
+		})
+		Convey("Test_pair_decimal64_last_one_null:", func() {
+			s, err := db.RunScript("a=(decimal64(-3.15554,11):decimal64(NULL,11));a")
+			So(err, ShouldBeNil)
+			result := s.(*model.Pair)
+			val := result.Vector.Data.Value()
+			for i := 0; i < len(val); i++ {
+				decimal64Val := val[i].(*model.Decimal64)
+				So(decimal64Val.Scale, ShouldEqual, 11)
+			}
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.15554000000")
+			So(result.Vector.Data.StringList()[1], ShouldEqual, "")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 38)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -831,7 +941,7 @@ func Test_Pair_DownLoad_iapaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		Convey("Test_pair_ipaddr number:", func() {
 			s, err := db.RunScript("a = (ipaddr('192.13.1.33'):ipaddr('191.168.1.13'));a")
@@ -843,7 +953,7 @@ func Test_Pair_DownLoad_iapaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		Convey("Test_pair_ipaddr_pre_one_null:", func() {
 			s, err := db.RunScript("a = (:ipaddr('3de8:13c6:df5f:bcd5:7605:3827:e37a:3a72'));a")
@@ -855,7 +965,7 @@ func Test_Pair_DownLoad_iapaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		Convey("Test_pair_ipaddr_last_one_null:", func() {
 			s, err := db.RunScript("a = (ipaddr('461c:7fa1:7f3c:7249:5278:c610:f595:d174'):);a")
@@ -867,7 +977,7 @@ func Test_Pair_DownLoad_iapaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -1050,7 +1160,7 @@ func Test_Pair_UpLoad_int(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_int:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtInt, []int32{-211, 9984})
+			data, _ := model.NewDataTypeListFromRawData(model.DtInt, []int32{-211, 9984})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1072,7 +1182,7 @@ func Test_Pair_UpLoad_short(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_short:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtShort, []int16{-211, 9984})
+			data, _ := model.NewDataTypeListFromRawData(model.DtShort, []int16{-211, 9984})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1094,7 +1204,7 @@ func Test_Pair_UpLoad_char(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_char:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtChar, []uint8{127, 84})
+			data, _ := model.NewDataTypeListFromRawData(model.DtChar, []uint8{127, 84})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1116,7 +1226,7 @@ func Test_Pair_UpLoad_long(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_long:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtLong, []int64{1212457, -21655484})
+			data, _ := model.NewDataTypeListFromRawData(model.DtLong, []int64{1212457, -21655484})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1138,7 +1248,7 @@ func Test_Pair_UpLoad_float(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_float:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtFloat, []float32{1212.457, -216.55484})
+			data, _ := model.NewDataTypeListFromRawData(model.DtFloat, []float32{1212.457, -216.55484})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1160,7 +1270,7 @@ func Test_Pair_UpLoad_double(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_double:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1212.457, -216.55484})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1212.457, -216.55484})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1182,7 +1292,7 @@ func Test_Pair_UpLoad_date(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_date:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDate, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1204,7 +1314,7 @@ func Test_Pair_UpLoad_month(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_month:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtMonth, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1226,7 +1336,7 @@ func Test_Pair_UpLoad_time(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_time:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtTime, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1248,7 +1358,7 @@ func Test_Pair_UpLoad_minute(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_minute:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtMinute, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1270,7 +1380,7 @@ func Test_Pair_UpLoad_second(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_second:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtSecond, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1292,7 +1402,7 @@ func Test_Pair_UpLoad_datetime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_datetime:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1314,7 +1424,7 @@ func Test_Pair_UpLoad_timestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_timestamp:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtTimestamp, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1336,7 +1446,7 @@ func Test_Pair_UpLoad_nanotime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_nanotime:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtNanoTime, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1358,7 +1468,7 @@ func Test_Pair_UpLoad_nanotimestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_nanotimestamp:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtNanoTimestamp, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1380,7 +1490,7 @@ func Test_Pair_UpLoad_datehour(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_datehour:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtDateHour, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			data, _ := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1402,7 +1512,7 @@ func Test_Pair_UpLoad_point(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_point:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtPoint, [][2]float64{{-1, -1024.5}, {1001022.4, -30028.75}})
+			data, _ := model.NewDataTypeListFromRawData(model.DtPoint, [][2]float64{{-1, -1024.5}, {1001022.4, -30028.75}})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1424,7 +1534,7 @@ func Test_Pair_UpLoad_complex(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_complex:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtComplex, [][2]float64{{-1, -1024.5}, {1001022.4, -30028.75}})
+			data, _ := model.NewDataTypeListFromRawData(model.DtComplex, [][2]float64{{-1, -1024.5}, {1001022.4, -30028.75}})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1446,7 +1556,7 @@ func Test_Pair_UpLoad_string(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_string:", func() {
-			data, _ := model.NewDataTypeListWithRaw(model.DtString, []string{"#$%", "数据类型"})
+			data, _ := model.NewDataTypeListFromRawData(model.DtString, []string{"#$%", "数据类型"})
 			pair := model.NewPair(model.NewVector(data))
 			_, err := db.Upload(map[string]model.DataForm{"s": pair})
 			res, _ := db.RunScript("s")
@@ -1468,7 +1578,7 @@ func Test_Pair_UpLoad_bool(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_bool:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtBool, []byte{1, 0})
+			data, err := model.NewDataTypeListFromRawData(model.DtBool, []bool{true, false})
 			pair := model.NewPair(model.NewVector(data))
 			So(err, ShouldBeNil)
 			_, err = db.Upload(map[string]model.DataForm{"s": pair})
@@ -1491,7 +1601,7 @@ func Test_Pair_UpLoad_uuid(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_uuid:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88"})
+			data, err := model.NewDataTypeListFromRawData(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88"})
 			pair := model.NewPair(model.NewVector(data))
 			So(err, ShouldBeNil)
 			_, err = db.Upload(map[string]model.DataForm{"s": pair})
@@ -1514,7 +1624,7 @@ func Test_Pair_UpLoad_int128(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_int128:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33"})
+			data, err := model.NewDataTypeListFromRawData(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33"})
 			pair := model.NewPair(model.NewVector(data))
 			So(err, ShouldBeNil)
 			_, err = db.Upload(map[string]model.DataForm{"s": pair})
@@ -1537,7 +1647,7 @@ func Test_Pair_UpLoad_ipaddr(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_ipaddr:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtIP, []string{"0.0.0.0", "127.0.0.1"})
+			data, err := model.NewDataTypeListFromRawData(model.DtIP, []string{"0.0.0.0", "127.0.0.1"})
 			pair := model.NewPair(model.NewVector(data))
 			So(err, ShouldBeNil)
 			_, err = db.Upload(map[string]model.DataForm{"s": pair})
@@ -1560,7 +1670,7 @@ func Test_Pair_UpLoad_duration(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_pair_duration:", func() {
-			data, err := model.NewDataTypeListWithRaw(model.DtDuration, []string{"1H", "52s"})
+			data, err := model.NewDataTypeListFromRawData(model.DtDuration, []string{"1H", "52s"})
 			pair := model.NewPair(model.NewVector(data))
 			So(err, ShouldBeNil)
 			_, err = db.Upload(map[string]model.DataForm{"s": pair})
@@ -1574,6 +1684,70 @@ func Test_Pair_UpLoad_duration(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(ty.String(), ShouldEqual, "string(DURATION PAIR)")
 			So(res.GetDataType(), ShouldEqual, model.DtDuration)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Pair_UpLoad_decimal32(t *testing.T) {
+	Convey("Test_pair_decimal32_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_pair_decimal32:", func() {
+			data, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{2, []float64{1.32157, model.NullDecimal32Value}})
+			pair := model.NewPair(model.NewVector(data))
+			_, err := db.Upload(map[string]model.DataForm{"s": pair})
+			So(err, ShouldBeNil)
+			res, err := db.RunScript("s")
+			So(err, ShouldBeNil)
+			ty, err := db.RunScript("typestr(s)")
+			So(err, ShouldBeNil)
+			re := res.(*model.Pair).Vector.Data.Value()
+			val := res.(*model.Pair).Vector.Data.StringList()
+			for i := 0; i < len(re); i++ {
+				So(re[i].(*model.Decimal32).Scale, ShouldEqual, 2)
+			}
+			So(val[0], ShouldEqual, "1.32")
+			So(val[1], ShouldEqual, "")
+			So(ty.String(), ShouldEqual, "string(DECIMAL32 PAIR)")
+			So(res.GetDataType(), ShouldEqual, model.DtDecimal32)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Pair_UpLoad_decimal64(t *testing.T) {
+	Convey("Test_pair_decimal64_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_pair_decimal64:", func() {
+			data, _ := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{11, []float64{1.64157, model.NullDecimal64Value}})
+			pair := model.NewPair(model.NewVector(data))
+			_, err := db.Upload(map[string]model.DataForm{"s": pair})
+			So(err, ShouldBeNil)
+			res, err := db.RunScript("s")
+			So(err, ShouldBeNil)
+			ty, err := db.RunScript("typestr(s)")
+			So(err, ShouldBeNil)
+			re := res.(*model.Pair).Vector.Data.Value()
+			val := res.(*model.Pair).Vector.Data.StringList()
+			for i := 0; i < len(re); i++ {
+				So(re[i].(*model.Decimal64).Scale, ShouldEqual, 11)
+			}
+			So(val[0], ShouldEqual, "1.64157000000")
+			So(val[1], ShouldEqual, "")
+			So(ty.String(), ShouldEqual, "string(DECIMAL64 PAIR)")
+			So(res.GetDataType(), ShouldEqual, model.DtDecimal64)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Pair_UpLoad_with_list_mt_2_values(t *testing.T) {
+	Convey("Test_pair_upload_with_list_morethan_2_values:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_pair_upload_with_list_3_values:", func() {
+			data, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{2, []float64{1.32157, 2.7, model.NullDecimal32Value}})
+			pair := model.NewPair(model.NewVector(data))
+			fmt.Print(pair.Vector.Data.Value()...)
 		})
 		So(db.Close(), ShouldBeNil)
 	})

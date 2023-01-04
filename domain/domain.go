@@ -39,22 +39,22 @@ func CreateDomain(p PartitionType, d model.DataTypeByte, schema model.DataForm) 
 		val := s.DataType.Value()
 
 		return &HashDomain{
-			dt:      d,
-			cat:     dataCat,
-			buckets: int(val.(int32)),
+			dataTypeByte: d,
+			category:     dataCat,
+			buckets:      int(val.(int32)),
 		}, nil
 	case VALUE:
 		vct := schema.(*model.Vector)
 		return &ValueDomain{
-			dt:  vct.GetDataType(),
-			cat: model.GetCategory(vct.GetDataType()),
+			dataTypeByte: vct.GetDataType(),
+			category:     model.GetCategory(vct.GetDataType()),
 		}, nil
 	case RANGE:
 		vct := schema.(*model.Vector)
 		return &RangeDomain{
-			dt:          vct.GetDataType(),
-			cat:         model.GetCategory(vct.GetDataType()),
-			rangeVector: vct,
+			dataTypeByte: vct.GetDataType(),
+			category:     model.GetCategory(vct.GetDataType()),
+			rangeVector:  vct,
 		}, nil
 	case LIST:
 		vct := schema.(*model.Vector)

@@ -9,18 +9,18 @@ import (
 )
 
 func TestRangeDomain(t *testing.T) {
-	dtl, err := model.NewDataTypeListWithRaw(model.DtString, []string{"domain", "sample", "zero"})
+	dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"domain", "sample", "zero"})
 	assert.Nil(t, err)
 
 	schema := model.NewVector(dtl)
 
 	rd := &RangeDomain{
-		rangeVector: schema,
-		dt:          model.DtString,
-		cat:         model.LITERAL,
+		rangeVector:  schema,
+		dataTypeByte: model.DtString,
+		category:     model.LITERAL,
 	}
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtBool, []byte{1})
+	dtl, err = model.NewDataTypeListFromRawData(model.DtBool, []byte{1})
 	assert.Nil(t, err)
 
 	schema = model.NewVector(dtl)
@@ -28,7 +28,7 @@ func TestRangeDomain(t *testing.T) {
 	_, err = rd.GetPartitionKeys(schema)
 	assert.Equal(t, err.Error(), "data category incompatible")
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtString, []string{"domain"})
+	dtl, err = model.NewDataTypeListFromRawData(model.DtString, []string{"domain"})
 	assert.Nil(t, err)
 
 	schema = model.NewVector(dtl)
@@ -37,7 +37,7 @@ func TestRangeDomain(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, keys, []int{0})
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtString, []string{"sample"})
+	dtl, err = model.NewDataTypeListFromRawData(model.DtString, []string{"sample"})
 	assert.Nil(t, err)
 
 	schema = model.NewVector(dtl)

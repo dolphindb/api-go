@@ -809,7 +809,7 @@ func Test_Dictionary_DownLoad_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		Convey("Test_dictionary_datehour_null_values:", func() {
 			s, err := db.RunScript("x=datehour([2022.07.29 15:00:00.000, 2022.07.29 16:00:00.000, 2022.07.29 17:00:00.000]);y=take(datehour(['','','']),3);z=dict(x, y);z")
@@ -827,19 +827,92 @@ func Test_Dictionary_DownLoad_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Dictionary_DownLoad_decimal32(t *testing.T) {
+	Convey("Test_dictionary_decimal32:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_dictionary_decimal32_not_null:", func() {
+			s, err := db.RunScript("x=`a`b`c`d`e;y=take(0.99999,5)$DECIMAL32(2);z=dict(x,y);z")
+			So(err, ShouldBeNil)
+			result := s.(*model.Dictionary)
+			key := []string{"a", "b", "c", "d"}
+			val := &model.Decimal32s{2, []float64{0.99, 0.99, 0.99}}
+			for i := 0; i < 3; i++ {
+				get, _ := result.Get(key[i])
+				zx := get.Value().(*model.Scalar).Value().(*model.Decimal32)
+				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
+				So(zx.Scale, ShouldEqual, val.Scale)
+				So(zx.Value, ShouldEqual, val.Value[i])
+			}
+		})
+		Convey("Test_dictionary_decimal32_null_values:", func() {
+			s, err := db.RunScript("x=`a`b`c`d`e;y=take(decimal32(NULL,5),5);z=dict(x,y);z")
+			So(err, ShouldBeNil)
+			result := s.(*model.Dictionary)
+			key := []string{"a", "b", "c", "d"}
+			val := &model.Decimal32s{5, []float64{model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value}}
+			for i := 0; i < 3; i++ {
+				get, _ := result.Get(key[i])
+				So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
+				zx := get.Value().(*model.Scalar).Value().(*model.Decimal32)
+				// fmt.Println(zx.Scale, zx.Value, val.Value)
+				So(zx.Scale, ShouldEqual, val.Scale)
+			}
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Dictionary_DownLoad_decimal64(t *testing.T) {
+	Convey("Test_dictionary_decimal64:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_dictionary_decimal64_not_null:", func() {
+			s, err := db.RunScript("x=`a`b`c`d`e;y=take(0.999994564855,5)$DECIMAL64(11);z=dict(x,y);z")
+			So(err, ShouldBeNil)
+			result := s.(*model.Dictionary)
+			key := []string{"a", "b", "c", "d"}
+			val := &model.Decimal64s{11, []float64{0.99999456485, 0.99999456485, 0.99999456485}}
+			for i := 0; i < 3; i++ {
+				get, _ := result.Get(key[i])
+				zx := get.Value().(*model.Scalar).Value().(*model.Decimal64)
+				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
+				So(zx.Scale, ShouldEqual, val.Scale)
+				So(zx.Value, ShouldEqual, val.Value[i])
+			}
+		})
+		Convey("Test_dictionary_decimal64_null_values:", func() {
+			s, err := db.RunScript("x=`a`b`c`d`e;y=take(decimal64(NULL,5),5);z=dict(x,y);z")
+			So(err, ShouldBeNil)
+			result := s.(*model.Dictionary)
+			key := []string{"a", "b", "c", "d"}
+			val := &model.Decimal64s{5, []float64{model.NullDecimal64Value, model.NullDecimal64Value, model.NullDecimal64Value}}
+			for i := 0; i < 3; i++ {
+				get, _ := result.Get(key[i])
+				So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
+				zx := get.Value().(*model.Scalar).Value().(*model.Decimal64)
+				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
+				So(zx.Scale, ShouldEqual, val.Scale)
+			}
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Dictionary_UpLoad_int_and_long(t *testing.T) {
 	Convey("Test_dictionary_int->long_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_int->long:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{2, -6, 1024, 1048576, -2019})
+			keys, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{2, -6, 1024, 1048576, -2019})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtLong, []int64{4875, -23, 1048576, 666, -2205})
+			values, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{4875, -23, 1048576, 666, -2205})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -868,9 +941,9 @@ func Test_Dictionary_UpLoad_short_and_char(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_short->char:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtShort, []int16{2, -6, 102})
+			keys, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{2, -6, 102})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtChar, []byte{48, 23, 10})
+			values, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{48, 23, 10})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -902,9 +975,9 @@ func Test_Dictionary_UpLoad_long_and_float(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_long->float:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtLong, []int64{1522542, -1768546, 2022102})
+			keys, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{1522542, -1768546, 2022102})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtFloat, []float32{48.10485, 278953.6, 5454.1515})
+			values, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{48.10485, 278953.6, 5454.1515})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -933,9 +1006,9 @@ func Test_Dictionary_UpLoad_double_and_date(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_double->date:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1522.12, -1766.321, 2102.5454})
+			keys, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1522.12, -1766.321, 2102.5454})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			values, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -964,9 +1037,9 @@ func Test_Dictionary_UpLoad_month_and_time(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_double->date:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			keys, err := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			values, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -995,9 +1068,9 @@ func Test_Dictionary_UpLoad_minute_and_second(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_minute->second:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			keys, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			values, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -1026,9 +1099,9 @@ func Test_Dictionary_UpLoad_datetime_and_timestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_datetime->timestamp:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			keys, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			values, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -1057,9 +1130,9 @@ func Test_Dictionary_UpLoad_nanotime_and_nanotimestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_nanotime->nanotimestamp:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			keys, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			values, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -1088,9 +1161,9 @@ func Test_Dictionary_UpLoad_string_and_datehour(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_string->datehour:", func() {
-			keys, err := model.NewDataTypeListWithRaw(model.DtString, []string{"hello", "%^*", "数据类型"})
+			keys, err := model.NewDataTypeListFromRawData(model.DtString, []string{"hello", "%^*", "数据类型"})
 			So(err, ShouldBeNil)
-			values, err := model.NewDataTypeListWithRaw(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			values, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})
@@ -1114,6 +1187,89 @@ func Test_Dictionary_UpLoad_string_and_datehour(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+func Test_Dictionary_UpLoad_string_and_decimal32(t *testing.T) {
+	Convey("Test_dictionary_string->decimal32_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_dictionary_string->decimal32:", func() {
+			keys, err := model.NewDataTypeListFromRawData(model.DtString, []string{"v1", "v2", "v3"})
+			So(err, ShouldBeNil)
+			values, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{2, []float64{1.33545, -2.3, model.NullDecimal32Value}})
+			So(err, ShouldBeNil)
+			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
+			_, err = db.Upload(map[string]model.DataForm{"s": dict})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("s")
+			result := res.(*model.Dictionary)
+			ty, _ := db.RunScript("typestr(s)")
+			key := []string{"v1", "v2", "v3"}
+			val := &model.Decimal32s{2, []float64{1.33, -2.30, model.NullDecimal32Value}}
+			for i := 0; i < 3; i++ {
+				get, _ := result.Get(key[i])
+				zx := get.Value().(*model.Scalar).Value().(*model.Decimal32)
+				if i < 2 {
+					So(zx.Scale, ShouldEqual, val.Scale)
+					So(zx.Value, ShouldEqual, val.Value[i])
+				} else {
+					So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
+				}
+				switch {
+				case i == 0:
+					So(get.String(), ShouldEqual, "decimal32(1.33)")
+				case i == 1:
+					So(get.String(), ShouldEqual, "decimal32(-2.30)")
+				case i == 2:
+					So(get.String(), ShouldEqual, "decimal32()")
+				}
+
+			}
+			So(ty.String(), ShouldEqual, "string(STRING->ANY DICTIONARY)")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Dictionary_UpLoad_string_and_decimal64(t *testing.T) {
+	Convey("Test_dictionary_string->decimal64_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_dictionary_string->decimal64:", func() {
+			keys, err := model.NewDataTypeListFromRawData(model.DtString, []string{"v1", "v2", "v3"})
+			So(err, ShouldBeNil)
+			values, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{11, []float64{1.33545, -2.354212356171, model.NullDecimal64Value}})
+			So(err, ShouldBeNil)
+			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
+			_, err = db.Upload(map[string]model.DataForm{"s": dict})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("s")
+			result := res.(*model.Dictionary)
+			ty, _ := db.RunScript("typestr(s)")
+			key := []string{"v1", "v2", "v3"}
+			val := &model.Decimal64s{11, []float64{1.33545, -2.35421235617, model.NullDecimal64Value}}
+			for i := 0; i < 3; i++ {
+				get, _ := result.Get(key[i])
+				zx := get.Value().(*model.Scalar).Value().(*model.Decimal64)
+				if i < 2 {
+					So(zx.Scale, ShouldEqual, val.Scale)
+					So(zx.Value, ShouldEqual, val.Value[i])
+				} else {
+					So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
+				}
+				switch {
+				case i == 0:
+					So(get.String(), ShouldEqual, "decimal64(1.33545000000)")
+				case i == 1:
+					So(get.String(), ShouldEqual, "decimal64(-2.35421235617)")
+				case i == 2:
+					So(get.String(), ShouldEqual, "decimal64()")
+				}
+			}
+			So(ty.String(), ShouldEqual, "string(STRING->ANY DICTIONARY)")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Dictionary_UpLoad_big_array_int_and_string(t *testing.T) {
 	Convey("Test_dictionary_big_array_int_and_string:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
@@ -1125,14 +1281,14 @@ func Test_Dictionary_UpLoad_big_array_int_and_string(t *testing.T) {
 				intv = append(intv, i)
 			}
 			intv = append(intv, model.NullInt)
-			keys, err := model.NewDataTypeListWithRaw(model.DtInt, intv)
+			keys, err := model.NewDataTypeListFromRawData(model.DtInt, intv)
 			So(err, ShouldBeNil)
 			stringv := []string{}
 			for i = 0; i < 3000000*12; i += 12 {
 				stringv = append(stringv, string("hello"))
 			}
 			stringv = append(stringv, model.NullString)
-			values, err := model.NewDataTypeListWithRaw(model.DtString, stringv)
+			values, err := model.NewDataTypeListFromRawData(model.DtString, stringv)
 			So(err, ShouldBeNil)
 			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
 			_, err = db.Upload(map[string]model.DataForm{"s": dict})

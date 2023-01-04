@@ -65,7 +65,7 @@ func PartitionedTableAppenderWithValueDomain(db api.DolphinDB) {
 		times[i] = time.Now()
 	}
 
-	l, err := model.NewDataTypeListWithRaw(model.DtTimestamp, times)
+	l, err := model.NewDataTypeListFromRawData(model.DtTimestamp, times)
 	util.AssertNil(err)
 
 	cols[0] = model.NewVector(l)
@@ -78,7 +78,7 @@ func PartitionedTableAppenderWithValueDomain(db api.DolphinDB) {
 		sym[i+3] = "5"
 	}
 
-	l, err = model.NewDataTypeListWithRaw(model.DtString, sym)
+	l, err = model.NewDataTypeListFromRawData(model.DtString, sym)
 	util.AssertNil(err)
 
 	cols[1] = model.NewVector(l)
@@ -141,7 +141,7 @@ func PartitionedTableAppenderWithHashDomain(db api.DolphinDB) {
 		times[i] = time.Date(2020, time.Month(5), 06, 21, 01, 48, 200, time.UTC)
 	}
 
-	l, err := model.NewDataTypeListWithRaw(model.DtTimestamp, times)
+	l, err := model.NewDataTypeListFromRawData(model.DtTimestamp, times)
 	util.AssertNil(err)
 
 	cols[0] = model.NewVector(l)
@@ -154,7 +154,7 @@ func PartitionedTableAppenderWithHashDomain(db api.DolphinDB) {
 		sym[i+3] = int32(11)
 	}
 
-	l, err = model.NewDataTypeListWithRaw(model.DtInt, sym)
+	l, err = model.NewDataTypeListFromRawData(model.DtInt, sym)
 	util.AssertNil(err)
 
 	cols[1] = model.NewVector(l)
@@ -223,17 +223,17 @@ func packTable() *model.Table {
 		data[i] = rand.Float64()
 	}
 
-	dtl, err := model.NewDataTypeListWithRaw(model.DtInt, id)
+	dtl, err := model.NewDataTypeListFromRawData(model.DtInt, id)
 	util.AssertNil(err)
 
 	idVct := model.NewVector(dtl)
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtDouble, data)
+	dtl, err = model.NewDataTypeListFromRawData(model.DtDouble, data)
 	util.AssertNil(err)
 
 	dataVct := model.NewVector(dtl)
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtTimestamp, ts)
+	dtl, err = model.NewDataTypeListFromRawData(model.DtTimestamp, ts)
 	util.AssertNil(err)
 
 	timeVct := model.NewVector(dtl)

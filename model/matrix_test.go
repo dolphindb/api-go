@@ -11,13 +11,13 @@ import (
 const matrixExpect = "matrix<string>[3r][1c]({\n  rows: [value1, value2, value3],\n  cols: [value1, value2, value3],\n  data: stringArray(3) [\n    key1,\n    key2,\n    key3,\n  ]\n})"
 
 func TestMatrix(t *testing.T) {
-	data, err := NewDataTypeListWithRaw(DtString, []string{"key1", "key2", "key3"})
+	data, err := NewDataTypeListFromRawData(DtString, []string{"key1", "key2", "key3"})
 	assert.Nil(t, err)
 
-	rl, err := NewDataTypeListWithRaw(DtString, []string{"value1", "value2", "value3"})
+	rl, err := NewDataTypeListFromRawData(DtString, []string{"value1", "value2", "value3"})
 	assert.Nil(t, err)
 
-	cl, err := NewDataTypeListWithRaw(DtString, []string{"value1", "value2", "value3"})
+	cl, err := NewDataTypeListFromRawData(DtString, []string{"value1", "value2", "value3"})
 	assert.Nil(t, err)
 
 	mtx := NewMatrix(NewVector(data), NewVector(rl), NewVector(cl))
