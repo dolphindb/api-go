@@ -10,7 +10,7 @@ import (
 
 // CheckFunction checks whether the RunFunc is valid.
 func CheckFunction(db api.DolphinDB) {
-	l, err := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1.5, 2.5, 7})
+	l, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1.5, 2.5, 7})
 	util.AssertNil(err)
 
 	df, err := db.RunFunc("sum", []model.DataForm{model.NewVector(l)})

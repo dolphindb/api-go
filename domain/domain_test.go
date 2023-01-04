@@ -11,7 +11,7 @@ import (
 func TestDomain(t *testing.T) {
 	dtb := model.DtString
 
-	dtl, err := model.NewDataTypeListWithRaw(dtb, []string{"domain"})
+	dtl, err := model.NewDataTypeListFromRawData(dtb, []string{"domain"})
 	assert.Nil(t, err)
 
 	schema := model.NewVector(dtl)
@@ -25,18 +25,18 @@ func TestDomain(t *testing.T) {
 	assert.Nil(t, err)
 
 	vd := domain.(*ValueDomain)
-	assert.Equal(t, vd.dt, dtb)
-	assert.Equal(t, vd.cat, model.GetCategory(dtb))
+	assert.Equal(t, vd.dataTypeByte, dtb)
+	assert.Equal(t, vd.category, model.GetCategory(dtb))
 
 	pt = GetPartitionType(2)
 	domain, err = CreateDomain(pt, dtb, schema)
 	assert.Nil(t, err)
 
 	rd := domain.(*RangeDomain)
-	assert.Equal(t, rd.dt, dtb)
-	assert.Equal(t, rd.cat, model.GetCategory(dtb))
+	assert.Equal(t, rd.dataTypeByte, dtb)
+	assert.Equal(t, rd.category, model.GetCategory(dtb))
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtAny, []model.DataForm{schema})
+	dtl, err = model.NewDataTypeListFromRawData(model.DtAny, []model.DataForm{schema})
 	assert.Nil(t, err)
 
 	schema = model.NewVector(dtl)
@@ -46,8 +46,8 @@ func TestDomain(t *testing.T) {
 	assert.Nil(t, err)
 
 	ld := domain.(*ListDomain)
-	assert.Equal(t, ld.dt, dtb)
-	assert.Equal(t, ld.cat, model.GetCategory(dtb))
+	assert.Equal(t, ld.dataTypeByte, dtb)
+	assert.Equal(t, ld.category, model.GetCategory(dtb))
 
 	pt = GetPartitionType(4)
 	_, err = CreateDomain(pt, dtb, schema)
@@ -62,8 +62,8 @@ func TestDomain(t *testing.T) {
 	assert.Nil(t, err)
 
 	hd := domain.(*HashDomain)
-	assert.Equal(t, hd.dt, dtb)
-	assert.Equal(t, hd.cat, model.GetCategory(dtb))
+	assert.Equal(t, hd.dataTypeByte, dtb)
+	assert.Equal(t, hd.category, model.GetCategory(dtb))
 
 	pt = GetPartitionType(6)
 	_, err = CreateDomain(pt, dtb, schema)

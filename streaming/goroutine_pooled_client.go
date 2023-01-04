@@ -57,15 +57,7 @@ func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
 		return err
 	}
 
-	conn, err := newConnectedConn(req.Address)
-	if err != nil {
-		fmt.Printf("Failed to instantiate a connected conn: %s\n", err.Error())
-		return err
-	}
-
-	defer conn.Close()
-
-	topicStr, err := t.getTopicFromServer(req.TableName, req.ActionName, conn)
+	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return err
@@ -92,15 +84,7 @@ func (t *GoroutinePooledClient) UnSubscribe(req *SubscribeRequest) error {
 		return err
 	}
 
-	conn, err := newConnectedConn(req.Address)
-	if err != nil {
-		fmt.Printf("Failed to instantiate a connected conn: %s\n", err.Error())
-		return err
-	}
-
-	defer conn.Close()
-
-	topicStr, err := t.getTopicFromServer(req.TableName, req.ActionName, conn)
+	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return err
@@ -134,60 +118,13 @@ func (t *GoroutinePooledClient) Close() {
 func (t *GoroutinePooledClient) doReconnect(s *site) bool {
 	topicStr := fmt.Sprintf("%s/%s/%s", s.address, s.tableName, s.actionName)
 
-	req := &SubscribeRequest{
-		Address:    s.address,
-		TableName:  s.tableName,
-		ActionName: s.actionName,
-		Handler:    s.handler,
-		Offset:     s.msgID + 1,
-		Filter:     s.filter,
-		Reconnect:  s.reconnect,
-	}
-
-	if err := t.Subscribe(req); err != nil {
+	if err := t.Subscribe(transSiteToNewSubscribeRequest(s)); err != nil {
 		fmt.Printf("%s %s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String(), topicStr)
 		return false
 	}
 
 	fmt.Printf("%s %s Successfully reconnected and subscribed.\n", time.Now().UTC().String(), topicStr)
 	return true
-}
-
-func (t *GoroutinePooledClient) tryReconnect(topic string) bool {
-	topicRaw, ok := haTopicToTrueTopic.Load(topic)
-	if !ok {
-		return false
-	}
-
-	queueMap.Delete(topicRaw)
-
-	raw, ok := trueTopicToSites.Load(topicRaw)
-	if !ok {
-		return false
-	}
-
-	sites := raw.([]*site)
-
-	if len(sites) == 0 {
-		return false
-	}
-
-	if len(sites) == 1 && !sites[0].reconnect {
-		return false
-	}
-
-	site := getActiveSite(sites)
-	if site != nil {
-		if t.doReconnect(site) {
-			waitReconnectTopic.Delete(topicRaw)
-			return true
-		}
-
-		waitReconnectTopic.Store(topicRaw, topicRaw)
-		return false
-	}
-
-	return false
 }
 
 func (t *GoroutinePooledClient) run() {
@@ -206,9 +143,7 @@ func (t *GoroutinePooledClient) run() {
 
 				binder := raw.(*queueHandlerBinder)
 
-				go func() {
-					binder.handler.DoEvent(msg)
-				}()
+				go binder.handler.DoEvent(msg)
 
 			default:
 				if backLog.Len() == 0 && backLog.BufLen() == 0 {

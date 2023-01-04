@@ -11,19 +11,19 @@ import (
 
 func TestHashDomain(t *testing.T) {
 	hd := &HashDomain{
-		buckets: 10,
-		dt:      model.DtDate,
-		cat:     model.GetCategory(model.DtDate),
+		buckets:      10,
+		dataTypeByte: model.DtDate,
+		category:     model.GetCategory(model.DtDate),
 	}
 
-	dtl, err := model.NewDataTypeListWithRaw(model.DtString, []string{"domain"})
+	dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"domain"})
 	assert.Nil(t, err)
 
 	pv := model.NewVector(dtl)
 	_, err = hd.GetPartitionKeys(pv)
 	assert.Equal(t, "data category incompatible", err.Error())
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 1, 1, time.UTC)})
+	dtl, err = model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	pv = model.NewVector(dtl)

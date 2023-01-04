@@ -27,7 +27,7 @@ func (m *messageParser) run() {
 			return
 		}
 
-		setNeedReconnect(m.topic, 1)
+		setReconnectItem(m.topic, 1)
 	}
 }
 
@@ -74,33 +74,37 @@ func (m *messageParser) parse() error {
 			return err
 		}
 
-		df, err := model.ParseDataForm(r, bo)
+		err = m.parseData(msgID, r, bo)
 		if err != nil {
-			fmt.Printf("Failed to parse DataForm: %s\n", err.Error())
 			return err
-		}
-
-		switch {
-		case df.GetDataForm() == model.DfTable:
-			m.handleTable(df.(*model.Table))
-		case df.GetDataForm() == model.DfVector:
-			m.handleVector(msgID, df.(*model.Vector))
-		default:
-			fmt.Println("Invalid format in the message body. Vector or table is expected")
 		}
 	}
 
 	return nil
 }
 
-func (m *messageParser) handleTable(tb *model.Table) {
-	if tb.Rows() != 0 {
-		fmt.Println("Invalid format in the message body. Vector or table is expected")
-		return
+func (m *messageParser) parseData(msgID uint64, r protocol.Reader, bo protocol.ByteOrder) error {
+	df, err := model.ParseDataForm(r, bo)
+	if err != nil {
+		fmt.Printf("Failed to parse DataForm: %s\n", err.Error())
+		return err
 	}
 
+	switch {
+	case df.GetDataForm() == model.DfTable && df.Rows() == 0:
+		m.parseTable(df.(*model.Table))
+	case df.GetDataForm() == model.DfVector:
+		m.parseVector(msgID, df.(*model.Vector))
+	default:
+		fmt.Println("Invalid format in the message body. Vector or table is expected")
+	}
+
+	return nil
+}
+
+func (m *messageParser) parseTable(tb *model.Table) {
 	for _, v := range strings.Split(m.topic, ",") {
-		setNeedReconnect(v, 0)
+		setReconnectItem(v, 0)
 	}
 
 	nameToIndex := make(map[string]int)
@@ -113,47 +117,49 @@ func (m *messageParser) handleTable(tb *model.Table) {
 	m.topicNameToIndex[m.topic] = nameToIndex
 }
 
-func (m *messageParser) handleVector(msgID uint64, vct *model.Vector) {
+func (m *messageParser) parseVector(msgID uint64, vct *model.Vector) {
 	colSize := vct.Rows()
 	rowSize := vct.Data.ElementValue(0).(model.DataForm).Rows()
 	if rowSize > 1 {
-		msgs := make([]IMessage, rowSize)
-		st := msgID - uint64(rowSize) + 1
-		for i := 0; i < rowSize; i++ {
-			dts := make([]model.DataForm, colSize)
-			for j := 0; j < colSize; j++ {
-				df := vct.Data.ElementValue(j).(*model.Vector)
-				if df.GetDataType() > 64 && df.GetDataType() < 128 {
-					d, _ := model.NewDataType(model.DtAny, df.GetVectorValue(i))
-					dts[j] = model.NewScalar(d)
-				} else {
-					dts[j] = model.NewScalar(df.Get(i))
-				}
-			}
-
-			dtl, _ := model.NewDataTypeListWithRaw(model.DtAny, dts)
-			topics := strings.Split(m.topic, ",")
-			msg := &Message{
-				offset:      int64(st),
-				topic:       m.topic,
-				msg:         model.NewVector(dtl),
-				nameToIndex: m.topicNameToIndex[topics[0]],
-			}
-
-			msgs[i] = msg
-		}
-
-		batchDispatch(msgs)
+		m.parseVectorWithMultiRows(rowSize, colSize, msgID, vct)
 	} else if rowSize == 1 {
-		topics := strings.Split(m.topic, ",")
-		msg := &Message{
-			offset:      int64(msgID),
-			topic:       m.topic,
-			msg:         vct,
-			nameToIndex: m.topicNameToIndex[topics[0]],
-		}
+		dispatch(m.generateMessage(int64(msgID), vct))
+	}
+}
 
-		dispatch(msg)
+func (m *messageParser) parseVectorWithMultiRows(rowSize, colSize int, msgID uint64, vct *model.Vector) {
+	msgs := make([]IMessage, rowSize)
+	st := msgID - uint64(rowSize) + 1
+	for i := 0; i < rowSize; i++ {
+		msgs[i] = m.generateMessage(int64(st), repackVector(i, colSize, vct))
+	}
+
+	batchDispatch(msgs)
+}
+
+func repackVector(ind, colSize int, vct *model.Vector) *model.Vector {
+	dts := make([]model.DataForm, colSize)
+	for j := 0; j < colSize; j++ {
+		df := vct.Data.ElementValue(j).(*model.Vector)
+		if df.GetDataType() > 64 && df.GetDataType() < 128 {
+			d, _ := model.NewDataType(model.DtAny, df.GetVectorValue(ind))
+			dts[j] = model.NewScalar(d)
+		} else {
+			dts[j] = model.NewScalar(df.Get(ind))
+		}
+	}
+
+	dtl, _ := model.NewDataTypeListFromRawData(model.DtAny, dts)
+	return model.NewVector(dtl)
+}
+
+func (m *messageParser) generateMessage(offset int64, vct *model.Vector) *Message {
+	topics := strings.Split(m.topic, ",")
+	return &Message{
+		offset:      offset,
+		topic:       m.topic,
+		msg:         vct,
+		nameToIndex: m.topicNameToIndex[topics[0]],
 	}
 }
 

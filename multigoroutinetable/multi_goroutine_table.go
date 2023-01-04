@@ -55,21 +55,8 @@ func NewMultiGoroutineTable(opt *Option) (*MultiGoroutineTable, error) {
 		return nil, err
 	}
 
-	schema, err := mtt.getSchema(opt)
+	err = mtt.generateMultiGoroutineTable(opt)
 	if err != nil {
-		fmt.Printf("Failed to get schema: %s\n", err.Error())
-		return nil, err
-	}
-
-	err = mtt.handleSchemaColumn(schema)
-	if err != nil {
-		fmt.Printf("Failed to handle columns of the table returned by function schema: %s\n", err.Error())
-		return nil, err
-	}
-
-	err = mtt.handlePartitionColumnName(schema, opt)
-	if err != nil {
-		fmt.Printf("Failed to handle PartitionColumnName: %s\n", err.Error())
 		return nil, err
 	}
 
@@ -87,6 +74,34 @@ func NewMultiGoroutineTable(opt *Option) (*MultiGoroutineTable, error) {
 	return mtt, nil
 }
 
+func (mtt *MultiGoroutineTable) generateMultiGoroutineTable(opt *Option) error {
+	schema, err := mtt.getSchema(opt)
+	if err != nil {
+		fmt.Printf("Failed to get schema: %s\n", err.Error())
+		return err
+	}
+
+	err = mtt.assignWithColDefs(schema)
+	if err != nil {
+		fmt.Printf("Failed to handle columns of the table returned by function schema: %s\n", err.Error())
+		return err
+	}
+
+	dt, err := schema.Get("partitionColumnName")
+	if err != nil {
+		if !strings.Contains(err.Error(), "invalid key") {
+			fmt.Printf("Failed to get partitionColumnName: %s\n", err.Error())
+			return err
+		}
+
+		err = mtt.assignForNonPartitionTable(opt)
+	} else {
+		err = mtt.assignForPartitionTable(dt, schema, opt)
+	}
+
+	return err
+}
+
 // Insert inserts data into the table.
 // The length of args must be equal with the number of columns of the table.
 func (mtt *MultiGoroutineTable) Insert(args ...interface{}) error {
@@ -98,15 +113,9 @@ func (mtt *MultiGoroutineTable) Insert(args ...interface{}) error {
 		return errors.New("column counts don't match")
 	}
 
-	prow := make([]model.DataType, len(args))
-	for k, v := range args {
-		d, err := packDataType(model.DataTypeByte(mtt.colTypes[k]), v)
-		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with arg: %s\n", err.Error())
-			return err
-		}
-
-		prow[k] = d
+	prow, err := mtt.getDataTypes(args...)
+	if err != nil {
+		return err
 	}
 
 	goroutineInd, err := mtt.getGoroutineInd(prow)
@@ -120,7 +129,22 @@ func (mtt *MultiGoroutineTable) Insert(args ...interface{}) error {
 	return nil
 }
 
-func packDataType(dt model.DataTypeByte, v interface{}) (model.DataType, error) {
+func (mtt *MultiGoroutineTable) getDataTypes(args ...interface{}) ([]model.DataType, error) {
+	prow := make([]model.DataType, len(args))
+	for k, v := range args {
+		d, err := getDataType(model.DataTypeByte(mtt.colTypes[k]), v)
+		if err != nil {
+			fmt.Printf("Failed to instantiate DataType with arg: %s\n", err.Error())
+			return prow, err
+		}
+
+		prow[k] = d
+	}
+
+	return prow, nil
+}
+
+func getDataType(dt model.DataTypeByte, v interface{}) (model.DataType, error) {
 	if d, ok := v.(model.DataType); ok {
 		return d, nil
 	}
@@ -132,7 +156,7 @@ func packDataType(dt model.DataTypeByte, v interface{}) (model.DataType, error) 
 			return model.NewDataType(model.DtAny, vct)
 		}
 
-		dtl, err := model.NewDataTypeListWithRaw(dt, v)
+		dtl, err := model.NewDataTypeListFromRawData(dt, v)
 		if err != nil {
 			return nil, err
 		}
@@ -154,6 +178,7 @@ func (mtt *MultiGoroutineTable) GetStatus() *Status {
 		ErrMsg:              mtt.errorInfo,
 		IsExit:              mtt.isExist(),
 		GoroutineStatusList: make([]*GoroutineStatus, len(mtt.goroutines)),
+		GoroutineStatus:     make([]*GoroutineStatus, len(mtt.goroutines)),
 	}
 
 	for k, v := range mtt.goroutines {
@@ -161,8 +186,10 @@ func (mtt *MultiGoroutineTable) GetStatus() *Status {
 		v.getStatus(ts)
 		s.SentRows += ts.SentRows
 		s.UnSentRows += ts.UnSentRows
+		s.UnsentRows += ts.UnsentRows
 		s.FailedRows += ts.FailedRows
 		s.GoroutineStatusList[k] = ts
+		s.GoroutineStatus[k] = ts
 	}
 
 	return s
@@ -173,21 +200,18 @@ func (mtt *MultiGoroutineTable) GetUnwrittenData() [][]model.DataType {
 	data := make([][]model.DataType, 0)
 loop:
 	for _, v := range mtt.goroutines {
-	failed:
 		for {
-			select {
-			case val := <-v.failedQueue.Out:
-				data = append(data, val.([]model.DataType))
-			default:
-				break failed
+			if val := v.failedQueue.load(); val != nil {
+				data = append(data, val)
+			} else {
+				break
 			}
 		}
 
 		for {
-			select {
-			case val := <-v.writeQueue.Out:
-				data = append(data, val.([]model.DataType))
-			default:
+			if val := v.writeQueue.load(); val != nil {
+				data = append(data, val)
+			} else {
 				break loop
 			}
 		}
@@ -203,39 +227,52 @@ func (mtt *MultiGoroutineTable) InsertUnwrittenData(records [][]model.DataType) 
 		return errors.New("goroutine already exists")
 	}
 
+	var err error
 	if len(mtt.goroutines) > 1 {
 		if mtt.isPartition {
-			pvc, err := mtt.packVector(records, int(mtt.partitionColumnIdx))
-			if err != nil {
-				fmt.Printf("Failed to pack vector: %s\n", err.Error())
-				return err
-			}
-
-			goroutineIndexes, err := mtt.partitionDomain.GetPartitionKeys(pvc)
-			if err != nil {
-				fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
-				return err
-			}
-
-			for k, v := range goroutineIndexes {
-				mtt.insertGoroutineWrite(v, records[k])
-			}
+			err = mtt.insertPartitionTable(records)
 		} else {
-			pvc, err := mtt.packVector(records, mtt.goroutineByColIndexForNonPartition)
-			if err != nil {
-				fmt.Printf("Failed to package vector: %s\n", err.Error())
-				return err
-			}
-
-			for k, v := range records {
-				goroutineInd := pvc.HashBucket(k, len(mtt.goroutines))
-				mtt.insertGoroutineWrite(goroutineInd, v)
-			}
+			err = mtt.insertNonPartitionTable(records)
 		}
 	} else {
 		for _, v := range records {
 			mtt.insertGoroutineWrite(0, v)
 		}
+	}
+
+	return err
+}
+
+func (mtt *MultiGoroutineTable) insertNonPartitionTable(records [][]model.DataType) error {
+	vct, err := mtt.getVector(records, mtt.goroutineByColIndexForNonPartition)
+	if err != nil {
+		fmt.Printf("Failed to package vector: %s\n", err.Error())
+		return err
+	}
+
+	for k, v := range records {
+		goroutineInd := vct.HashBucket(k, len(mtt.goroutines))
+		mtt.insertGoroutineWrite(goroutineInd, v)
+	}
+
+	return nil
+}
+
+func (mtt *MultiGoroutineTable) insertPartitionTable(records [][]model.DataType) error {
+	vct, err := mtt.getVector(records, int(mtt.partitionColumnIdx))
+	if err != nil {
+		fmt.Printf("Failed to pack vector: %s\n", err.Error())
+		return err
+	}
+
+	goroutineIndexes, err := mtt.partitionDomain.GetPartitionKeys(vct)
+	if err != nil {
+		fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
+		return err
+	}
+
+	for k, v := range goroutineIndexes {
+		mtt.insertGoroutineWrite(v, records[k])
 	}
 
 	return nil
@@ -261,18 +298,18 @@ func (mtt *MultiGoroutineTable) WaitForGoroutineCompletion() {
 	mtt.hasError = true
 }
 
-func (mtt *MultiGoroutineTable) handleSchemaColumn(schema *model.Dictionary) error {
-	dt, err := schema.Get("colDefs")
+func (mtt *MultiGoroutineTable) assignWithColDefs(schema *model.Dictionary) error {
+	dt, err := schema.Get(colDefs)
 	if err != nil {
 		fmt.Printf("Failed to get cofDefs: %s\n", err.Error())
 		return err
 	}
 
 	colDefs := dt.Value().(*model.Table)
-	colDefsName := colDefs.GetColumnByName("name")
+	colDefsName := colDefs.GetColumnByName(colDefsName)
 	mtt.colNames = colDefsName.Data.StringList()
 
-	colDefsTypeInt := colDefs.GetColumnByName("typeInt")
+	colDefsTypeInt := colDefs.GetColumnByName(typeInt)
 	intStr := colDefsTypeInt.Data.StringList()
 
 	mtt.colTypes = make([]int, len(intStr))
@@ -287,6 +324,99 @@ func (mtt *MultiGoroutineTable) handleSchemaColumn(schema *model.Dictionary) err
 	return nil
 }
 
+func (mtt *MultiGoroutineTable) parseSchemaWithScalarValue(partColNames model.DataForm, schema *model.Dictionary, partitionCol string) (model.DataForm, int32, error) {
+	s := partColNames.(*model.Scalar)
+	if realStr := s.DataType.String(); realStr != partitionCol {
+		return nil, 0, fmt.Errorf("the parameter PartitionCol must be the partitioning column %s in the table", realStr)
+	}
+
+	dt, err := schema.Get(partitionColumnIndex)
+	if err != nil {
+		fmt.Printf("Failed to get partitionColumnIndex: %s\n", err.Error())
+		return nil, 0, err
+	}
+
+	mtt.partitionColumnIdx = dt.Value().(*model.Scalar).DataType.Value().(int32)
+
+	dt, err = schema.Get(partitionSchema)
+	if err != nil {
+		fmt.Printf("Failed to get partitionSchema: %s\n", err.Error())
+		return nil, 0, err
+	}
+
+	partitionSchema := dt.Value().(model.DataForm)
+
+	dt, err = schema.Get(partitionType)
+	if err != nil {
+		fmt.Printf("Failed to get partitionType: %s\n", err.Error())
+		return nil, 0, err
+	}
+
+	return partitionSchema, dt.Value().(*model.Scalar).DataType.Value().(int32), nil
+}
+
+func (mtt *MultiGoroutineTable) getPartitionColumnIndex(partColNames model.DataForm, partitionCol string) (int, error) {
+	vct := partColNames.(*model.Vector)
+	names := vct.Data.StringList()
+	ind := -1
+	for k, v := range names {
+		if v == partitionCol {
+			ind = k
+			break
+		}
+	}
+
+	if ind == -1 {
+		return 0, errors.New("the parameter partitionCol must be the partitioning columns in the partitioned table")
+	}
+
+	return ind, nil
+}
+
+func (mtt *MultiGoroutineTable) parseSchemaWithVectorValue(partColNames model.DataForm, schema *model.Dictionary, partitionCol string) (model.DataForm, int32, error) {
+	dims := partColNames.Rows()
+	if dims > 1 && partitionCol == "" {
+		return nil, 0, errors.New("the parameter partitionCol must be specified for a partitioned table")
+	}
+
+	ind, err := mtt.getPartitionColumnIndex(partColNames, partitionCol)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	dt, err := schema.Get(partitionColumnIndex)
+	if err != nil {
+		fmt.Printf("Failed to get partitionColumnIndex: %s\n", err.Error())
+		return nil, 0, err
+	}
+
+	mtt.partitionColumnIdx = dt.Value().(*model.Vector).Data.ElementValue(ind).(int32)
+
+	dt, err = schema.Get(partitionSchema)
+	if err != nil {
+		fmt.Printf("Failed to get partitionSchema: %s\n", err.Error())
+		return nil, 0, err
+	}
+
+	partitionSchema := dt.Value().(*model.Vector).Data.ElementValue(ind).(model.DataForm)
+
+	dt, err = schema.Get(partitionType)
+	if err != nil {
+		fmt.Printf("Failed to get partitionType: %s\n", err.Error())
+		return nil, 0, err
+	}
+
+	return partitionSchema, dt.Value().(*model.Vector).Data.ElementValue(ind).(int32), nil
+}
+
+func (mtt *MultiGoroutineTable) parseSchema(partColNames model.DataForm, schema *model.Dictionary, partitionCol string) (model.DataForm, int32, error) {
+	if partColNames.GetDataForm() == model.DfScalar {
+		return mtt.parseSchemaWithScalarValue(partColNames, schema, partitionCol)
+	}
+
+	return mtt.parseSchemaWithVectorValue(partColNames, schema, partitionCol)
+}
+
 func (mtt *MultiGoroutineTable) getSchema(opt *Option) (*model.Dictionary, error) {
 	conn, err := dialer.NewSimpleConn(context.TODO(), opt.Address, opt.UserID, opt.Password)
 	if err != nil {
@@ -296,13 +426,7 @@ func (mtt *MultiGoroutineTable) getSchema(opt *Option) (*model.Dictionary, error
 
 	defer conn.Close()
 
-	var df model.DataForm
-	if opt.Database == "" {
-		df, err = conn.RunScript(fmt.Sprintf("schema(%s)", opt.TableName))
-	} else {
-		df, err = conn.RunScript(fmt.Sprintf("schema(loadTable(\"%s\",\"%s\"))", opt.Database, opt.TableName))
-	}
-
+	df, err := conn.RunScript(mtt.getSchemaScript(opt))
 	if err != nil {
 		fmt.Printf("Failed to call function schema with the specified table %s: %s\n", opt.TableName, err.Error())
 		return nil, err
@@ -311,41 +435,36 @@ func (mtt *MultiGoroutineTable) getSchema(opt *Option) (*model.Dictionary, error
 	return df.(*model.Dictionary), nil
 }
 
-func (mtt *MultiGoroutineTable) handlePartitionColumnName(schema *model.Dictionary, opt *Option) error {
-	dt, err := schema.Get("partitionColumnName")
+func (mtt *MultiGoroutineTable) getSchemaScript(opt *Option) string {
+	if opt.Database == "" {
+		return fmt.Sprintf("schema(%s)", opt.TableName)
+	}
+
+	return fmt.Sprintf("schema(loadTable(\"%s\",\"%s\"))", opt.Database, opt.TableName)
+}
+
+func (mtt *MultiGoroutineTable) assignForPartitionTable(dt model.DataType, schema *model.Dictionary, opt *Option) error {
+	mtt.isPartition = true
+	partColNames := dt.Value().(model.DataForm)
+
+	partitionSchema, partitionType, err := mtt.parseSchema(partColNames, schema, opt.PartitionCol)
 	if err != nil {
-		if !strings.Contains(err.Error(), "invalid key") {
-			fmt.Printf("Failed to get partitionColumnName: %s\n", err.Error())
-			return err
-		}
+		fmt.Printf("Failed to handle partColNames: %s\n", err.Error())
+		return err
+	}
 
-		err = mtt.handleNoPartitionColumnName(opt)
-		if err != nil {
-			return err
-		}
-	} else {
-		mtt.isPartition = true
-		partColNames := dt.Value().(model.DataForm)
-
-		partitionSchema, partitionType, err := mtt.handlePartColNames(partColNames, schema, opt.PartitionCol)
-		if err != nil {
-			fmt.Printf("Failed to handle partColNames: %s\n", err.Error())
-			return err
-		}
-
-		colType := mtt.colTypes[mtt.partitionColumnIdx]
-		partitionColType := domain.GetPartitionType(int(partitionType))
-		mtt.partitionDomain, err = domain.CreateDomain(partitionColType, model.DataTypeByte(colType), partitionSchema)
-		if err != nil {
-			fmt.Printf("Failed to create domain: %s\n", err.Error())
-			return err
-		}
+	colType := mtt.colTypes[mtt.partitionColumnIdx]
+	partitionColType := domain.GetPartitionType(int(partitionType))
+	mtt.partitionDomain, err = domain.CreateDomain(partitionColType, model.DataTypeByte(colType), partitionSchema)
+	if err != nil {
+		fmt.Printf("Failed to create domain: %s\n", err.Error())
+		return err
 	}
 
 	return nil
 }
 
-func (mtt *MultiGoroutineTable) handleNoPartitionColumnName(opt *Option) error {
+func (mtt *MultiGoroutineTable) assignForNonPartitionTable(opt *Option) error {
 	if opt.Database != "" && opt.GoroutineCount > 1 {
 		return errors.New("the parameter GoroutineCount must be 1 for a dimension table")
 	}
@@ -372,8 +491,8 @@ func (mtt *MultiGoroutineTable) handleNoPartitionColumnName(opt *Option) error {
 }
 
 func initMultiGoroutineTable(opt *Option) (*MultiGoroutineTable, error) {
-	if opt.GoroutineCount < 1 {
-		return nil, errors.New("the parameter GoroutineCount must be greater than or equal to 1")
+	if err := validateOption(opt); err != nil {
+		return nil, err
 	}
 
 	mtt := &MultiGoroutineTable{
@@ -385,59 +504,82 @@ func initMultiGoroutineTable(opt *Option) (*MultiGoroutineTable, error) {
 		goroutines: make([]*writerGoroutine, opt.GoroutineCount),
 	}
 
-	if opt.BatchSize < 1 {
-		return nil, errors.New("the parameter BatchSize must be greater than or equal to 1")
-	}
-
-	if opt.Throttle < 1 {
-		return nil, errors.New("the parameter Throttle must be greater than or equal to 0")
-	}
-
-	if opt.GoroutineCount > 1 && len(opt.PartitionCol) < 1 {
-		return nil, errors.New("the parameter PartitionCol must be specified when GoroutineCount is greater than 1")
-	}
-
 	return mtt, nil
 }
 
-func (mtt *MultiGoroutineTable) getGoroutineInd(prow []model.DataType) (int, error) {
+func validateOption(opt *Option) error {
+	if opt.GoroutineCount < 1 {
+		return errors.New("the parameter GoroutineCount must be greater than or equal to 1")
+	}
+
+	if opt.BatchSize < 1 {
+		return errors.New("the parameter BatchSize must be greater than or equal to 1")
+	}
+
+	if opt.Throttle < 1 {
+		return errors.New("the parameter Throttle must be greater than or equal to 0")
+	}
+
+	if opt.GoroutineCount > 1 && len(opt.PartitionCol) < 1 {
+		return errors.New("the parameter PartitionCol must be specified when GoroutineCount is greater than 1")
+	}
+
+	return nil
+}
+
+func (mtt *MultiGoroutineTable) getGoroutineIndForPartitionTable(prow []model.DataType) (int, error) {
 	var goroutineInd int
-	if len(mtt.goroutines) > 1 {
-		if mtt.isPartition {
-			s := prow[mtt.partitionColumnIdx]
-			if s != nil {
-				dtl := model.NewDataTypeList(s.DataType(), []model.DataType{s})
-				pvc := model.NewVector(dtl)
+	s := prow[mtt.partitionColumnIdx]
+	if s != nil {
+		dtl := model.NewDataTypeList(s.DataType(), []model.DataType{s})
+		pvc := model.NewVector(dtl)
 
-				indexes, err := mtt.partitionDomain.GetPartitionKeys(pvc)
-				if err != nil {
-					fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
-					return 0, err
-				}
+		indexes, err := mtt.partitionDomain.GetPartitionKeys(pvc)
+		if err != nil {
+			fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
+			return 0, err
+		}
 
-				if len(indexes) > 0 {
-					goroutineInd = indexes[0]
-				} else {
-					return 0, errors.New("failed to obtain the partition scheme")
-				}
-			} else {
-				goroutineInd = 0
-			}
+		if len(indexes) > 0 {
+			goroutineInd = indexes[0]
 		} else {
-			if prow[mtt.goroutineByColIndexForNonPartition] != nil {
-				s := prow[mtt.goroutineByColIndexForNonPartition]
-				dtl := model.NewDataTypeList(s.DataType(), []model.DataType{s})
-				pvc := model.NewVector(dtl)
-				goroutineInd = pvc.HashBucket(0, len(mtt.goroutines))
-			} else {
-				goroutineInd = 0
-			}
+			return 0, errors.New("failed to obtain the partition scheme")
 		}
 	} else {
 		goroutineInd = 0
 	}
 
 	return goroutineInd, nil
+}
+
+func (mtt *MultiGoroutineTable) getGoroutineIndForNonPartitionTable(prow []model.DataType) int {
+	var goroutineInd int
+	if prow[mtt.goroutineByColIndexForNonPartition] != nil {
+		s := prow[mtt.goroutineByColIndexForNonPartition]
+		dtl := model.NewDataTypeList(s.DataType(), []model.DataType{s})
+		pvc := model.NewVector(dtl)
+		goroutineInd = pvc.HashBucket(0, len(mtt.goroutines))
+	} else {
+		goroutineInd = 0
+	}
+
+	return goroutineInd
+}
+
+func (mtt *MultiGoroutineTable) getGoroutineInd(prow []model.DataType) (int, error) {
+	var goroutineInd int
+	var err error
+	if len(mtt.goroutines) > 1 {
+		if mtt.isPartition {
+			goroutineInd, err = mtt.getGoroutineIndForPartitionTable(prow)
+		} else {
+			goroutineInd = mtt.getGoroutineIndForNonPartitionTable(prow)
+		}
+	} else {
+		goroutineInd = 0
+	}
+
+	return goroutineInd, err
 }
 
 func (mtt *MultiGoroutineTable) insertGoroutineWrite(hashKey int, prow []model.DataType) {
@@ -447,15 +589,12 @@ func (mtt *MultiGoroutineTable) insertGoroutineWrite(hashKey int, prow []model.D
 
 	ind := hashKey % len(mtt.goroutines)
 	wt := mtt.goroutines[ind]
-	wt.writeQueue.In <- prow
+	wt.writeQueue.add(prow)
 
-	select {
-	case wt.signal <- true:
-	default:
-	}
+	wt.signal.Signal()
 }
 
-func (mtt *MultiGoroutineTable) packVector(records [][]model.DataType, ind int) (*model.Vector, error) {
+func (mtt *MultiGoroutineTable) getVector(records [][]model.DataType, ind int) (*model.Vector, error) {
 	dtArr := make([]model.DataType, len(records))
 	dt := model.DataTypeByte(mtt.colTypes[ind])
 	for k, row := range records {

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -129,12 +128,7 @@ func (c *dolphindb) ExistsDatabase(e *ExistsDatabaseRequest) (bool, error) {
 		return false, err
 	}
 
-	b, ok := res.(*model.Scalar)
-	if !ok {
-		return false, errors.New("invalid response content")
-	}
-
-	return b.Bool()
+	return res.(*model.Scalar).Bool()
 }
 
 func (c *dolphindb) Database(d *DatabaseRequest) (*Database, error) {
@@ -169,12 +163,7 @@ func (c *dolphindb) ExistsTable(t *ExistsTableRequest) (bool, error) {
 		return false, err
 	}
 
-	b, ok := res.(*model.Scalar)
-	if !ok {
-		return false, errors.New("invalid response content")
-	}
-
-	return b.Bool()
+	return res.(*model.Scalar).Bool()
 }
 
 func (c *dolphindb) SaveTable(t *SaveTableRequest) error {

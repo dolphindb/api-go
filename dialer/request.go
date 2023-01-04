@@ -30,7 +30,7 @@ func writeRequest(wr *protocol.Writer, params *requestParams, opt *BehaviorOptio
 		return err
 	}
 
-	return nil
+	return wr.Flush()
 }
 
 func writeFlag(opt *BehaviorOptions) []byte {

@@ -80,7 +80,7 @@ func TestMultiGoroutineTable(t *testing.T) {
 
 	mtt.WaitForGoroutineCompletion()
 	sts = mtt.GetStatus()
-	assert.Equal(t, sts.String(), "errMsg         :  \nisExit         :  true\nsentRows       :  4\nunSentRows     :  0\nsendFailedRows :  0\ngoroutineStatus   :\n    goroutineIndex: 0, sentRows: 1, unSentRows: 0, sendFailedRows: 0\n    goroutineIndex: 1, sentRows: 3, unSentRows: 0, sendFailedRows: 0\n")
+	assert.Equal(t, sts.String(), "errMsg         :  \nisExit         :  true\nsentRows       :  4\nunsentRows     :  0\nsendFailedRows :  0\ngoroutineStatus   :\n    goroutineIndex: 0, sentRows: 1, unsentRows: 0, sendFailedRows: 0\n    goroutineIndex: 1, sentRows: 3, unsentRows: 0, sendFailedRows: 0\n")
 
 	opt.GoroutineCount = 1
 	opt.Database = "dbScalar"

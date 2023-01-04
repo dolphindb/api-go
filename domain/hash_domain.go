@@ -12,22 +12,22 @@ import (
 type HashDomain struct {
 	buckets int
 
-	dt  model.DataTypeByte
-	cat model.CategoryString
+	dataTypeByte model.DataTypeByte
+	category     model.CategoryString
 }
 
 // GetPartitionKeys returns partition keys for partitioned table append.
 func (h *HashDomain) GetPartitionKeys(partitionCol *model.Vector) ([]int, error) {
 	pdt := getVectorRealDataType(partitionCol)
-	if h.cat != model.GetCategory(pdt) {
+	if h.category != model.GetCategory(pdt) {
 		return nil, errors.New("data category incompatible")
 	}
 
-	if h.cat == model.TEMPORAL && h.dt != pdt {
-		df, err := model.CastDateTime(partitionCol, h.dt)
+	if h.category == model.TEMPORAL && h.dataTypeByte != pdt {
+		df, err := model.CastDateTime(partitionCol, h.dataTypeByte)
 		if err != nil {
 			return nil, fmt.Errorf("can't convert type from %s to %s",
-				model.GetDataTypeString(pdt), model.GetDataTypeString(h.dt))
+				model.GetDataTypeString(pdt), model.GetDataTypeString(h.dataTypeByte))
 		}
 
 		partitionCol = df.(*model.Vector)

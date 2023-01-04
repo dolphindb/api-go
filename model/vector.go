@@ -205,15 +205,6 @@ func (vct *Vector) GetVectorValue(ind int) *Vector {
 	return nil
 }
 
-// // IsArrayVector checks whether the vector is ArrayVector
-// func (vct *Vector) IsArrayVector() bool {
-// 	if vct.GetDataType() > 64 && vct.GetDataType() < 128 {
-// 		return true
-// 	}
-
-// 	return false
-// }
-
 // GetDataType returns the byte type of the DataType.
 func (vct *Vector) GetDataType() DataTypeByte {
 	return vct.category.DataType

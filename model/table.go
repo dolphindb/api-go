@@ -1,7 +1,10 @@
 package model
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
@@ -18,6 +21,66 @@ type Table struct {
 	columnCount  uint32
 
 	ColNames []string
+}
+
+// NewTableFromRawData returns an object of Table with colNames, colTypes and colValues.
+// The parameter colTypes determines the data types of colValues.
+// Refer to README.md for more details.
+func NewTableFromRawData(colNames []string, colTypes []DataTypeByte, colValues []interface{}) (*Table, error) {
+	if len(colNames) != len(colTypes) || len(colNames) != len(colValues) {
+		return nil, errors.New("The length of colNames, colTypes and colValues should be equal.")
+	}
+	vcts := make([]*Vector, len(colNames))
+	for k, v := range colTypes {
+		dtl, err := NewDataTypeListFromRawData(v, colValues[k])
+		if err != nil {
+			return nil, err
+		}
+
+		vcts[k] = NewVector(dtl)
+	}
+
+	return NewTable(colNames, vcts), nil
+}
+
+// NewTableFromStruct returns the table object according to the val which is a struct object with special tags.
+// Refer to README.md for more details.
+func NewTableFromStruct(obj interface{}) (tb *Table, err error) {
+	if obj == nil {
+		return nil, errors.New("Input should not be nil")
+	}
+
+	defer func() {
+		e := recover()
+		if e != nil {
+			errMsg := fmt.Sprintf("%v", e)
+			err = errors.New(errMsg)
+		}
+	}()
+
+	value := reflect.ValueOf(obj).Elem()
+	dataType := value.Type()
+	colNum := dataType.NumField()
+	colNames := make([]string, colNum)
+	colTypes := make([]DataTypeByte, colNum)
+	colValues := make([]interface{}, colNum)
+	for i := 0; i < colNum; i++ {
+		field := dataType.Field(i)
+		raw, containsNameTag := field.Tag.Lookup("dolphindb")
+		if !containsNameTag || raw == "" {
+			continue
+		}
+
+		tags := parseTags(raw)
+		colNames[i] = tags["column"]
+		colValues[i] = value.Field(i).Interface()
+		colTypes[i] = dataTypeByteMap[tags["type"]]
+		if colTypes[i] == 0 {
+			return nil, fmt.Errorf("Invalid type %s", tags["type"])
+		}
+	}
+
+	return NewTableFromRawData(colNames, colTypes, colValues)
 }
 
 // NewTable returns an object of Table with colNames and colValues.
@@ -62,6 +125,30 @@ func (t *Table) Rows() int {
 // Columns returns the column num of the DataForm.
 func (t *Table) Columns() int {
 	return int(t.columnCount)
+}
+
+// GetRowJSON returns the string format of the row in the table according to the ind.
+// ArrayVector does not support GetRowJSON.
+func (t *Table) GetRowJSON(ind int) string {
+	if ind >= t.Rows() {
+		return ""
+	}
+
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString("{")
+	for k, v := range t.columnValues {
+		buf.WriteString(fmt.Sprintf("\"%s\"", t.ColNames[k]))
+		buf.WriteString(":")
+		buf.WriteString(fmt.Sprintf("\"%s\"", v.Get(ind).String()))
+		buf.WriteString(",")
+	}
+
+	if buf.Len() > 1 {
+		buf.Truncate(buf.Len() - 1)
+	}
+	buf.WriteString("}")
+
+	return buf.String()
 }
 
 // GetDataForm returns the byte type of the DataForm.
@@ -162,13 +249,14 @@ func (t *Table) String() string {
 	by.WriteString(fmt.Sprintf("table[%dr][%dc]([\n\t", t.rowCount, t.columnCount))
 
 	for k, v := range t.ColNames {
-		val := t.columnValues[k].formatString()
+		colVal := t.columnValues[k]
+		val := colVal.formatString()
 
-		dt := GetDataTypeString(t.columnValues[k].GetDataType())
+		dt := GetDataTypeString(colVal.GetDataType())
 		if len(val) == 0 {
-			by.WriteString(fmt.Sprintf("  %s[%d]('%s', null)\n\t", dt, t.columnValues[k].RowCount, v))
+			by.WriteString(fmt.Sprintf("  %s[%d]('%s', null)\n\t", dt, colVal.RowCount, v))
 		} else {
-			by.WriteString(fmt.Sprintf("  %s[%d]('%s', [%s])\n\t", dt, t.columnValues[k].RowCount, v, strings.Join(val, ", ")))
+			by.WriteString(fmt.Sprintf("  %s[%d]('%s', [%s])\n\t", dt, colVal.RowCount, v, strings.Join(val, ", ")))
 		}
 	}
 	by.WriteString("])")

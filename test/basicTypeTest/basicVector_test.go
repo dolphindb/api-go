@@ -1130,7 +1130,7 @@ func Test_Vector_Download_Datatype_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		Convey("Test_vector_datehour_has_null:", func() {
 			s, err := db.RunScript("a = take(datehour[2022.07.29 15:00:00.000,,2022.07.29 17:00:00.000],3);a")
@@ -1145,7 +1145,7 @@ func Test_Vector_Download_Datatype_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
 		})
 		Convey("Test_vector_datehour_all_null:", func() {
 			s, err := db.RunScript("datehour(['','',''])")
@@ -1162,7 +1162,133 @@ func Test_Vector_Download_Datatype_datehour(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 28)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "dateHour")
+			So(reTypeString, ShouldEqual, "datehour")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Vector_Download_Datatype_decimal32(t *testing.T) {
+	Convey("Test_vector_decimal32:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_vector_decimal32_not_null:", func() {
+			s, err := db.RunScript("decimal32([-3.1235565,1.1,0], 2)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "-3.12")
+			So(result.Get(1).String(), ShouldEqual, "1.10")
+			So(result.Get(2).String(), ShouldEqual, "0.00")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal32).Scale, ShouldEqual, 2)
+			So(re[1].(*model.Decimal32).Scale, ShouldEqual, 2)
+			So(re[2].(*model.Decimal32).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, 37)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32")
+		})
+		Convey("Test_vector_decimal32_has_null:", func() {
+			s, err := db.RunScript("decimal32([-3.1235565, 1.1, NULL], 2)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "-3.12")
+			So(result.Get(1).String(), ShouldEqual, "1.10")
+			So(result.Get(2).String(), ShouldEqual, "")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal32).Scale, ShouldEqual, 2)
+			So(re[1].(*model.Decimal32).Scale, ShouldEqual, 2)
+			So(re[2].(*model.Decimal32).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, 37)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32")
+		})
+		Convey("Test_vector_decimal32_all_null:", func() {
+			s, err := db.RunScript("[decimal32(NULL, 2)]")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal32).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, 37)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Vector_Download_Datatype_decimal64(t *testing.T) {
+	Convey("Test_vector_decimal64:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_vector_decimal64_not_null:", func() {
+			s, err := db.RunScript("decimal64([-3.1235565,1.1,0], 2)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "-3.12")
+			So(result.Get(1).String(), ShouldEqual, "1.10")
+			So(result.Get(2).String(), ShouldEqual, "0.00")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal64).Scale, ShouldEqual, 2)
+			So(re[1].(*model.Decimal64).Scale, ShouldEqual, 2)
+			So(re[2].(*model.Decimal64).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, 38)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64")
+		})
+		Convey("Test_vector_decimal64_has_null:", func() {
+			s, err := db.RunScript("decimal64([-3.1235565, 1.1, NULL], 2)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "-3.12")
+			So(result.Get(1).String(), ShouldEqual, "1.10")
+			So(result.Get(2).String(), ShouldEqual, "")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal64).Scale, ShouldEqual, 2)
+			So(re[1].(*model.Decimal64).Scale, ShouldEqual, 2)
+			So(re[2].(*model.Decimal64).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, 38)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64")
+		})
+		Convey("Test_vector_decimal64_all_null:", func() {
+			s, err := db.RunScript("[decimal64(NULL, 2)]")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal64).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, 38)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -1256,7 +1382,7 @@ func Test_Vector_Download_Datatype_ipaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		Convey("Test_vector_ipaddr_number_has_null:", func() {
 			s, err := db.RunScript("a = take(ipaddr['192.168.1.135', , '192.168.1.14'],3);a")
@@ -1274,7 +1400,7 @@ func Test_Vector_Download_Datatype_ipaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		Convey("Test_vector_ipaddr_all_null:", func() {
 			s, err := db.RunScript("ipaddr(['', '', ''])")
@@ -1291,7 +1417,7 @@ func Test_Vector_Download_Datatype_ipaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		Convey("Test_vector_ipaddr_number_not_null:", func() {
 			s, err := db.RunScript("ipaddr(['192.168.1.135', '192.168.1.124', '192.168.1.14'])")
@@ -1309,7 +1435,7 @@ func Test_Vector_Download_Datatype_ipaddr(t *testing.T) {
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 30)
 			reTypeString := result.GetDataTypeString()
-			So(reTypeString, ShouldEqual, "IP")
+			So(reTypeString, ShouldEqual, "ipaddr")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -1633,7 +1759,7 @@ func Test_Vector_UpLoad_Datatype_int(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_int:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtInt, []int32{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1659,7 +1785,7 @@ func Test_Vector_UpLoad_Datatype_short(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_short:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtShort, []int16{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtShort, []int16{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1685,7 +1811,7 @@ func Test_Vector_UpLoad_Datatype_char(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_char:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtChar, []uint8{1, 2, 3, 4, 5, 6, 7, 8, 9})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtChar, []uint8{1, 2, 3, 4, 5, 6, 7, 8, 9})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1707,7 +1833,7 @@ func Test_Vector_UpLoad_Datatype_long(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_long:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtLong, []int64{-1, -2, -3, 4, 5, 6, 7, 8, 9})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtLong, []int64{-1, -2, -3, 4, 5, 6, 7, 8, 9})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1733,7 +1859,7 @@ func Test_Vector_UpLoad_Datatype_float(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_float:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtFloat, []float32{-1, -2, -3, 4, 5, 6, 7, 8, 9})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtFloat, []float32{-1, -2, -3, 4, 5, 6, 7, 8, 9})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1759,7 +1885,7 @@ func Test_Vector_UpLoad_Datatype_double(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_double:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtDouble, []float64{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, -10247.36985, 8, 9})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDouble, []float64{1024.2, -2.10, 36897542.233, -5454545454, 8989.12125, 6, -10247.36985, 8, 9})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1785,7 +1911,7 @@ func Test_Vector_UpLoad_Datatype_date(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_date:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1811,7 +1937,7 @@ func Test_Vector_UpLoad_Datatype_month(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_month:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1837,7 +1963,7 @@ func Test_Vector_UpLoad_Datatype_time(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_time:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1863,7 +1989,7 @@ func Test_Vector_UpLoad_Datatype_minute(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_minute:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1889,7 +2015,7 @@ func Test_Vector_UpLoad_Datatype_second(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_second:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1915,7 +2041,7 @@ func Test_Vector_UpLoad_Datatype_datetime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_datetime:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1941,7 +2067,7 @@ func Test_Vector_UpLoad_Datatype_timestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_timestamp:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1967,7 +2093,7 @@ func Test_Vector_UpLoad_Datatype_nanotime(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_nanotime:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -1993,7 +2119,7 @@ func Test_Vector_UpLoad_Datatype_nanotimestamp(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_nanotimestamp:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2019,7 +2145,7 @@ func Test_Vector_UpLoad_Datatype_datehour(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_datehour:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(2022, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(1969, 12, 31, 23, 59, 59, 999999999, time.UTC), time.Date(2006, 1, 2, 15, 4, 4, 999999999, time.UTC)})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2040,12 +2166,43 @@ func Test_Vector_UpLoad_Datatype_datehour(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Vector_UpLoad_Datatype_decimal32(t *testing.T) {
+	Convey("Test_vector_decimal32_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_vector_decimal32:", func() {
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{2, []float64{3.21235, -1, model.NullDecimal32Value}})
+			s := model.NewVector(dls)
+			_, err := db.Upload(map[string]model.DataForm{"s": s})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("ex=decimal32([3.21235, -1, NULL], 2);eqObj(s, ex)")
+			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Vector_UpLoad_Datatype_decimal64(t *testing.T) {
+	Convey("Test_vector_decimal64_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_vector_decimal64:", func() {
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{2, []float64{3.21235, -1, model.NullDecimal64Value}})
+			s := model.NewVector(dls)
+			_, err := db.Upload(map[string]model.DataForm{"s": s})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("ex=decimal64([3.21235, -1, NULL], 2);eqObj(s, ex)")
+			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
 func Test_Vector_UpLoad_Datatype_point(t *testing.T) {
 	Convey("Test_vector_point_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_point:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtPoint, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtPoint, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2071,7 +2228,7 @@ func Test_Vector_UpLoad_Datatype_complex(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_complex:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtComplex, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2097,7 +2254,7 @@ func Test_Vector_UpLoad_Datatype_string(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_string:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtString, []string{"hello", "#$%", "数据类型", "what"})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtString, []string{"hello", "#$%", "数据类型", "what"})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2123,7 +2280,7 @@ func Test_Vector_UpLoad_Datatype_any(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_any:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtAny, model.DfVector)
+			dls, _ := model.NewDataTypeListFromRawData(model.DtAny, model.DfVector)
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2140,7 +2297,7 @@ func Test_Vector_UpLoad_Datatype_bool(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_bool:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtBool, []bool{true, true, false, false})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtBool, []bool{true, true, false, false})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2166,7 +2323,7 @@ func Test_Vector_UpLoad_Datatype_blob(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_blob:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtBlob, [][]byte{{6}, {12}, {56}, {128}})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtBlob, [][]byte{{6}, {12}, {56}, {128}})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2188,7 +2345,7 @@ func Test_Vector_UpLoad_Datatype_uuid(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_uuid:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtUUID, []string{"5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88", "5d212a78-cc48-e3b1-4235-b4d91473ee89"})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2214,7 +2371,7 @@ func Test_Vector_UpLoad_Datatype_ipaddr(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_ipaddr:", func() {
-			dls, _ := model.NewDataTypeListWithRaw(model.DtIP, []string{"192.163.1.12", "0.0.0.0", "127.0.0.1"})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtIP, []string{"192.163.1.12", "0.0.0.0", "127.0.0.1"})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			res, _ := db.RunScript("s")
@@ -2239,7 +2396,7 @@ func Test_Vector_UpLoad_Datatype_int28(t *testing.T) {
 	Convey("Test_vector_int128_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		dls, _ := model.NewDataTypeListWithRaw(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33", "e1671797c52e15f763380b45e841ec34"})
+		dls, _ := model.NewDataTypeListFromRawData(model.DtInt128, []string{"e1671797c52e15f763380b45e841ec32", "e1671797c52e15f763380b45e841ec33", "e1671797c52e15f763380b45e841ec34"})
 		s := model.NewVector(dls)
 		_, err = db.Upload(map[string]model.DataForm{"s": s})
 		res, _ := db.RunScript("s")
@@ -2263,11 +2420,11 @@ func Test_Vector_UpLoad_int_array_vector(t *testing.T) {
 	Convey("Test_Vector_int_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		int1v, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{-1024, 1048576, -1048579, 3000000})
+		int1v, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{-1024, 1048576, -1048579, 3000000})
 		So(err, ShouldBeNil)
-		int2v, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{0, 1048576, model.NullInt, 3000000})
+		int2v, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{0, 1048576, model.NullInt, 3000000})
 		So(err, ShouldBeNil)
-		int3v, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{model.NullInt, model.NullInt, model.NullInt, model.NullInt})
+		int3v, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{model.NullInt, model.NullInt, model.NullInt, model.NullInt})
 		So(err, ShouldBeNil)
 		av := model.NewArrayVector([]*model.Vector{model.NewVector(int1v), model.NewVector(int2v), model.NewVector(int3v)})
 		s := model.NewVectorWithArrayVector(av)
@@ -2288,11 +2445,11 @@ func Test_Vector_UpLoad_bool_array_vector(t *testing.T) {
 	Convey("Test_Vector_bool_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		bool1v, err := model.NewDataTypeListWithRaw(model.DtBool, []byte{1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1})
+		bool1v, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1})
 		So(err, ShouldBeNil)
-		bool2v, err := model.NewDataTypeListWithRaw(model.DtBool, []byte{0, model.NullBool, 1})
+		bool2v, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{0, model.NullBool, 1})
 		So(err, ShouldBeNil)
-		bool3v, err := model.NewDataTypeListWithRaw(model.DtBool, []byte{model.NullBool, model.NullBool, model.NullBool})
+		bool3v, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{model.NullBool, model.NullBool, model.NullBool})
 		So(err, ShouldBeNil)
 		av := model.NewArrayVector([]*model.Vector{model.NewVector(bool1v), model.NewVector(bool2v), model.NewVector(bool3v)})
 		s := model.NewVectorWithArrayVector(av)
@@ -2319,11 +2476,11 @@ func Test_Vector_UpLoad_big_array_vector(t *testing.T) {
 		for i = 0; i < 1048579*12; i += 12 {
 			sz = append(sz, i)
 		}
-		int1v, err := model.NewDataTypeListWithRaw(model.DtInt, sz)
+		int1v, err := model.NewDataTypeListFromRawData(model.DtInt, sz)
 		So(err, ShouldBeNil)
-		int2v, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{0, 1048576, model.NullInt, 3000000})
+		int2v, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{0, 1048576, model.NullInt, 3000000})
 		So(err, ShouldBeNil)
-		int3v, err := model.NewDataTypeListWithRaw(model.DtInt, []int32{model.NullInt, model.NullInt, model.NullInt, model.NullInt})
+		int3v, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{model.NullInt, model.NullInt, model.NullInt, model.NullInt})
 		So(err, ShouldBeNil)
 		av := model.NewArrayVector([]*model.Vector{model.NewVector(int1v), model.NewVector(int2v), model.NewVector(int3v)})
 		s := model.NewVectorWithArrayVector(av)

@@ -13,7 +13,7 @@ func TestVector(t *testing.T) {
 	by := bytes.NewBufferString("")
 	w := protocol.NewWriter(by)
 
-	dtl, err := NewDataTypeListWithRaw(DtInt, []int32{0, 1})
+	dtl, err := NewDataTypeListFromRawData(DtInt, []int32{0, 1})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.DataType(), DtInt)
 
@@ -42,7 +42,7 @@ func TestVector(t *testing.T) {
 
 	vc.Data = dtl.Sub(0, 1)
 	vc.RowCount = 1
-	dtl, err = NewDataTypeListWithRaw(DtString, []string{"vector", "zero"})
+	dtl, err = NewDataTypeListFromRawData(DtString, []string{"vector", "zero"})
 	assert.Nil(t, err)
 
 	vc.Extend = &DataTypeExtend{
@@ -60,7 +60,7 @@ func TestVector(t *testing.T) {
 	assert.Equal(t, by.String(), "\x91\x01\x01\x00\x00\x00\x01\x00\x00\x00\n\x00\x00\x00\x01\x00\x00\x00zero\x00\x00\x00\x00\x00")
 	assert.Equal(t, vc.String(), "vector<symbolExtend>([zero])")
 
-	combineDtl, err := NewDataTypeListWithRaw(DtInt, []int32{0, 1, 1, 0})
+	combineDtl, err := NewDataTypeListFromRawData(DtInt, []int32{0, 1, 1, 0})
 	assert.Nil(t, err)
 	tmp := NewVector(combineDtl)
 	tmp.Extend = &DataTypeExtend{
@@ -79,7 +79,7 @@ func TestVector(t *testing.T) {
 	vc.SetNull(0)
 	assert.True(t, vc.IsNull(0))
 
-	dtl, err = NewDataTypeListWithRaw(DtInt, []int32{1, 2, 3})
+	dtl, err = NewDataTypeListFromRawData(DtInt, []int32{1, 2, 3})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.DataType(), DtInt)
 

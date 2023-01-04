@@ -130,14 +130,14 @@ func TestUtil(t *testing.T) {
 	assert.Equal(t, res.GetDataForm(), DfScalar)
 	assert.Equal(t, res.String(), "time(00:00:00.000)")
 
-	srcDtl, err := NewDataTypeListWithRaw(DtTime, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
+	srcDtl, err := NewDataTypeListFromRawData(DtTime, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	vct := NewVector(srcDtl)
 	_, err = CastDateTime(vct, DtTime)
 	assert.Equal(t, "the data type of the source data must be NANOTIMESTAMP, TIMESTAMP, DATE or DATETIME", err.Error())
 
-	srcDtl, err = NewDataTypeListWithRaw(DtNanoTimestamp, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
+	srcDtl, err = NewDataTypeListFromRawData(DtNanoTimestamp, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	vct = NewVector(srcDtl)
@@ -146,7 +146,7 @@ func TestUtil(t *testing.T) {
 	assert.Equal(t, res.GetDataForm(), DfVector)
 	assert.Equal(t, res.String(), "vector<date>([2022.01.01])")
 
-	srcDtl, err = NewDataTypeListWithRaw(DtTimestamp, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
+	srcDtl, err = NewDataTypeListFromRawData(DtTimestamp, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	vct = NewVector(srcDtl)
@@ -155,7 +155,7 @@ func TestUtil(t *testing.T) {
 	assert.Equal(t, res.GetDataForm(), DfVector)
 	assert.Equal(t, res.String(), "vector<month>([2022.01M])")
 
-	srcDtl, err = NewDataTypeListWithRaw(DtDatetime, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
+	srcDtl, err = NewDataTypeListFromRawData(DtDatetime, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	vct = NewVector(srcDtl)
@@ -164,12 +164,17 @@ func TestUtil(t *testing.T) {
 	assert.Equal(t, res.GetDataForm(), DfVector)
 	assert.Equal(t, res.String(), "vector<month>([2022.01M])")
 
-	srcDtl, err = NewDataTypeListWithRaw(DtDate, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
+	srcDtl, err = NewDataTypeListFromRawData(DtDate, []time.Time{time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	vct = NewVector(srcDtl)
 	res, err = CastDateTime(vct, DtDateHour)
 	assert.Nil(t, err)
 	assert.Equal(t, res.GetDataForm(), DfVector)
-	assert.Equal(t, res.String(), "vector<dateHour>([2022.01.01T00])")
+	assert.Equal(t, res.String(), "vector<datehour>([2022.01.01T00])")
+}
+
+type sample struct {
+	ID   []int32  `dolphindb:"column:id;type:int"`
+	Name []string `dolphindb:"column:name;type:string"`
 }

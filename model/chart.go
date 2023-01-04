@@ -122,7 +122,7 @@ func (ch *Chart) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 	}
 
 	keys, values := ch.packKeysAndValues()
-	kdl, err := NewDataTypeListWithRaw(DtString, keys)
+	kdl, err := NewDataTypeListFromRawData(DtString, keys)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (ch *Chart) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 		return err
 	}
 
-	vdl, err := NewDataTypeListWithRaw(DtAny, values)
+	vdl, err := NewDataTypeListFromRawData(DtAny, values)
 	if err != nil {
 		return err
 	}
@@ -190,17 +190,11 @@ func (ch *Chart) String() string {
 	}
 
 	if ch.ChartType != nil {
-		v := ch.ChartType.DataType.String()
-		by.WriteString(fmt.Sprintf("  chartType: %s\n", ChartType[v]))
+		by.WriteString(fmt.Sprintf("  chartType: %s\n", ChartType[ch.ChartType.DataType.String()]))
 	}
 
 	if ch.Stacking != nil {
-		v, err := ch.Stacking.Bool()
-		if err != nil {
-			return ""
-		}
-
-		by.WriteString(fmt.Sprintf("  stacking: %v\n", v))
+		by.WriteString(fmt.Sprintf("  stacking: %v\n", ch.Stacking.Value()))
 	}
 
 	if ch.Data != nil {

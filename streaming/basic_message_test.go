@@ -9,13 +9,13 @@ import (
 )
 
 func TestMessage(t *testing.T) {
-	dtl, err := model.NewDataTypeListWithRaw(model.DtString, []string{"name", "prefix"})
+	dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"name", "prefix"})
 	assert.Nil(t, err)
 
 	s0 := model.NewScalar(dtl.Get(0))
 	s1 := model.NewScalar(dtl.Get(1))
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtAny, []model.DataForm{s0, s1})
+	dtl, err = model.NewDataTypeListFromRawData(model.DtAny, []model.DataForm{s0, s1})
 	assert.Nil(t, err)
 
 	vct := model.NewVector(dtl)

@@ -35,6 +35,8 @@ const (
 	BINARY CategoryString = "BINARY"
 	// ARRAY is the string type of category ARRAY.
 	ARRAY CategoryString = "ARRAY"
+	// DECIMAL is the string type of category ARRAY.
+	DENARY CategoryString = "DENARY"
 )
 
 const (
@@ -132,6 +134,12 @@ const (
 	DtPoint
 	// DtDuration is the byte type of Duration.
 	DtDuration
+	// DtDecimal32 is the byte type of Decimal32.
+	DtDecimal32
+	// DtDecimal64 is the byte type of Decimal64.
+	DtDecimal64
+	// DtDecimal128 is the byte type of Decimal128.
+	DtDecimal128
 	// DtObject is the byte type of Object.
 	DtObject
 )
@@ -175,6 +183,10 @@ var (
 	NullFloat = float32(-math.MaxFloat32)
 	// Null value for DtDouble.
 	NullDouble = -math.MaxFloat64
+	// Null value for DtDecimal32.
+	NullDecimal32Value = float64(NullInt)
+	// Null value for DtDecimal64.
+	NullDecimal64Value = float64(NullLong)
 	// Null value for DtInt.
 	NullInt = int32(math.MinInt32)
 	// Null value for DtComplex.

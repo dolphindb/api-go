@@ -60,7 +60,7 @@ func (t *PollingClient) UnSubscribe(req *SubscribeRequest) error {
 
 // Close closes the client.
 func (t *PollingClient) Close() {
-	t.stop()
+	close(t.exit)
 }
 
 func (t *PollingClient) getSubscriber() *subscriber {
@@ -80,18 +80,7 @@ func (t *PollingClient) IsClosed() bool {
 func (t *PollingClient) doReconnect(s *site) bool {
 	time.Sleep(1 * time.Second)
 
-	req := &SubscribeRequest{
-		Address:     s.address,
-		TableName:   s.tableName,
-		ActionName:  s.actionName,
-		Handler:     s.handler,
-		Offset:      s.msgID + 1,
-		Filter:      s.filter,
-		Reconnect:   s.reconnect,
-		AllowExists: s.AllowExists,
-	}
-
-	queue, err := t.subscribeInternal(req)
+	queue, err := t.subscribeInternal(transSiteToNewSubscribeRequest(s))
 	if err != nil {
 		fmt.Printf("%s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String())
 		return false
@@ -101,49 +90,4 @@ func (t *PollingClient) doReconnect(s *site) bool {
 
 	fmt.Printf("%s Successfully reconnected and subscribed.\n", time.Now().UTC().String())
 	return true
-}
-
-func (t *PollingClient) stop() {
-	select {
-	case <-t.exit:
-	default:
-		close(t.exit)
-	}
-}
-
-func (t *PollingClient) tryReconnect(topic string) bool {
-	topicRaw, ok := haTopicToTrueTopic.Load(topic)
-	if !ok {
-		return false
-	}
-
-	queueMap.Delete(topicRaw)
-
-	raw, ok := trueTopicToSites.Load(topicRaw)
-	if !ok {
-		return false
-	}
-
-	sites := raw.([]*site)
-
-	if len(sites) == 0 {
-		return false
-	}
-
-	if len(sites) == 1 && !sites[0].reconnect {
-		return false
-	}
-
-	site := getActiveSite(sites)
-	if site != nil {
-		if t.doReconnect(site) {
-			waitReconnectTopic.Delete(topicRaw)
-			return true
-		}
-
-		waitReconnectTopic.Store(topicRaw, topicRaw)
-		return false
-	}
-
-	return false
 }

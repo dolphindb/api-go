@@ -18,6 +18,10 @@ type Pair struct {
 // NewPair returns an object of pair with specified vector v.
 // You can instantiate it by NewVector.
 func NewPair(v *Vector) *Pair {
+	if v.Rows() != 2 {
+		fmt.Println("[ERROR] The Vector must be of length 2 when initializing a Pair.")
+	}
+
 	return &Pair{
 		category: &Category{
 			DataForm: DfPair,

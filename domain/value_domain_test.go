@@ -11,11 +11,11 @@ import (
 
 func TestValueDomain(t *testing.T) {
 	vd := &ValueDomain{
-		dt:  model.DtDate,
-		cat: model.TEMPORAL,
+		dataTypeByte: model.DtDate,
+		category:     model.TEMPORAL,
 	}
 
-	dtl, err := model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 1, 1, time.UTC)})
+	dtl, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	pc := model.NewVector(dtl)

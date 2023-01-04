@@ -60,6 +60,14 @@ func parseDateTime(raw interface{}) time.Time {
 	return originalTime.Add(time.Duration(res) * time.Second)
 }
 
+func parseDateMinute(raw interface{}) time.Time {
+	res := raw.(int32)
+	if res == math.MinInt32 {
+		return time.Time{}
+	}
+	return originalTime.Add(time.Duration(res) * time.Minute)
+}
+
 func parseDateHour(raw interface{}) time.Time {
 	res := raw.(int32)
 	if res == math.MinInt32 {

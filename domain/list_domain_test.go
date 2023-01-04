@@ -15,7 +15,7 @@ func TestListDomain(t *testing.T) {
 
 	val := model.NewScalar(dt)
 
-	dtl, err := model.NewDataTypeListWithRaw(model.DtAny, []model.DataForm{val})
+	dtl, err := model.NewDataTypeListFromRawData(model.DtAny, []model.DataForm{val})
 	assert.Nil(t, err)
 
 	vct := model.NewVector(dtl)
@@ -23,7 +23,7 @@ func TestListDomain(t *testing.T) {
 	ld, err := NewListDomain(vct, model.DtDate, model.TEMPORAL)
 	assert.Nil(t, err)
 
-	dtl, err = model.NewDataTypeListWithRaw(model.DtDatetime, []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 1, 1, time.UTC)})
+	dtl, err = model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 1, 1, time.UTC)})
 	assert.Nil(t, err)
 
 	pv := model.NewVector(dtl)

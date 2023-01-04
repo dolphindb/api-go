@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -599,6 +600,102 @@ func TestTable(t *testing.T) {
 			So(res, ShouldBeTrue)
 			retostring := origintable.String()
 			So(retostring, ShouldEqual, reTable.String())
+		})
+		Convey("Test_function_Table_GetRowJson_index_gt_rows", func() {
+
+			temp, err := ddb.RunScript("table([1] as col1,[`a] as col2, [3.213] as col3)")
+			if err != nil {
+				panic(err)
+			}
+			tb := temp.(*model.Table)
+			So(tb.GetRowJSON(2), ShouldEqual, "")
+
+		})
+		Convey("Test_function_Table_GetRowJson_normal", func() {
+			rand.Seed(time.Now().UnixNano())
+			// min := int32(-10000)
+			// max := int32(10000)
+
+			// min_f := float64(-10.5)
+			// max_f := float64(100.05)
+			col0, _ := model.NewDataTypeListFromRawData(model.DtString,
+				[]string{
+					"1",
+					"2",
+					"",
+				})
+			col1, _ := model.NewDataTypeListFromRawData(model.DtInt,
+				[]int32{
+					// rand.Int31n(max-min-1) + min + 1,
+					// rand.Int31n(max-min-1) + min + 1,
+					// rand.Int31n(max-min-1) + min + 1,
+					0,
+					-1,
+					model.NullInt,
+				})
+			col2, _ := model.NewDataTypeListFromRawData(model.DtDouble,
+				[]float64{
+					// rand.Float64()*(max_f-min_f) + min_f,
+					// rand.Float64()*(max_f-min_f) + min_f,
+					// rand.Float64()*(max_f-min_f) + min_f,
+					model.NullDouble,
+					2.331245,
+					-235.1235666,
+				})
+			col3, _ := model.NewDataTypeListFromRawData(model.DtBool,
+				[]byte{
+					// rand.Float64()*(max_f-min_f) + min_f,
+					// rand.Float64()*(max_f-min_f) + min_f,
+					// rand.Float64()*(max_f-min_f) + min_f,
+					model.NullBool,
+					1,
+					0,
+				})
+			col4, _ := model.NewDataTypeListFromRawData(model.DtDate,
+				[]time.Time{
+					// rand.Float64()*(max_f-min_f) + min_f,
+					// rand.Float64()*(max_f-min_f) + min_f,
+					// rand.Float64()*(max_f-min_f) + min_f,
+					model.NullTime,
+					time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC),
+					time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+				})
+			col5, _ := model.NewDataTypeListFromRawData(model.DtDecimal32,
+				&model.Decimal32s{Scale: 2,
+					Value: []float64{
+						0.0001,
+						-23.3554662,
+						float64(model.NullDecimal32Value)},
+				})
+
+			col6, _ := model.NewDataTypeListFromRawData(model.DtDecimal64,
+				&model.Decimal64s{Scale: 11,
+					Value: []float64{
+						0.01,
+						-23.3554662,
+						float64(model.NullDecimal64Value)},
+				})
+
+			tb := model.NewTable([]string{"sym", "int", "double", "bool", "date", "deci32", "deci64"},
+				[]*model.Vector{model.NewVector(col0),
+					model.NewVector(col1),
+					model.NewVector(col2),
+					model.NewVector(col3),
+					model.NewVector(col4),
+					model.NewVector(col5),
+					model.NewVector(col6),
+				})
+
+			for i := 0; i < tb.Rows(); i++ {
+				fmt.Println(tb.GetRowJSON(i))
+			}
+			ex0 := `{"sym":"1","int":"0","double":"","bool":"","date":"","deci32":"0.00","deci64":"0.01000000000"}`
+			ex1 := `{"sym":"2","int":"-1","double":"2.331245","bool":"true","date":"1969.12.31","deci32":"-23.35","deci64":"-23.35546620000"}`
+			ex2 := `{"sym":"","int":"","double":"-235.1235666","bool":"false","date":"1970.01.01","deci32":"","deci64":""}`
+
+			So(ex0, ShouldEqual, tb.GetRowJSON(0))
+			So(ex1, ShouldEqual, tb.GetRowJSON(1))
+			So(ex2, ShouldEqual, tb.GetRowJSON(2))
 		})
 	})
 }

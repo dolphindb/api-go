@@ -52,6 +52,14 @@ func (h *handlerLopper) run() {
 }
 
 func (h *handlerLopper) handleMessage() {
+	msg := h.collectMessage()
+
+	for _, v := range msg {
+		h.handler.DoEvent(v)
+	}
+}
+
+func (h *handlerLopper) collectMessage() []IMessage {
 	msg := make([]IMessage, 0)
 	batchSize := h.getBatchSize()
 	throttle := h.getThrottle()
@@ -61,33 +69,27 @@ func (h *handlerLopper) handleMessage() {
 		msg = append(msg, v.(IMessage))
 	case batchSize != -1 && throttle != -1:
 		end := time.Now().Add(time.Duration(throttle) * time.Millisecond)
-		for len(msg) == 0 || ((len(msg) == 0 || len(msg) < batchSize) && time.Now().Before(end)) {
+		for len(msg) < batchSize && !isTimeout(end) {
 			tmp := poll(h.queue)
 			if tmp != nil {
-				if msg == nil {
-					msg = tmp
-				} else {
-					msg = append(msg, tmp...)
-				}
+				msg = append(msg, tmp...)
 			}
 		}
 	default:
 		end := time.Now().Add(time.Duration(throttle) * time.Millisecond)
-		for len(msg) == 0 || time.Now().Before(end) {
+		for len(msg) == 0 && !isTimeout(end) {
 			tmp := poll(h.queue)
 			if tmp != nil {
-				if msg == nil {
-					msg = tmp
-				} else {
-					msg = append(msg, tmp...)
-				}
+				msg = append(msg, tmp...)
 			}
 		}
 	}
 
-	for _, v := range msg {
-		h.handler.DoEvent(v)
-	}
+	return msg
+}
+
+func isTimeout(t time.Time) bool {
+	return !time.Now().Before(t)
 }
 
 func poll(queue *chanx.UnboundedChan) []IMessage {

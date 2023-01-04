@@ -53,36 +53,45 @@ func NewPartitionedTableAppender(opt *PartitionedTableAppenderOption) (*Partitio
 	}
 
 	if !task.IsSuccess() {
-		fmt.Printf("Failed to execute task: %s\n", task.err.Error())
+		fmt.Printf("Task is not success: %s\n", task.err.Error())
 		return nil, task.err
 	}
 
-	err = res.handlePartitionColumnName(task, opt)
+	err = res.packAppenderWithPartitionColumnName(task, opt)
 	if err != nil {
 		fmt.Printf("Failed to handle PartitionColumnName: %s\n", err.Error())
 		return nil, err
 	}
 
-	dt, err := res.tableInfo.Get("colDefs")
+	err = packAppenderWithColDefs(res)
 	if err != nil {
-		fmt.Printf("Failed to get colDefs from table: %s\n", err.Error())
 		return nil, err
-	}
-
-	tb := dt.Value().(*model.Table)
-	res.cols = tb.Rows()
-	res.columnCategories = make([]model.CategoryString, res.cols)
-	res.columnTypes = make([]model.DataTypeByte, res.cols)
-
-	vct := tb.GetColumnByName("typeInt")
-	for i := 0; i < res.cols; i++ {
-		raw := vct.Data.ElementValue(i)
-		res.columnTypes[i] = model.DataTypeByte(raw.(int32))
-		res.columnCategories[i] = model.GetCategory(res.columnTypes[i])
 	}
 
 	res.domain, err = domain.CreateDomain(domain.GetPartitionType(int(res.partitionType)), res.partitionColType, res.partitionSchema)
 	return res, err
+}
+
+func packAppenderWithColDefs(pta *PartitionedTableAppender) error {
+	dt, err := pta.tableInfo.Get("colDefs")
+	if err != nil {
+		fmt.Printf("Failed to get colDefs from table: %s\n", err.Error())
+		return err
+	}
+
+	tb := dt.Value().(*model.Table)
+	pta.cols = tb.Rows()
+	pta.columnCategories = make([]model.CategoryString, pta.cols)
+	pta.columnTypes = make([]model.DataTypeByte, pta.cols)
+
+	vct := tb.GetColumnByName("typeInt")
+	for i := 0; i < pta.cols; i++ {
+		raw := vct.Data.ElementValue(i)
+		pta.columnTypes[i] = model.DataTypeByte(raw.(int32))
+		pta.columnCategories[i] = model.GetCategory(pta.columnTypes[i])
+	}
+
+	return nil
 }
 
 // Close closes the connection pool.
@@ -96,18 +105,8 @@ func (p *PartitionedTableAppender) Close() error {
 
 // Append appends the table to the partitioned table which has been set when calling NewPartitionedTableAppender.
 func (p *PartitionedTableAppender) Append(tb *model.Table) (int, error) {
-	if p.cols != tb.Columns() {
-		return 0, errors.New("the input table doesn't match the schema of the target table")
-	}
-
-	for i := 0; i < p.cols; i++ {
-		curCol := tb.GetColumnByIndex(i)
-		colDateType := curCol.GetDataType()
-		err := p.checkColumnType(i, model.GetCategory(colDateType), colDateType)
-		if err != nil {
-			fmt.Printf("Failed to check column type: %s\n", err.Error())
-			return 0, err
-		}
+	if err := p.checkTable(tb); err != nil {
+		return 0, err
 	}
 
 	for i := 0; i < p.goroutineCount; i++ {
@@ -134,6 +133,24 @@ func (p *PartitionedTableAppender) Append(tb *model.Table) (int, error) {
 	}
 
 	return p.calAffected(tasks)
+}
+
+func (p *PartitionedTableAppender) checkTable(tb *model.Table) error {
+	if p.cols != tb.Columns() {
+		return errors.New("the input table doesn't match the schema of the target table")
+	}
+
+	for i := 0; i < p.cols; i++ {
+		curCol := tb.GetColumnByIndex(i)
+		colDateType := curCol.GetDataType()
+		err := p.checkColumnType(i, model.GetCategory(colDateType), colDateType)
+		if err != nil {
+			fmt.Printf("Failed to check column type: %s\n", err.Error())
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (p *PartitionedTableAppender) calAffected(tasks []*Task) (int, error) {
@@ -206,7 +223,7 @@ func initPartitionedTableAppender(opt *PartitionedTableAppenderOption) (*Partiti
 	return res, task
 }
 
-func (p *PartitionedTableAppender) handlePartitionColumnName(task *Task, opt *PartitionedTableAppenderOption) error {
+func (p *PartitionedTableAppender) packAppenderWithPartitionColumnName(task *Task, opt *PartitionedTableAppenderOption) error {
 	p.tableInfo = task.GetResult().(*model.Dictionary)
 	dt, err := p.tableInfo.Get("partitionColumnName")
 	if err != nil {
@@ -220,15 +237,15 @@ func (p *PartitionedTableAppender) handlePartitionColumnName(task *Task, opt *Pa
 	}
 
 	if partColNames.GetDataForm() == model.DfScalar {
-		err = p.handleScalar(partColNames, opt)
+		err = p.packAppenderWithScalarPartitionColumnName(partColNames, opt)
 	} else {
-		err = p.handleVector(partColNames, opt)
+		err = p.packAppenderWithVectorPartitionColumnName(partColNames, opt)
 	}
 
 	return err
 }
 
-func (p *PartitionedTableAppender) handleScalar(partColNames model.DataForm, opt *PartitionedTableAppenderOption) error {
+func (p *PartitionedTableAppender) packAppenderWithScalarPartitionColumnName(partColNames model.DataForm, opt *PartitionedTableAppenderOption) error {
 	var err error
 
 	sca := partColNames.(*model.Scalar)
@@ -265,7 +282,7 @@ func (p *PartitionedTableAppender) handleScalar(partColNames model.DataForm, opt
 	return nil
 }
 
-func (p *PartitionedTableAppender) handleVector(partColNames model.DataForm, opt *PartitionedTableAppenderOption) error {
+func (p *PartitionedTableAppender) packAppenderWithVectorPartitionColumnName(partColNames model.DataForm, opt *PartitionedTableAppenderOption) error {
 	var err error
 
 	vct := partColNames.(*model.Vector)

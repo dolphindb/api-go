@@ -13,12 +13,16 @@ type Status struct {
 	FailedRows int
 	// the number of records that have been sent
 	SentRows int
-	// the number of unsent records
+	// Deprecated.
 	UnSentRows int
+	// the number of unsent records
+	UnsentRows int
 	// check whether the MultiGoroutineTable finished
 	IsExit bool
-	// list the status of goroutines
+	// Deprecated.
 	GoroutineStatusList []*GoroutineStatus
+	// list the status of goroutines
+	GoroutineStatus []*GoroutineStatus
 }
 
 // String returns the status of goroutines in string format.
@@ -27,10 +31,10 @@ func (s *Status) String() string {
 	by.WriteString(fmt.Sprintf("errMsg         :  %s\n", s.ErrMsg))
 	by.WriteString(fmt.Sprintf("isExit         :  %v\n", s.IsExit))
 	by.WriteString(fmt.Sprintf("sentRows       :  %d\n", s.SentRows))
-	by.WriteString(fmt.Sprintf("unSentRows     :  %d\n", s.UnSentRows))
+	by.WriteString(fmt.Sprintf("unsentRows     :  %d\n", s.UnsentRows))
 	by.WriteString(fmt.Sprintf("sendFailedRows :  %d\n", s.FailedRows))
 	by.WriteString("goroutineStatus   :\n")
-	for _, v := range s.GoroutineStatusList {
+	for _, v := range s.GoroutineStatus {
 		by.WriteString(fmt.Sprintf("    %s\n", v.String()))
 	}
 
@@ -45,12 +49,14 @@ type GoroutineStatus struct {
 	FailedRows int
 	// the number of records that have been sent
 	SentRows int
-	// the number of unsent records
+	// Deprecated.
 	UnSentRows int
+	// the number of unsent records
+	UnsentRows int
 }
 
 // String returns the status of goroutines in string format.
 func (ts *GoroutineStatus) String() string {
-	return fmt.Sprintf("goroutineIndex: %d, sentRows: %d, unSentRows: %d, sendFailedRows: %d",
-		ts.GoroutineIndex, ts.SentRows, ts.UnSentRows, ts.FailedRows)
+	return fmt.Sprintf("goroutineIndex: %d, sentRows: %d, unsentRows: %d, sendFailedRows: %d",
+		ts.GoroutineIndex, ts.SentRows, ts.UnsentRows, ts.FailedRows)
 }

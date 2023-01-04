@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/dolphindb/api-go/dialer/protocol"
 )
 
@@ -26,10 +28,14 @@ type DataTypeList interface {
 	// which must be less than or equal to len(DataTypeList).
 	// If ind < len(DataTypeList), cover the original value in DataTypeList
 	Set(ind int, t DataType) error
+	// Deprecated.
+	// Use SetWithRawData instead.
+	SetWithRaw(ind int, arg interface{}) error
 	// SetWithRaw inserts raw data into DataTypeList according to the ind
 	// which must be less than or equal to len(DataTypeList).
 	// If ind < len(DataTypeList), cover the original value in DataTypeList
-	SetWithRaw(ind int, t interface{}) error
+	// Refer to README.md for the valid type of arg.
+	SetWithRawData(ind int, arg interface{}) error
 	// Append inserts a DataType value to the end of DataTypeList.
 	// The type of d must be the same as DataTypeList's
 	Append(t DataType) DataTypeList
@@ -77,14 +83,26 @@ type dataTypeList struct {
 	charData   []uint8
 	blobData   [][]byte
 
-	anyData      []DataForm
-	double2Data  []float64
-	long2Data    []uint64
-	durationData []uint32
+	anyData       []DataForm
+	double2Data   []float64
+	long2Data     []uint64
+	decimal32Data []int32
+	decimal64Data []int64
+	durationData  []uint32
+}
+
+type Decimal64s struct {
+	Scale int32
+	Value []float64
+}
+
+type Decimal32s struct {
+	Scale int32
+	Value []float64
 }
 
 // NewDataTypeList instantiates a DataTypeList according to the datatype and data.
-// The DataType byte of element in data should be equal to d.
+// The DataType byte of element in data should be equal to datatype.
 func NewDataTypeList(datatype DataTypeByte, data []DataType) DataTypeList {
 	size := len(data)
 	res := &dataTypeList{
@@ -135,6 +153,26 @@ func NewDataTypeList(datatype DataTypeByte, data []DataType) DataTypeList {
 		for _, v := range data {
 			tmp := v.raw().([2]uint64)
 			res.long2Data = append(res.long2Data, tmp[0], tmp[1])
+		}
+	case DtDecimal32:
+		res.decimal32Data = make([]int32, 0, size+1)
+		for k, v := range data {
+			tmp := v.raw().([2]int32)
+			if k == 0 {
+				res.decimal32Data = append(res.decimal32Data, tmp[0], tmp[1])
+			} else {
+				res.decimal32Data = append(res.decimal32Data, tmp[1])
+			}
+		}
+	case DtDecimal64:
+		res.decimal64Data = make([]int64, 0, size+1)
+		for k, v := range data {
+			tmp := v.raw().([2]int64)
+			if k == 0 {
+				res.decimal64Data = append(res.decimal64Data, tmp[0], tmp[1])
+			} else {
+				res.decimal64Data = append(res.decimal64Data, tmp[1])
+			}
 		}
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, 0, 2*size)
@@ -193,6 +231,10 @@ func NewEmptyDataTypeList(datatype DataTypeByte, size int) DataTypeList {
 		res.longData = make([]int64, size)
 	case DtInt128, DtIP, DtUUID:
 		res.long2Data = make([]uint64, 2*size)
+	case DtDecimal32:
+		res.decimal32Data = make([]int32, 1+size)
+	case DtDecimal64:
+		res.decimal64Data = make([]int64, 1+size)
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, 2*size)
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -209,9 +251,15 @@ func NewEmptyDataTypeList(datatype DataTypeByte, size int) DataTypeList {
 	return res
 }
 
-// NewDataTypeListWithRaw instantiates a DataTypeList with specified datatype and args.
-// Refer to README_CN.md for the valid type of args and d.
+// Deprecated.
+// Use NewDataTypeListFromRawData instead.
 func NewDataTypeListWithRaw(datatype DataTypeByte, args interface{}) (DataTypeList, error) {
+	return NewDataTypeListFromRawData(datatype, args)
+}
+
+// NewDataTypeListFromRawData instantiates a DataTypeList with specified datatype and args.
+// Refer to README_CN.md for the valid type of args.
+func NewDataTypeListFromRawData(datatype DataTypeByte, args interface{}) (DataTypeList, error) {
 	var err error
 
 	if datatype > 128 {
@@ -236,6 +284,8 @@ func NewDataTypeListWithRaw(datatype DataTypeByte, args interface{}) (DataTypeLi
 		err = res.renderDouble2(args)
 	case DtDate:
 		err = res.renderDate(args)
+	case DtDateMinute:
+		err = res.renderDateMinute(args)
 	case DtDateHour:
 		err = res.renderDateHour(args)
 	case DtDatetime:
@@ -252,6 +302,10 @@ func NewDataTypeListWithRaw(datatype DataTypeByte, args interface{}) (DataTypeLi
 		err = res.renderInt128(args)
 	case DtIP:
 		err = res.renderIP(args, res.bo)
+	case DtDecimal32:
+		err = res.renderDecimal32(args)
+	case DtDecimal64:
+		err = res.renderDecimal64(args)
 	case DtLong:
 		err = res.renderLong(args)
 	case DtMinute:
@@ -297,7 +351,7 @@ func (d *dataTypeList) SetNull(ind int) {
 		i := 2 * ind
 		d.double2Data[i] = -math.MaxFloat64
 		d.double2Data[i+1] = -math.MaxFloat64
-	case DtDate, DtDateHour, DtDatetime, DtInt, DtMinute, DtMonth, DtSecond, DtTime:
+	case DtDate, DtDateHour, DtDateMinute, DtDatetime, DtInt, DtMinute, DtMonth, DtSecond, DtTime:
 		d.intData[ind] = NullInt
 	case DtDouble:
 		d.doubleData[ind] = NullDouble
@@ -315,6 +369,10 @@ func (d *dataTypeList) SetNull(ind int) {
 		i := 2 * ind
 		d.long2Data[i] = 0
 		d.long2Data[i+1] = 0
+	case DtDecimal32:
+		d.decimal32Data[ind+1] = NullInt
+	case DtDecimal64:
+		d.decimal64Data[ind+1] = NullLong
 	case DtAny:
 		d.anyData[ind] = nullDataForm
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -350,6 +408,8 @@ func (d *dataTypeList) ElementValue(ind int) interface{} {
 		res = parsePoint([2]float64{d.double2Data[i], d.double2Data[i+1]})
 	case DtDate:
 		res = parseDate(d.intData[ind])
+	case DtDateMinute:
+		res = parseDateMinute(d.intData[ind])
 	case DtDateHour:
 		res = parseDateHour(d.intData[ind])
 	case DtDatetime:
@@ -369,6 +429,10 @@ func (d *dataTypeList) ElementValue(ind int) interface{} {
 	case DtIP:
 		i := 2 * ind
 		res = parseIP([2]uint64{d.long2Data[i], d.long2Data[i+1]}, d.bo)
+	case DtDecimal32:
+		res = decimal32(d.decimal32Data[0], d.decimal32Data[ind+1])
+	case DtDecimal64:
+		res = decimal64(d.decimal64Data[0], d.decimal64Data[ind+1])
 	case DtLong:
 		res = d.longData[ind]
 	case DtMinute:
@@ -410,13 +474,21 @@ func (d *dataTypeList) ElementString(ind int) string {
 	}
 
 	raw := d.ElementValue(ind)
-	if d.t == DtDate || d.t == DtDateHour || d.t == DtDatetime || d.t == DtMinute || d.t == DtMonth ||
+	if d.t == DtDate || d.t == DtDateHour || d.t == DtDatetime || d.t == DtDateMinute || d.t == DtMinute || d.t == DtMonth ||
 		d.t == DtNanoTime || d.t == DtNanoTimestamp || d.t == DtTime || d.t == DtTimestamp ||
 		d.t == DtSecond {
 		times := []time.Time{raw.(time.Time)}
 		return formatTime(d.t, times)[0]
 	} else if d.t == DtBlob {
 		return fmt.Sprintf("%s", raw)
+	} else if d.t == DtDecimal32 {
+		dec := raw.(*Decimal32)
+		format := fmt.Sprintf("%%.%df", dec.Scale)
+		return fmt.Sprintf(format, dec.Value)
+	} else if d.t == DtDecimal64 {
+		dec := raw.(*Decimal64)
+		format := fmt.Sprintf("%%.%df", dec.Scale)
+		return fmt.Sprintf(format, dec.Value)
 	}
 
 	return fmt.Sprintf("%v", raw)
@@ -438,51 +510,61 @@ func (d *dataTypeList) combine(in DataTypeList) (DataTypeList, error) {
 	case DtBool, DtChar, DtCompress:
 		res.charData = make([]uint8, res.count)
 		copy(res.charData, d.charData)
-		copy(res.charData, original.charData)
+		copy(res.charData[d.Len():], original.charData)
 	case DtBlob:
 		res.blobData = make([][]byte, res.count)
 		copy(res.blobData, d.blobData)
-		copy(res.blobData, original.blobData)
+		copy(res.blobData[d.Len():], original.blobData)
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, res.count*2)
 		copy(res.double2Data, d.double2Data)
-		copy(res.double2Data, original.double2Data)
-	case DtDate, DtDateHour, DtDatetime, DtInt, DtMinute, DtMonth, DtSecond, DtTime:
+		copy(res.double2Data[d.Len():], original.double2Data)
+	case DtDate, DtDateHour, DtDateMinute, DtDatetime, DtInt, DtMinute, DtMonth, DtSecond, DtTime:
 		res.intData = make([]int32, res.count)
 		copy(res.intData, d.intData)
-		copy(res.intData, original.intData)
+		copy(res.intData[d.Len():], original.intData)
 	case DtDouble:
 		res.doubleData = make([]float64, res.count)
 		copy(res.doubleData, d.doubleData)
-		copy(res.doubleData, original.doubleData)
+		copy(res.doubleData[d.Len():], original.doubleData)
 	case DtFloat:
 		res.floatData = make([]float32, res.count)
 		copy(res.floatData, d.floatData)
-		copy(res.floatData, original.floatData)
+		copy(res.floatData[d.Len():], original.floatData)
 	case DtDuration:
 		res.durationData = make([]uint32, res.count*2)
 		copy(res.durationData, d.durationData)
-		copy(res.durationData, original.durationData)
+		copy(res.durationData[d.Len():], original.durationData)
 	case DtNanoTime, DtNanoTimestamp, DtLong, DtTimestamp:
 		res.longData = make([]int64, res.count)
 		copy(res.longData, d.longData)
-		copy(res.longData, original.longData)
+		copy(res.longData[d.Len():], original.longData)
 	case DtShort:
 		res.shortData = make([]int16, res.count)
 		copy(res.shortData, d.shortData)
-		copy(res.shortData, original.shortData)
+		copy(res.shortData[d.Len():], original.shortData)
 	case DtUUID, DtInt128, DtIP:
 		res.long2Data = make([]uint64, res.count*2)
 		copy(res.long2Data, d.long2Data)
-		copy(res.long2Data, original.long2Data)
+		copy(res.long2Data[d.Len():], original.long2Data)
+	case DtDecimal32:
+		res.decimal32Data = make([]int32, res.count+1)
+		res.decimal32Data[0] = d.decimal32Data[0]
+		copy(res.decimal32Data[1:], d.decimal32Data)
+		copy(res.decimal32Data[d.Len()+1:], original.decimal32Data)
+	case DtDecimal64:
+		res.decimal64Data = make([]int64, res.count+1)
+		res.decimal64Data[0] = d.decimal64Data[0]
+		copy(res.decimal64Data[1:], d.decimal64Data)
+		copy(res.decimal64Data[d.Len()+1:], original.decimal64Data)
 	case DtAny:
 		res.anyData = make([]DataForm, res.count)
 		copy(res.anyData, d.anyData)
-		copy(res.anyData, original.anyData)
+		copy(res.anyData[d.Len():], original.anyData)
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
 		res.stringData = make([]string, res.count)
 		copy(res.stringData, d.stringData)
-		copy(res.stringData, original.stringData)
+		copy(res.stringData[d.Len():], original.stringData)
 	}
 	return res, nil
 }
@@ -502,8 +584,8 @@ func (d *dataTypeList) IsNull(ind int) bool {
 		res = len(d.blobData[ind]) == 0
 	case DtComplex, DtPoint:
 		i := 2 * ind
-		res = d.double2Data[i] == -math.MaxFloat64 && d.double2Data[i+1] == -math.MaxFloat64
-	case DtDate, DtDateHour, DtDatetime, DtInt, DtMinute, DtMonth, DtSecond, DtTime:
+		res = d.double2Data[i] == -math.MaxFloat64 || d.double2Data[i+1] == -math.MaxFloat64
+	case DtDate, DtDateHour, DtDateMinute, DtDatetime, DtInt, DtMinute, DtMonth, DtSecond, DtTime:
 		res = d.intData[ind] == NullInt
 	case DtDouble:
 		res = d.doubleData[ind] == NullDouble
@@ -522,6 +604,10 @@ func (d *dataTypeList) IsNull(ind int) bool {
 	case DtUUID, DtInt128, DtIP:
 		i := 2 * ind
 		res = d.long2Data[i] == 0 && d.long2Data[i+1] == 0
+	case DtDecimal32:
+		res = d.decimal32Data[ind+1] == NullInt
+	case DtDecimal64:
+		res = d.decimal64Data[ind+1] == NullLong
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
 		res = d.stringData[ind] == NullString
 	}
@@ -548,6 +634,8 @@ func (d *dataTypeList) Value() []interface{} {
 		parsePoints(d.count, d.double2Data, res)
 	case DtDate:
 		parseDates(d.intData, res)
+	case DtDateMinute:
+		parseDateMinutes(d.intData, res)
 	case DtDateHour:
 		parseDateHours(d.intData, res)
 	case DtDatetime:
@@ -566,6 +654,10 @@ func (d *dataTypeList) Value() []interface{} {
 		parseAny(d.anyData, res)
 	case DtIP:
 		parseIPs(d.count, d.long2Data, res, d.bo)
+	case DtDecimal32:
+		parseDecimal32s(d.count, d.decimal32Data, res)
+	case DtDecimal64:
+		parseDecimal64s(d.count, d.decimal64Data, res)
 	case DtLong:
 		parseLongs(d.longData, res)
 	case DtMinute:
@@ -629,7 +721,7 @@ func (d *dataTypeList) AsOf(t DataType) int {
 func (d *dataTypeList) Set(ind int, t DataType) error {
 	if d.count <= ind {
 		return fmt.Errorf("index %d exceeds the number of data %d", ind, d.count)
-	} else if d == nil {
+	} else if t == nil {
 		d.SetNull(ind)
 		return nil
 	}
@@ -639,7 +731,7 @@ func (d *dataTypeList) Set(ind int, t DataType) error {
 			GetDataTypeString(t.DataType()), GetDataTypeString(d.t))
 	}
 
-	return d.SetWithRaw(ind, t.raw())
+	return d.setWithRawData(ind, t.raw())
 }
 
 func isEqualDataTypeByte(a, b DataTypeByte) bool {
@@ -650,47 +742,214 @@ func isEqualDataTypeByte(a, b DataTypeByte) bool {
 	return false
 }
 
-func (d *dataTypeList) SetWithRaw(ind int, t interface{}) error {
-	if d.count <= ind {
-		return fmt.Errorf("index %d exceeds the number of data %d", ind, d.count)
-	}
-
+func (d *dataTypeList) setWithRawData(ind int, in interface{}) error {
 	switch d.t {
-	case DtVoid, DtBool, DtChar:
-		d.charData[ind] = t.(uint8)
+	case DtBool:
+		switch v := in.(type) {
+		case byte:
+			d.charData[ind] = v
+		case bool:
+			d.charData[ind] = boolToByte(v)
+		default:
+			return errors.New("the type of in must be byte or bool when datatype is DtBool")
+		}
+	case DtVoid:
+		d.charData[ind] = byte(0)
+	case DtChar:
+		d.charData[ind] = in.(uint8)
 	case DtShort:
-		d.shortData[ind] = t.(int16)
+		d.shortData[ind] = in.(int16)
 	case DtFloat:
-		d.floatData[ind] = t.(float32)
+		d.floatData[ind] = in.(float32)
 	case DtDouble:
-		d.doubleData[ind] = t.(float64)
+		d.doubleData[ind] = in.(float64)
 	case DtDuration:
-		tmp := t.([2]uint32)
+		tmp := in.([2]uint32)
 		i := 2 * ind
 		d.durationData[i] = tmp[0]
 		d.durationData[i+1] = tmp[1]
 	case DtInt, DtDate, DtMonth, DtTime, DtMinute, DtSecond, DtDatetime, DtDateHour, DtDateMinute:
-		d.intData[ind] = t.(int32)
+		d.intData[ind] = in.(int32)
 	case DtLong, DtTimestamp, DtNanoTime, DtNanoTimestamp:
-		d.longData[ind] = t.(int64)
+		d.longData[ind] = in.(int64)
 	case DtInt128, DtIP, DtUUID:
-		tmp := t.([2]uint64)
+		tmp := in.([2]uint64)
 		i := 2 * ind
 		d.long2Data[i] = tmp[0]
 		d.long2Data[i+1] = tmp[1]
+	case DtDecimal32:
+		tmp := in.([2]int32)
+		d.decimal32Data[ind+1] = tmp[1]
+	case DtDecimal64:
+		tmp := in.([2]int64)
+		d.decimal64Data[ind+1] = tmp[1]
 	case DtComplex, DtPoint:
-		tmp := t.([2]float64)
+		tmp := in.([2]float64)
 		i := 2 * ind
 		d.double2Data[i] = tmp[0]
 		d.double2Data[i+1] = tmp[1]
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
-		d.stringData[ind] = t.(string)
+		d.stringData[ind] = in.(string)
 	case DtBlob:
-		d.blobData[ind] = t.([]byte)
+		d.blobData[ind] = in.([]byte)
 	case DtAny:
-		d.anyData[ind] = t.(DataForm)
+		d.anyData[ind] = in.(DataForm)
 	}
 
+	return nil
+}
+
+func (d *dataTypeList) SetWithRaw(ind int, arg interface{}) error {
+	return d.SetWithRawData(ind, arg)
+}
+
+func (d *dataTypeList) SetWithRawData(ind int, arg interface{}) error {
+	if d.count <= ind {
+		return fmt.Errorf("index %d exceeds the number of data %d", ind, d.count)
+	}
+
+	var err error
+	switch d.t {
+	case DtVoid:
+		d.charData[ind] = byte(0)
+	case DtBool:
+		d.charData[ind], err = renderBool(arg)
+	case DtBlob:
+		d.blobData[ind], err = renderBlob(arg)
+	case DtChar, DtCompress:
+		d.charData[ind], err = renderByte(arg)
+	case DtComplex, DtPoint:
+		err = d.SetDouble2(ind, arg)
+	case DtDate:
+		d.intData[ind], err = renderDate(arg)
+	case DtDateHour:
+		d.intData[ind], err = renderDateHour(arg)
+	case DtDatetime:
+		d.intData[ind], err = renderDateTime(arg)
+	case DtDateMinute:
+		d.intData[ind], err = renderDateMinute(arg)
+	case DtDouble:
+		d.doubleData[ind], err = renderDouble(arg)
+	case DtFloat:
+		d.floatData[ind], err = renderFloat(arg)
+	case DtDuration:
+		err = d.SetDuration(ind, arg)
+	case DtInt:
+		d.intData[ind], err = renderInt(arg)
+	case DtInt128:
+		err = d.SetInt128(ind, arg)
+	case DtIP:
+		err = d.SetIP(ind, arg)
+	case DtDecimal32:
+		err = d.SetDecimal32(ind, arg)
+	case DtDecimal64:
+		err = d.SetDecimal64(ind, arg)
+	case DtLong:
+		d.longData[ind], err = renderLong(arg)
+	case DtMinute:
+		d.intData[ind], err = renderMinute(arg)
+	case DtMonth:
+		d.intData[ind], err = renderMonth(arg)
+	case DtNanoTime:
+		d.longData[ind], err = renderNanoTime(arg)
+	case DtNanoTimestamp:
+		d.longData[ind], err = renderNanoTimestamp(arg)
+	case DtSecond:
+		d.intData[ind], err = renderSecond(arg)
+	case DtShort:
+		d.shortData[ind], err = renderShort(arg)
+	case DtTime:
+		d.intData[ind], err = renderTime(arg)
+	case DtTimestamp:
+		d.longData[ind], err = renderTimestamp(arg)
+	case DtUUID:
+		err = d.SetUUID(ind, arg)
+	case DtAny:
+		d.anyData[ind], err = renderAny(arg)
+	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
+		d.stringData[ind], err = renderString(arg)
+	}
+
+	return err
+}
+
+func (d *dataTypeList) SetUUID(ind int, in interface{}) error {
+	tmp, err := renderUUID(in)
+	if err != nil {
+		return err
+	}
+
+	i := ind * 2
+	d.long2Data[i] = tmp[0]
+	d.long2Data[i+1] = tmp[1]
+	return nil
+}
+
+func (d *dataTypeList) SetDuration(ind int, in interface{}) error {
+	tmp, err := renderDuration(in)
+	if err != nil {
+		return err
+	}
+
+	i := ind * 2
+	d.durationData[i] = tmp[0]
+	d.durationData[i+1] = tmp[1]
+	return nil
+}
+
+func (d *dataTypeList) SetDouble2(ind int, in interface{}) error {
+	tmp, err := renderDouble2(in)
+	if err != nil {
+		return err
+	}
+
+	i := ind * 2
+	d.double2Data[i] = tmp[0]
+	d.double2Data[i+1] = tmp[1]
+	return nil
+}
+
+func (d *dataTypeList) SetInt128(ind int, in interface{}) error {
+	tmp, err := renderInt128(in)
+	if err != nil {
+		return err
+	}
+
+	i := ind * 2
+	d.long2Data[i] = tmp[0]
+	d.long2Data[i+1] = tmp[1]
+	return nil
+}
+
+func (d *dataTypeList) SetDecimal32(ind int, in interface{}) error {
+	tmp, err := renderDecimal32(in)
+	if err != nil {
+		return err
+	}
+
+	d.decimal32Data[ind+1] = tmp[1]
+	return nil
+}
+
+func (d *dataTypeList) SetDecimal64(ind int, in interface{}) error {
+	tmp, err := renderDecimal64(in)
+	if err != nil {
+		return err
+	}
+
+	d.decimal64Data[ind+1] = tmp[1]
+	return nil
+}
+
+func (d *dataTypeList) SetIP(ind int, in interface{}) error {
+	tmp, err := renderIP(in, d.bo)
+	if err != nil {
+		return err
+	}
+
+	i := ind * 2
+	d.long2Data[i] = tmp[0]
+	d.long2Data[i+1] = tmp[1]
 	return nil
 }
 
@@ -714,6 +973,12 @@ func (d *dataTypeList) Append(t DataType) DataTypeList {
 	case DtInt128, DtIP, DtUUID:
 		tmp := t.raw().([2]uint64)
 		d.long2Data = append(d.long2Data, tmp[0], tmp[1])
+	case DtDecimal32:
+		tmp := t.raw().([2]int32)
+		d.decimal32Data = append(d.decimal32Data, tmp[1])
+	case DtDecimal64:
+		tmp := t.raw().([2]int64)
+		d.decimal64Data = append(d.decimal64Data, tmp[1])
 	case DtComplex, DtPoint:
 		tmp := t.raw().([2]float64)
 		d.double2Data = append(d.double2Data, tmp[0], tmp[1])
@@ -765,6 +1030,10 @@ func (d *dataTypeList) Get(ind int) DataType {
 	case DtInt128, DtIP, DtUUID:
 		i := 2 * ind
 		t.data = [2]uint64{d.long2Data[i], d.long2Data[i+1]}
+	case DtDecimal32:
+		t.data = [2]int32{d.decimal32Data[0], d.decimal32Data[ind+1]}
+	case DtDecimal64:
+		t.data = [2]int64{d.decimal64Data[0], d.decimal64Data[ind+1]}
 	case DtComplex, DtPoint:
 		i := 2 * ind
 		t.data = [2]float64{d.double2Data[i], d.double2Data[i+1]}
@@ -830,6 +1099,18 @@ func (d *dataTypeList) GetSubList(indexes []int) DataTypeList {
 			ind := 2 * v
 			res.long2Data = append(res.long2Data, d.long2Data[ind], d.long2Data[ind+1])
 		}
+	case DtDecimal32:
+		res.decimal32Data = make([]int32, 0, length+1)
+		res.decimal32Data = append(res.decimal32Data, d.decimal32Data[0])
+		for _, v := range indexes {
+			res.decimal32Data = append(res.decimal32Data, d.decimal32Data[v+1])
+		}
+	case DtDecimal64:
+		res.decimal64Data = make([]int64, 0, 1+length)
+		res.decimal64Data = append(res.decimal64Data, d.decimal64Data[0])
+		for _, v := range indexes {
+			res.decimal64Data = append(res.decimal64Data, d.decimal64Data[v+1])
+		}
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, 0, 2*length)
 		for _, v := range indexes {
@@ -884,6 +1165,14 @@ func (d *dataTypeList) Sub(start, end int) DataTypeList {
 		res.longData = d.longData[start:end]
 	case DtInt128, DtIP, DtUUID:
 		res.long2Data = d.long2Data[2*start : 2*end]
+	case DtDecimal32:
+		res.decimal32Data = make([]int32, 0, res.count+1)
+		res.decimal32Data = append(res.decimal32Data, d.decimal32Data[0])
+		res.decimal32Data = append(res.decimal32Data, d.decimal32Data[start+1:end+1]...)
+	case DtDecimal64:
+		res.decimal64Data = make([]int64, 0, res.count+1)
+		res.decimal64Data = append(res.decimal64Data, d.decimal64Data[0])
+		res.decimal64Data = append(res.decimal64Data, d.decimal64Data[start+1:end+1]...)
 	case DtComplex, DtPoint:
 		res.double2Data = d.double2Data[2*start : 2*end]
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -907,7 +1196,7 @@ func (d *dataTypeList) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 	case DtString, DtCode, DtFunction, DtHandle, DtDictionary, DtSymbol:
 		err = writeStrings(w, d.stringData)
 	case DtBlob:
-		err = writeBlobs(w, d.blobData)
+		err = writeBlobs(w, bo, d.blobData)
 	case DtAny:
 		for _, v := range d.anyData {
 			err := v.Render(w, bo)
@@ -917,7 +1206,7 @@ func (d *dataTypeList) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 		}
 	case DtBool, DtChar, DtCompress:
 		err = w.Write(d.charData)
-	case DtInt, DtTime, DtDate, DtMonth, DtMinute, DtSecond, DtDatetime, DtDateHour:
+	case DtInt, DtTime, DtDate, DtMonth, DtMinute, DtSecond, DtDatetime, DtDateHour, DtDateMinute:
 		err = w.Write(protocol.ByteSliceFromInt32Slice(d.intData))
 	case DtShort:
 		err = w.Write(protocol.ByteSliceFromInt16Slice(d.shortData))
@@ -929,21 +1218,32 @@ func (d *dataTypeList) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 		err = w.Write(protocol.ByteSliceFromFloat32Slice(d.floatData))
 	case DtLong, DtTimestamp, DtNanoTime, DtNanoTimestamp:
 		err = w.Write(protocol.ByteSliceFromInt64Slice(d.longData))
+	case DtDecimal32:
+		err = w.Write(protocol.ByteSliceFromInt32Slice(d.decimal32Data))
+	case DtDecimal64:
+		err = writeDecimal64s(w, bo, d.decimal64Data)
 	case DtDuration:
-		err = writeDurations(w, d.durationData)
+		err = w.Write(protocol.ByteSliceFromUint32Slice(d.durationData))
 	case DtPoint, DtComplex:
-		err = writeDouble2s(w, d.double2Data)
+		err = w.Write(protocol.ByteSliceFromFloat64Slice(d.double2Data))
 	case DtInt128, DtUUID, DtIP:
-		err = writeLong2s(w, d.long2Data)
+		err = w.Write(protocol.ByteSliceFromUint64Slice(d.long2Data))
 	}
 
 	return err
 }
 
 func (d *dataTypeList) StringList() []string {
+	switch d.t {
+	case DtDecimal32:
+		return decimal32sString(d.decimal32Data)
+	case DtDecimal64:
+		return decimal64sString(d.decimal64Data)
+	}
+
 	tmp := d.Value()
 	res := make([]string, len(tmp))
-	if d.t == DtDate || d.t == DtDateHour || d.t == DtDatetime || d.t == DtMinute || d.t == DtMonth ||
+	if d.t == DtDate || d.t == DtDateHour || d.t == DtDatetime || d.t == DtDateMinute || d.t == DtMinute || d.t == DtMonth ||
 		d.t == DtNanoTime || d.t == DtNanoTimestamp || d.t == DtTime || d.t == DtTimestamp ||
 		d.t == DtSecond {
 		times := make([]time.Time, len(tmp))
@@ -975,6 +1275,40 @@ func (d *dataTypeList) StringList() []string {
 	return res
 }
 
+func decimal32sString(d32 []int32) []string {
+	res := make([]string, len(d32))
+	sca := d32[0]
+	format := fmt.Sprintf("%%.%df", sca)
+	for i := 1; i < len(d32); i++ {
+		val := d32[i]
+		if val == NullInt {
+			res[i-1] = ""
+			continue
+		}
+
+		res[i-1] = fmt.Sprintf(format, decimal32Value(sca, val))
+	}
+
+	return res
+}
+
+func decimal64sString(d64 []int64) []string {
+	res := make([]string, len(d64))
+	sca := d64[0]
+	format := fmt.Sprintf("%%.%df", sca)
+	for i := 1; i < len(d64); i++ {
+		val := d64[i]
+		if val == NullLong {
+			res[i-1] = ""
+			continue
+		}
+
+		res[i-1] = fmt.Sprintf(format, decimal64Value(sca, val))
+	}
+
+	return res
+}
+
 func formatTime(dt DataTypeByte, times []time.Time) []string {
 	res := make([]string, len(times))
 	layout := ""
@@ -986,6 +1320,8 @@ func formatTime(dt DataTypeByte, times []time.Time) []string {
 		layout = "2006.01.02T15"
 	case DtDatetime:
 		layout = "2006.01.02T15:04:05"
+	case DtDateMinute:
+		layout = "2006.01.02T15:04"
 	case DtMinute:
 		layout = "15:04m"
 	case DtMonth:
@@ -1190,20 +1526,25 @@ func (d *dataTypeList) renderDouble2(val interface{}) error {
 }
 
 func (d *dataTypeList) renderBool(val interface{}) error {
-	bs, ok := val.([]byte)
-	if !ok {
-		return errors.New("the type of input must be []byte when datatype is DtBool")
+	var bs []byte
+	switch v := val.(type) {
+	case []byte:
+		bs = v
+	case []bool:
+		bl := v
+		bs = make([]byte, len(bl))
+		for k, v := range bl {
+			bs[k] = boolToByte(v)
+		}
+	default:
+		return errors.New("the type of input must be []byte or []bool when datatype is DtBool")
 	}
 
 	length := len(bs)
 	d.count = length
 	d.charData = make([]uint8, length)
 	for k, v := range bs {
-		if v == 0 || v == MinInt8 {
-			d.charData[k] = v
-		} else {
-			d.charData[k] = 1
-		}
+		d.charData[k] = renderBoolFromByte(v)
 	}
 	return nil
 }
@@ -1243,6 +1584,21 @@ func (d *dataTypeList) renderDate(val interface{}) error {
 	d.intData = make([]int32, length)
 	for k, v := range ts {
 		d.intData[k] = renderDateFromTime(v)
+	}
+	return nil
+}
+
+func (d *dataTypeList) renderDateMinute(val interface{}) error {
+	ts, ok := val.([]time.Time)
+	if !ok {
+		return errors.New("the type of input must be []time.Time when datatype is DtDateMinute")
+	}
+
+	length := len(ts)
+	d.count = length
+	d.intData = make([]int32, length)
+	for k, v := range ts {
+		d.intData[k] = renderDateMinuteFromTime(v)
 	}
 	return nil
 }
@@ -1340,6 +1696,48 @@ func (d *dataTypeList) renderIP(val interface{}, bo protocol.ByteOrder) error {
 	for _, v := range str {
 		tmp := renderIPFromString(v, bo)
 		d.long2Data = append(d.long2Data, tmp[0], tmp[1])
+	}
+
+	return nil
+}
+
+func (d *dataTypeList) renderDecimal32(val interface{}) error {
+	dec, ok := val.(*Decimal32s)
+	if !ok {
+		return errors.New("the type of input must be *Decimal32s when datatype is DtDecimal32")
+	}
+
+	length := len(dec.Value)
+	d.count = length
+	d.decimal32Data = make([]int32, 0, length+1)
+	d.decimal32Data = append(d.decimal32Data, dec.Scale)
+	for _, v := range dec.Value {
+		d1 := decimal.NewFromFloat(v)
+		d2 := decimal.NewFromFloat(math.Pow10(int(dec.Scale)))
+		res := d1.Mul(d2)
+		f, _ := res.Float64()
+		d.decimal32Data = append(d.decimal32Data, int32(f))
+	}
+
+	return nil
+}
+
+func (d *dataTypeList) renderDecimal64(val interface{}) error {
+	dec, ok := val.(*Decimal64s)
+	if !ok {
+		return errors.New("the type of input must be *Decimal64s when datatype is DtDecimal64")
+	}
+
+	length := len(dec.Value)
+	d.count = length
+	d.decimal64Data = make([]int64, 0, length+1)
+	d.decimal64Data = append(d.decimal64Data, int64(dec.Scale))
+	for _, v := range dec.Value {
+		d1 := decimal.NewFromFloat(v)
+		d2 := decimal.NewFromFloat(math.Pow10(int(dec.Scale)))
+		res := d1.Mul(d2)
+		f, _ := res.Float64()
+		d.decimal64Data = append(d.decimal64Data, int64(f))
 	}
 
 	return nil
@@ -1532,11 +1930,6 @@ func parseStrings(raw []string, res []interface{}) {
 func parseUUIDs(count int, raw []uint64, res []interface{}, bo protocol.ByteOrder) {
 	for i := 0; i < count; i++ {
 		ind := 2 * i
-		if raw[ind] == 0 || raw[ind+1] == 0 {
-			res[i] = "00000000-0000-0000-0000-000000000000"
-			continue
-		}
-
 		high, low := make([]byte, protocol.Uint64Size), make([]byte, protocol.Uint64Size)
 		bo.PutUint64(high, raw[ind+1])
 		bo.PutUint64(low, raw[ind])
@@ -1628,7 +2021,7 @@ func parseIPs(count int, raw []uint64, res []interface{}, bo protocol.ByteOrder)
 	for i := 0; i < count; i++ {
 		ind := 2 * i
 		if raw[ind] == 0 && raw[ind+1] == 0 {
-			res[i] = "0.0.0.0"
+			res[i] = NullIP
 			continue
 		}
 
@@ -1646,6 +2039,50 @@ func parseIPs(count int, raw []uint64, res []interface{}, bo protocol.ByteOrder)
 	}
 }
 
+func parseDecimal32s(count int, raw []int32, res []interface{}) {
+	scale := raw[0]
+	for i := 0; i < count; i++ {
+		res[i] = decimal32(scale, raw[i+1])
+	}
+}
+
+func decimal64(scale, value int64) *Decimal64 {
+	return &Decimal64{Scale: int32(scale), Value: float64(value) / math.Pow10(int(scale))}
+}
+
+func decimal32(scale, value int32) *Decimal32 {
+	return &Decimal32{Scale: int32(scale), Value: float64(value) / math.Pow10(int(scale))}
+}
+
+func decimal64Value(scale, value int64) interface{} {
+	switch {
+	case value == NullLong:
+		return NullLong
+	case scale == 0:
+		return float64(value)
+	default:
+		return float64(value) / math.Pow10(int(scale))
+	}
+}
+
+func decimal32Value(scale, value int32) interface{} {
+	switch {
+	case value == NullInt:
+		return NullInt
+	case scale == 0:
+		return float64(value)
+	default:
+		return float64(value) / math.Pow10(int(scale))
+	}
+}
+
+func parseDecimal64s(count int, raw []int64, res []interface{}) {
+	scale := raw[0]
+	for i := 0; i < count; i++ {
+		res[i] = decimal64(scale, raw[i+1])
+	}
+}
+
 func parseAny(raw []DataForm, res []interface{}) {
 	for k, v := range raw {
 		if v == nil {
@@ -1660,13 +2097,24 @@ func parseAny(raw []DataForm, res []interface{}) {
 func parseInt128s(count int, raw []uint64, res []interface{}) {
 	for i := 0; i < count; i++ {
 		ind := 2 * i
-		if raw[ind] == 0 || raw[ind+1] == 0 {
-			res[i] = "00000000000000000000000000000000"
-			continue
-		}
-
-		res[i] = fmt.Sprintf("%16x%16x", raw[ind+1], raw[ind])
+		res[i] = generateInt128String(raw[ind+1], raw[ind])
 	}
+}
+
+func generateInt128String(high, low uint64) string {
+	var tmp string
+	if high == 0 {
+		tmp = "0000000000000000"
+	} else {
+		tmp = fmt.Sprintf("%16x", high)
+	}
+	if low == 0 {
+		tmp += "0000000000000000"
+	} else {
+		tmp += fmt.Sprintf("%16x", low)
+	}
+
+	return tmp
 }
 
 func parseInt(raw []int32, res []interface{}) {
@@ -1678,7 +2126,7 @@ func parseInt(raw []int32, res []interface{}) {
 func parseDurations(count int, raw []uint32, res []interface{}) {
 	for i := 0; i < count; i++ {
 		ind := 2 * i
-		if raw[ind] == MinInt32 || raw[ind] == 0 {
+		if raw[ind] == MinInt32 {
 			res[i] = ""
 			continue
 		}
@@ -1703,6 +2151,12 @@ func parseDoubles(raw []float64, res []interface{}) {
 func parseDateTimes(raw []int32, res []interface{}) {
 	for k, v := range raw {
 		res[k] = parseDateTime(v)
+	}
+}
+
+func parseDateMinutes(raw []int32, res []interface{}) {
+	for k, v := range raw {
+		res[k] = parseDateMinute(v)
 	}
 }
 

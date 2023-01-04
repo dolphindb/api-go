@@ -12,7 +12,7 @@ import (
 const chartExpect = "Chart({\n  title: [chart xaxis yaxis]\n  chartType: CT_LINE\n  stacking: false\n  data: matrix<string>[3r][1c]({\n  rows: null,\n  cols: null,\n  data: stringArray(3) [\n    m1,\n    m2,\n    m3,\n  ]\n})\n  extras: dict<string, string>([\n  string[3]([key1, key2, key3]),\n  string[3]([value1, value2, value3]),\n])\n})"
 
 func TestChart(t *testing.T) {
-	dtl, err := NewDataTypeListWithRaw(DtString, []string{"chart", "xaxis", "yaxis"})
+	dtl, err := NewDataTypeListFromRawData(DtString, []string{"chart", "xaxis", "yaxis"})
 	assert.Nil(t, err)
 	assert.Equal(t, dtl.DataType(), DtString)
 
@@ -28,15 +28,15 @@ func TestChart(t *testing.T) {
 
 	st := NewScalar(dt)
 
-	d, err := NewDataTypeListWithRaw(DtString, []string{"m1", "m2", "m3"})
+	d, err := NewDataTypeListFromRawData(DtString, []string{"m1", "m2", "m3"})
 	assert.Nil(t, err)
 
 	data := NewMatrix(NewVector(d), nil, nil)
 
-	keys, err := NewDataTypeListWithRaw(DtString, []string{"key1", "key2", "key3"})
+	keys, err := NewDataTypeListFromRawData(DtString, []string{"key1", "key2", "key3"})
 	assert.Nil(t, err)
 
-	values, err := NewDataTypeListWithRaw(DtString, []string{"value1", "value2", "value3"})
+	values, err := NewDataTypeListFromRawData(DtString, []string{"value1", "value2", "value3"})
 	assert.Nil(t, err)
 
 	extras := NewDictionary(NewVector(keys), NewVector(values))

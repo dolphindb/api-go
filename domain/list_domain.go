@@ -12,16 +12,16 @@ import (
 type ListDomain struct {
 	dict map[string]int
 
-	dt  model.DataTypeByte
-	cat model.CategoryString
+	dataTypeByte model.DataTypeByte
+	category     model.CategoryString
 }
 
 // NewListDomain inits a ListDomain object.
 func NewListDomain(vct *model.Vector, d model.DataTypeByte, cat model.CategoryString) (*ListDomain, error) {
 	ld := &ListDomain{
-		dt:   d,
-		cat:  cat,
-		dict: make(map[string]int),
+		dataTypeByte: d,
+		category:     cat,
+		dict:         make(map[string]int),
 	}
 
 	if vct.GetDataType() != model.DtAny {
@@ -51,15 +51,15 @@ func NewListDomain(vct *model.Vector, d model.DataTypeByte, cat model.CategorySt
 // GetPartitionKeys returns partition keys for partitioned table append.
 func (l *ListDomain) GetPartitionKeys(partitionCol *model.Vector) ([]int, error) {
 	pdt := getVectorRealDataType(partitionCol)
-	if l.cat != model.GetCategory(pdt) {
+	if l.category != model.GetCategory(pdt) {
 		return nil, errors.New("data category incompatible")
 	}
 
-	if l.cat == model.TEMPORAL && l.dt != pdt {
-		df, err := model.CastDateTime(partitionCol, l.dt)
+	if l.category == model.TEMPORAL && l.dataTypeByte != pdt {
+		df, err := model.CastDateTime(partitionCol, l.dataTypeByte)
 		if err != nil {
 			return nil, fmt.Errorf("can't convert type from %s to %s",
-				model.GetDataTypeString(pdt), model.GetDataTypeString(l.dt))
+				model.GetDataTypeString(pdt), model.GetDataTypeString(l.dataTypeByte))
 		}
 
 		partitionCol = df.(*model.Vector)

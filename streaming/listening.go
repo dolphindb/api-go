@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"runtime"
 	"time"
+)
+
+var (
+	TCPNetWork = "tcp"
 )
 
 func listening(c AbstractClient, port int) {
@@ -13,17 +16,12 @@ func listening(c AbstractClient, port int) {
 		Port: port,
 	}
 
-	ln, err := net.ListenTCP("tcp", address)
+	ln, err := net.ListenTCP(TCPNetWork, address)
 	if err != nil {
 		panic(fmt.Errorf("failed to listening 0.0.0.0:%d, %w", port, err))
 	}
 
-	defer func() {
-		err = ln.Close()
-		if err != nil {
-			fmt.Printf("Failed to close listening tcp server: %s\n", err.Error())
-		}
-	}()
+	defer ln.Close()
 
 	ctx, f := context.WithCancel(context.TODO())
 
@@ -35,7 +33,7 @@ func listening(c AbstractClient, port int) {
 
 	cs := make([]net.Conn, 0)
 	for !c.IsClosed() {
-		conn, err := handleData(ctx, ln, c)
+		conn, err := receiveData(ctx, ln, c)
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -50,7 +48,7 @@ func listening(c AbstractClient, port int) {
 	}
 }
 
-func handleData(ctx context.Context, ln *net.TCPListener, c AbstractClient) (net.Conn, error) {
+func receiveData(ctx context.Context, ln *net.TCPListener, c AbstractClient) (net.Conn, error) {
 	conn, err := ln.AcceptTCP()
 	if err != nil {
 		fmt.Printf("Failed to accept tcp: %s\n", err.Error())
@@ -71,15 +69,6 @@ func handleData(ctx context.Context, ln *net.TCPListener, c AbstractClient) (net
 	}
 
 	go mp.run()
-
-	if runtime.GOOS != "linux" {
-		c := &connectionDetector{
-			Conn: conn,
-			ctx:  ctx,
-		}
-
-		go c.run()
-	}
 
 	return conn, nil
 }
