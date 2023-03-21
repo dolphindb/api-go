@@ -187,6 +187,8 @@ var (
 	NullDecimal32Value = float64(NullInt)
 	// Null value for DtDecimal64.
 	NullDecimal64Value = float64(NullLong)
+	maxDecimal32Value  = float64(math.MaxInt32)
+	maxDecimal64Value  = float64(math.MaxInt64)
 	// Null value for DtInt.
 	NullInt = int32(math.MinInt32)
 	// Null value for DtComplex.

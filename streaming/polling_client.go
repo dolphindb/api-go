@@ -15,6 +15,9 @@ type PollingClient struct {
 }
 
 // NewPollingClient instantiates a new polling client and listens on the listening port to get subscription.
+// When listeningHost is "", the default host is the local address.
+// When listeningPort is 0, the default port is the 8849.
+// When listeningPort is -1, enable the reverse stream subscription.
 func NewPollingClient(listeningHost string, listeningPort int) *PollingClient {
 	if listeningPort == 0 {
 		listeningPort = DefaultPort
@@ -25,7 +28,6 @@ func NewPollingClient(listeningHost string, listeningPort int) *PollingClient {
 		exit:       make(chan bool),
 	}
 
-	go listening(t, listeningPort)
 	return t
 }
 
@@ -41,6 +43,11 @@ func (t *PollingClient) Subscribe(req *SubscribeRequest) (*TopicPoller, error) {
 }
 
 func (t *PollingClient) subscribe(req *SubscribeRequest) error {
+	err := t.reviseSubscriber(req)
+	if err != nil {
+		return err
+	}
+
 	queue, err := t.subscribeInternal(req)
 	if err != nil {
 		return err
@@ -51,6 +58,18 @@ func (t *PollingClient) subscribe(req *SubscribeRequest) error {
 	}
 
 	return nil
+}
+
+func (t *PollingClient) reviseSubscriber(req *SubscribeRequest) error {
+	var err error
+	t.subscriber.once.Do(func() {
+		err = t.subscriber.checkServerVersion(req.Address)
+		if err == nil {
+			go listening(t)
+		}
+	})
+
+	return err
 }
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.

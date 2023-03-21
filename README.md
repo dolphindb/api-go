@@ -7,7 +7,7 @@
 
 - [1. Go API 概述](#1-go-api-概述)
 - [2. 安装依赖](#2-安装依赖)
-- [3. DolphinDB 使用示例](#3-dolphindb-使用示例)
+- [3. DolphinDB 基本用法](#3-dolphindb-基本用法)
   - [3.1. 初始化 DolphinDB](#31-初始化-dolphindb)
   - [3.2. 通过 API 建库建表](#32-通过-api-建库建表)
   - [3.3. 基础函数使用](#33-基础函数使用)
@@ -41,7 +41,6 @@
 
 ## 1. Go API 概述
 
-Go API 需要运行在 golang 1.15 或以上版本的环境。
 Go API定义了 DataForm 接口，表示服务器端返回的[数据形式](https://www.dolphindb.cn/cn/help/130/DataTypesandStructures/DataForms/index.html)。该接口提供 `GetDataForm` 方法获取数据形式的整型表示。目前支持获取 7 种数据形式的整型表示。可以根据得到的整型表示，将 `DataForm` 强转为对应的 `DolphinDB` 的数据形式。二者对应关系见下表：
 
 | `GetDataForm` 返回值 | 实际类型   |
@@ -101,15 +100,15 @@ Go API定义了 DataForm 接口，表示服务器端返回的[数据形式](http
 
 该接口还提供了 `GetDataTypeString` 方法获取数据类型的字符串表示。
 
-Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过它在 `DolphinDB` 服务器上执行脚本和函数，并在两者之间双向传递数据。通过 `NewDolphinDBClient` 或者 `NewSimpleDolphinDBClient` 初始化 `DolphinDB` 实例对象。该对象提供以下主要方法：
+Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过该接口在 `DolphinDB` 服务器上执行脚本和函数，并在两者之间双向传递数据。使用 `NewDolphinDBClient` 或者 `NewSimpleDolphinDBClient` 可以初始化 `DolphinDB` 实例对象。该对象提供以下主要方法：
 
 | 方法名                    | 详情                                            |
 | ------------------------- | ----------------------------------------------- |
 | Connect()       | 将会话连接到 DolphinDB 服务器                   |
 | Login(l *LoginRequest)       | 登录服务器                                      |
 | Logout()     | 登出服务器                                      |
-| RunScript(script string)         | 将脚本在 DolphinDB 服务器运行                   |
-| RunFile(fileName string)         | 读取文件中的脚本，将脚本在 DolphinDB 服务器运行 |
+| RunScript(script string)         | 在 DolphinDB 服务器中运行脚本                   |
+| RunFile(fileName string)         | 读取文件中的脚本，并在 DolphinDB 服务器中运行脚本 |
 | RunFunc(s string, args []model.DataForm)    | 调用 DolphinDB 服务器上的函数                   |
 | Upload(vars map[string]model.DataForm) | 将本地数据对象上传到 DolphinDB 服务器           |
 | Close()                   | 关闭当前会话                                    |
@@ -149,19 +148,24 @@ Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过它在 `Dolphin
 
 ## 2. 安装依赖
 
+Go API 需要运行在 golang 1.15 或以上版本的环境。
 使用 `go get` 下载安装 `Go API`
 
 ```sh
 $ go get -u github.com/dolphindb/api-go
 ```
 
-## 3. DolphinDB 使用示例
+## 3. DolphinDB 基本用法
 
 ### 3.1. 初始化 DolphinDB
 
 Go API 支持通过 `NewDolphinDBClient` 和 `NewSimpleDolphinDBClient` 两种方式来初始化 `DolphinDB` 实例：
 
-1. NewDolphinDBClient 仅初始化客户端，需要通过 Connect 和 Login 去连接和登录服务端。该方法支持配置行为标识。
+- NewDolphinDBClient 仅初始化客户端，需要通过 Connect 和 Login 去连接和登录服务端。该方法支持配置行为标识。步骤如下：
+  - 初始化客户端
+  - 链接服务端
+  - 初始化登录请求
+  - 登录服务端
 
 ```go
 package main
@@ -174,27 +178,27 @@ import (
 
 func main() {
     host := "<ServerIP:Port>"
-    // init client
+    // step 1: init client
     db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
     if err != nil {
         // Handle exception
         panic(err)
     }
 
-    // connect to server
+    // step 2: connect to server
     err = db.Connect()
     if err != nil {
         // Handle exception
         panic(err)
     }
 
-    // init login request
+    // step 3: init login request
     loginReq := &api.LoginRequest{
         UserID:   "userID",
         Password: "password",
     }
 
-    // login dolphindb
+    // step 4: login dolphindb
     err = db.Login(loginReq)
     if err != nil {
         // Handle exception
@@ -203,7 +207,7 @@ func main() {
 }
 ```
 
-2. NewSimpleDolphinDBClient 初始化客户端，并连接和登录服务端。该方法不支持配置行为标识。
+- NewSimpleDolphinDBClient 初始化客户端，并连接和登录服务端。该方法不支持配置行为标识。
 
 ```go
 package main
@@ -228,6 +232,13 @@ func main() {
 
 ### 3.2. 通过 API 建库建表
 
+通过 DolphinDB 可以在服务端创建数据库和表，步骤如下:
+1. 初始化 DolphinDB 客户端
+2. 初始化数据库创建请求
+3. 创建数据库
+4. 初始化创建分区表请求
+5. 创建分区表
+
 ```go
 package main
 
@@ -238,6 +249,7 @@ import (
 )
 
 func main() {
+    // step 1: init Dolphindb client
     host := "<ServerIP:Port>"
     db, err := api.NewSimpleDolphinDBClient(context.TODO(), host, "userID", "passWord")
     if err != nil {
@@ -245,7 +257,7 @@ func main() {
         panic(err)
     }
 
-    // init create database request
+    // step 2: init create database request
     dbReq := &api.DatabaseRequest{
         Directory:       "dfs://db1",
         PartitionType:   "VALUE",
@@ -253,21 +265,21 @@ func main() {
         DBHandle:        "example",
     }
 
-    // create database
+    // step 3: create database
     dt, err := db.Database(dbReq)
     if err != nil {
         // Handle exception
         panic(err)
     }
 
-    // init create partitioned table request
+    // step 4: init create partitioned table request
     createReq := &api.CreatePartitionedTableRequest{
         SrcTable:             "sourceTable",
         PartitionedTableName: "tableName",
         PartitionColumns:     []string{"id"},
     }
 
-    // create partitioned table with database handler
+    // step 5: create partitioned table with database handler
     _, err = dt.CreatePartitionedTable(createReq)
     if err != nil {
         // Handle exception
@@ -280,7 +292,7 @@ func main() {
 
 #### 3.3.1. 构造数据类型
 
-Go API 提供 `NewDataType` 方法构造数据类型对象，还提供 `NewDataTypeList`， `NewDataTypeListFromRawData` 以及 `NewEmptyDataTypeList` 方法构造数据类型数组，本节通过例子介绍常用数据类型及其数组的构造方法。
+Go API 提供 `NewDataType` 方法构造数据类型对象，还提供 `NewDataTypeList`， `NewDataTypeListFromRawData` 以及 `NewEmptyDataTypeList` 方法构造数据类型数组，本节举例介绍常用数据类型及其数组的构造方法。
 - 当存在可用的数据类型对象时，可以通过 `NewDataTypeList` 构造数据类型数组。
 - 如果想用 go 类型构造数据类型数组，可以使用 `NewDataTypeListFromRawData` 方法，该方法的入参可以参考[对照表](#3312-newdatatypelistfromrawdata-入参对照表)。
 - 如果想构造指定大小的空数据类型数组，可以使用 `NewEmptyDataTypeList` 方法。然后使用数据类型数组的 `Set` 或者 `SetWithRawData` 方法填充数组。
@@ -400,7 +412,7 @@ func main() {
 | datatype                                                     | arg        |
 | ------------------------------------------------------------ | ---------- |
 | DtChar                                                       | byte       |
-| DtBool,DtChar                                                | byte,bool  |
+| DtBool                                                       | byte,bool  |
 | DtBlob                                                       | []byte     |
 | DtDecimal32                                                  | *model.Decimal32 |
 | DtDecimal64                                                  | *model.Decimal64 |
@@ -443,25 +455,25 @@ Golang 语法不允许一个数组里包含 nil，因此通过 Go API 传入包�
 
 | datatype                                                     | 空值         |
 | ------------------------------------------------------------ | ------------ |
-| DtBool                                                       | NullBool     |
-| DtDecimal32                                                  | NullDecimal32Value     |
-| DtDecimal64                                                  | NullDecimal64Value     |
-| DtBlob                                                       | NullBlob     |
-| DtChar                                                       | NullChar     |
-| DtComplex                                                    | NullComplex  |
-| DtDate,DtDateHour,DtDatetime,DtMinute,DtNanoTime,DtNanoTimestamp,DtSecond,DtMonth,DtTimestamp | NullTime     |
-| DtDouble                                                     | NullDouble   |
-| DtFloat                                                      | NullFloat    |
-| DtDuration                                                   | NullDuration |
-| DtInt                                                        | NullInt      |
-| DtInt128                                                     | NullInt128   |
-| DtIP                                                         | NullIP       |
-| DtLong                                                       | NullLong     |
-| DtPoint                                                      | NullPoint    |
-| DtShort                                                      | NullShort    |
-| DtUuid                                                       | NullUUID     |
-| DtAny                                                        | NullAny      |
-| DtString,DtSymbol                                            | NullString   |
+| DtBool                                                       | model.NullBool     |
+| DtDecimal32                                                  | model.NullDecimal32Value     |
+| DtDecimal64                                                  | model.NullDecimal64Value     |
+| DtBlob                                                       | model.NullBlob     |
+| DtChar                                                       | model.NullChar     |
+| DtComplex                                                    | model.NullComplex  |
+| DtDate,DtDateHour,DtDatetime,DtMinute,DtNanoTime,DtNanoTimestamp,DtSecond,DtMonth,DtTimestamp | model.NullTime     |
+| DtDouble                                                     | model.NullDouble   |
+| DtFloat                                                      | model.NullFloat    |
+| DtDuration                                                   | model.NullDuration |
+| DtInt                                                        | model.NullInt      |
+| DtInt128                                                     | model.NullInt128   |
+| DtIP                                                         | model.NullIP       |
+| DtLong                                                       | model.NullLong     |
+| DtPoint                                                      | model.NullPoint    |
+| DtShort                                                      | model.NullShort    |
+| DtUuid                                                       | model.NullUUID     |
+| DtAny                                                        | model.NullAny      |
+| DtString,DtSymbol                                            | model.NullString   |
 
 使用示例
 
@@ -605,7 +617,7 @@ if task.IsSuccess() {
 }
 ```
 
-输出
+输出：
 
 ```
 vector<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -641,7 +653,7 @@ for _, v := range tasks {
 }
 ```
 
-输出
+输出：
 
 ```go
 double(0)
@@ -695,7 +707,7 @@ Go API 通过 `Table` 对象来存储数据表。`Table` 对象采用列式存�
 ```go
 for _, v := range t.GetColumnNames() {
     fmt.Println("ColumnName: ", v)
-    col := table.GetColumnByName(v)
+    col := t.GetColumnByName(v)
     fmt.Println("ColumnValue: ", col.String())
 }
 ```
@@ -732,11 +744,11 @@ db.createPartitionedTable(t,tbName,'ctimestamp')
 
 ```go
 func testSaveInsert(str string, i int, ts int64, dbl float64, db api.DolphinDB) {
-    df, err := db.RunScript(fmt.Sprintf("insert into loadTable('dfs://testDatabase','tb1') values('%s',%d,%d,%f)", str, i, ts, dbl))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+    df, err := db.RunScript(fmt.Sprintf("insert into loadTable('dfs://testDatabase','tb1')values('%s',%d,%d,%f)", str, i, ts, dbl))
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
 
     fmt.Println(df)
 }
@@ -744,8 +756,16 @@ func testSaveInsert(str string, i int, ts int64, dbl float64, db api.DolphinDB) 
 
 ##### 4.2.1.2. 使用 `tableInsert` 函数向表中批量追加数组对象
 
-`tableInsert` 可将多个数组追加到 `DolphinDB` 数据表中，比较适合用来批量保存数据。
+`tableInsert` 可将多个数组追加到 `DolphinDB` 内存表中，比较适合用来批量保存数据。
 
+- 创建内存表
+
+```sql
+t = table(10000:0,`cstring`cint`ctimestamp`cdouble,[STRING,INT,TIMESTAMP,DOUBLE])
+share t as sharedTable
+```
+
+- 批量追加数组对象
 ```go
 func testTableInsert(strVector, intVector, timestampVector, doubleVector *model.Vector, db api.DolphinDB) {
     args := make([]model.DataForm, 4)
@@ -753,17 +773,17 @@ func testTableInsert(strVector, intVector, timestampVector, doubleVector *model.
     args[1] = intVector
     args[2] = timestampVector
     args[3] = doubleVector
-    df, err := db.RunFunc("tableInsert{loadTable('dfs://testDatabase','tb1')}", args)
+    df, err := db.RunFunc("tableInsert{sharedTable}", args)
     if err != nil {
-    	fmt.Println(err)
-    	return
+        fmt.Println(err)
+        return
     }
     
     fmt.Println(df)
 }
 ```
 
-在本例中，使用了 `DolphinDB` 中的[部分应用](https://www.dolphindb.cn/cn/help/200/Functionalprogramming/PartialApplication.html)这一特性，将服务端表名以 `tableInsert{loadTable('dfs://testDatabase','tb1')}` 的方式固化到 `tableInsert` 中，作为一个独立函数来使用。
+在本例中，使用了 `DolphinDB` 中的[部分应用](https://www.dolphindb.cn/cn/help/200/Functionalprogramming/PartialApplication.html)这一特性，将服务端表名以 `tableInsert{sharedTable}` 的方式固化到 `tableInsert` 中，作为一个独立函数来使用。
 
 ##### 4.2.1.3. 使用 `tableInsert` 函数向表中追加 `Table` 对象
 
@@ -924,6 +944,7 @@ Option 参数说明：
 
 以下是 `MultiGoroutineTable` 对象包含的函数方法介绍：
 
+#### Insert
 ```go
 Insert(args ...interface{}) error
 ```
@@ -945,6 +966,7 @@ Insert(args ...interface{}) error
 err = writer.Insert("2", time.Date(2022, time.Month(1), 1, 1, 1, 0, 0, time.UTC))
 ```
 
+#### GetUnwrittenData
 ```go
 GetUnwrittenData() [][]model.DataType
 ```
@@ -961,6 +983,7 @@ GetUnwrittenData() [][]model.DataType
 unwrittenData := writer.GetUnwrittenData()
 ```
 
+#### InsertUnwrittenData
 ```go
 InsertUnwrittenData(records [][]model.DataType) error
 ```
@@ -979,6 +1002,7 @@ InsertUnwrittenData(records [][]model.DataType) error
 err = writer.InsertUnwrittenData(unwrittenData)
 ```
 
+#### GetStatus 
 ```go
 GetStatus() *Status
 ```
@@ -1010,6 +1034,8 @@ status 属性：
   - SentRows：该协程成功发送的记录数。
   - UnsentRows：该协程待发送的记录数。
   - FailedRows：该协程发送失败的记录数。
+
+#### WaitForGoroutineCompletion
 
 ```go
 WaitForGoroutineCompletion()
@@ -1304,7 +1330,7 @@ goroutineStatus   :
 
 ## 5. 流数据 API
 
-Go API 可以通过 API 订阅流数据。有三种创建订阅客户端的方式：单协程回调（GoroutineClient），多协程回调（GoroutinePooledClient）和通过 PollingClient 返回的对象获取消息队列.
+Go API 可以通过 API 订阅流数据。用户有三种创建订阅客户端的方式：通过 PollingClient 返回的对象获取消息队列，以及使用 MessageHandler 回调的方式获取新数据，其中包括单协程回调（GoroutineClient）和多协程回调（GoroutinePooledClient）。
 
 ### 5.1. 代码示例:
 
@@ -1324,7 +1350,8 @@ Go API 可以通过 API 订阅流数据。有三种创建订阅客户端的方�
 
 下面分别介绍如何通过3种方法订阅流数据
 
-- 通过客户机上的应用程序定期去流数据表查询是否有新增数据，推荐使用 PollingClient
+- 通过 PollingClient 返回的对象获取消息队列
+该方法推荐用于需要通过客户机上的应用程序定期去流数据表查询是否有新增数据的场景。使用示例如下：
 
 ```go
 client := streaming.NewPollingClient("localhost", 8101)
@@ -1421,7 +1448,7 @@ if err != nil {
 
 `Filter` 参数是一个向量。该参数需要发布端配合 `setStreamTableFilterColumn` 函数一起使用。使用 `setStreamTableFilterColumn` 指定流数据表的过滤列，流数据表过滤列在 filter 中的数据才会发布到订阅端，不在 `Filter` 中的数据不会发布。
 
-以下例子将一个包含元素1和2的整数类型向量作为 `Subscribe` 的 Filter 参数：
+以下例子将一个包含元素 1 和 2 的整数类型向量作为 `Subscribe` 的 Filter 参数：
 
 ```go
 dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2})
@@ -1467,7 +1494,7 @@ GetDataTypeString(t DataTypeByte) string
 
 函数说明：
 
-根据传入的 t，得到数据类型的字符串表示
+根据传入的 t，得到数据类型的字符串表示。
 
 示例：
 ```go
@@ -1483,7 +1510,7 @@ GetDataFormString(t DataFormByte) string
 
 函数说明：
 
-根据传入的 t，得到数据形式的字符串表示
+根据传入的 t，得到数据形式的字符串表示。
 
 示例：
 ```go

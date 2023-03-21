@@ -20,7 +20,7 @@ var gpcConn, _ = api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, set
 func CreateStreamingTableforGpcTest() {
 	_, err := gpcConn.RunScript("login(`admin,`123456);" +
 		"try{dropStreamTable('TradesTable')}catch(ex){};" +
-		"try{dropStreamTable('ReceiveTable')}catch(ex){};")
+		"try{dropStreamTable('ReceiveTable')}catch(ex){};try{dropStreamTable('filter')}catch(ex){};")
 	AssertNil(err)
 	_, err = gpcConn.RunScript("st1 = streamTable(1000000:0,`tag`ts`data,[INT,TIMESTAMP,DOUBLE])\n" +
 		"enableTableShareAndPersistence(table=st1, tableName=`TradesTable, asynWrite=true, compress=true, cacheSize=200000, retentionMinutes=180)\t\n" + "setStreamTableFilterColumn(objByName(`TradesTable),`tag)")
@@ -285,7 +285,7 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 			Address:    setup.Address,
 			TableName:  "TradesTable",
 			ActionName: "subTradesTable1",
-			Offset:     -1,
+			Offset:     0,
 			Reconnect:  true,
 			Filter:     filter1.(*model.Vector),
 			Handler:    new(gpcMessageHandler),
@@ -294,7 +294,7 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 			Address:    setup.Address,
 			TableName:  "TradesTable",
 			ActionName: "subTradesTable2",
-			Offset:     -1,
+			Offset:     0,
 			Reconnect:  true,
 			Filter:     filter2.(*model.Vector),
 			Handler:    new(Handlegpc),

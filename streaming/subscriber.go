@@ -1,9 +1,12 @@
 package streaming
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dolphindb/api-go/dialer"
@@ -15,6 +18,9 @@ import (
 type subscriber struct {
 	listeningHost string
 	listeningPort int32
+	once          *sync.Once
+
+	connList *chanx.UnboundedChan
 }
 
 // SubscribeRequest is used for subscribing.
@@ -76,17 +82,32 @@ func newSubscriber(subscribeHost string, subscribePort int) *subscriber {
 	return &subscriber{
 		listeningHost: subscribeHost,
 		listeningPort: int32(subscribePort),
+		connList:      chanx.NewUnboundedChan(1),
+		once:          &sync.Once{},
 	}
 }
 
 func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*chanx.UnboundedChan, error) {
-	conn, err := newConnectedConn(req.Address)
+	var conn dialer.Conn
+	var err error
+	if s.listeningPort == 0 {
+		conn, err = newReverseStreamConnectedConn(req.Address)
+	} else {
+		conn, err = newConnectedConn(req.Address)
+	}
+
 	if err != nil {
 		fmt.Printf("Failed to connect to server: %s\n", err.Error())
 		return nil, err
 	}
 
-	defer conn.Close()
+	defer func() {
+		if s.listeningPort == 0 {
+			s.connList.In <- conn
+		} else {
+			conn.Close()
+		}
+	}()
 
 	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
 	if err != nil {
@@ -104,6 +125,37 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*chanx.UnboundedC
 	}
 
 	return addQueue(topic)
+}
+
+func (s *subscriber) checkServerVersion(address string) error {
+	conn, err := newConnectedConn(address)
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	df, err := conn.RunScript("version()")
+	if err != nil {
+		return err
+	}
+
+	ver := df.(*model.Scalar).DataType.String()
+	if strings.HasPrefix(ver, "2") && ver >= "2.00.9" {
+		if s.listeningPort != 0 {
+			fmt.Println("Warn: The server only supports subscription through reverse connection (connection initiated by the subscriber). The specified port will not take effect.")
+		}
+		s.listeningPort = 0
+	} else if s.listeningPort <= 0 {
+		return errors.New("The server does not support subscription through reverse connection (connection initiated by the subscriber). Specify a valid port parameter.")
+	}
+
+	return nil
+}
+
+func (s *subscriber) getTCPConn() *net.TCPConn {
+	tc := <-s.connList.Out
+	return tc.(dialer.Conn).GetTCPConn()
 }
 
 func (s *subscriber) publishTable(topic string, req *SubscribeRequest, conn dialer.Conn) error {
@@ -332,8 +384,6 @@ func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 
 func (s *subscriber) cleanTopic(topic string) {
 	queueMap.Delete(topic)
-
-	fmt.Println("Successfully unsubscribe from the table ", topic)
 
 	raw, ok := trueTopicToSites.Load(topic)
 	if !ok {

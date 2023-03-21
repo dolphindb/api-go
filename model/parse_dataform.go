@@ -126,16 +126,53 @@ func parseVectorWithCategory(r protocol.Reader, bo protocol.ByteOrder) (*Vector,
 }
 
 func parseVectorWithCategoryList(r protocol.Reader, bo protocol.ByteOrder, count int) ([]*Vector, error) {
-	var err error
 	list := make([]*Vector, count)
+	var symBase *symbolBaseCollection
 	for i := 0; i < count; i++ {
-		list[i], err = parseVectorWithCategory(r, bo)
+		c, err := parseCategory(r)
+		if err != nil {
+			return nil, err
+		}
+
+		if c.DataType > 128 {
+			if symBase == nil {
+				symBase = &symbolBaseCollection{}
+			}
+
+			list[i], err = parseSymbolExtendVector(r, bo, symBase, c)
+		} else {
+			list[i], err = parseVector(r, bo, c)
+		}
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return list, nil
+}
+
+func parseSymbolExtendVector(r protocol.Reader, bo protocol.ByteOrder, symBases *symbolBaseCollection, c *Category) (*Vector, error) {
+	var err error
+	vct := &Vector{
+		category: c,
+	}
+
+	vct.RowCount, vct.ColumnCount, err = read2Uint32(r, bo)
+	if err != nil {
+		return nil, err
+	}
+
+	vct.Extend, err = symBases.add(r, bo)
+	if err != nil {
+		return nil, err
+	}
+
+	vct.Data, err = readList(r, DtInt, bo, int(vct.RowCount*vct.ColumnCount))
+	if err != nil {
+		return vct, err
+	}
+
+	return vct, nil
 }
 
 func parseVector(r protocol.Reader, bo protocol.ByteOrder, c *Category) (*Vector, error) {
@@ -193,45 +230,57 @@ func readVectorData(r protocol.Reader, bo protocol.ByteOrder, dv *Vector) error 
 }
 
 func parseArrayVector(r protocol.Reader, bo protocol.ByteOrder, dv *Vector) error {
-	arrVct := make([]*ArrayVector, 0)
+	var err error
 	dt := dv.GetDataType() - 64
+	if dt == DtDecimal32 || dt == DtDecimal64 || dt == DtDecimal128 {
+		err = readDecimalArrayVector(r, dt, bo, dv)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = readArrayVector(r, dt, bo, dv)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func readDecimalScale(r protocol.Reader, bo protocol.ByteOrder) (int32, error) {
+	scaRaw, err := r.ReadCertainBytes(4)
+	if err != nil {
+		return 0, err
+	}
+
+	return int32(bo.Uint32(scaRaw)), nil
+}
+
+func readArrayVector(r protocol.Reader, dt DataTypeByte, bo protocol.ByteOrder, dv *Vector) error {
+	dv.ArrayVector = make([]*ArrayVector, 0)
 	for i := 0; i < int(dv.RowCount); {
 		rc, cc, err := read2Uint16(r, bo)
 		if err != nil {
 			return err
 		}
 
-		total := 0
 		buf, err := r.ReadCertainBytes(int(rc * cc))
 		if err != nil {
 			return err
 		}
 
-		switch {
-		case cc == 1:
-			res := protocol.Uint8SliceFromByteSlice(buf)
-			for _, v := range res {
-				total += int(v)
-			}
-		case cc == 2:
-			res := protocol.Uint16SliceFromByteSlice(buf)
-			for _, v := range res {
-				total += int(v)
-			}
-		case cc == 4:
-			res := protocol.Uint32SliceFromByteSlice(buf)
-			for _, v := range res {
-				total += int(v)
-			}
+		total, err := countArrayVectorElem(rc, cc, buf)
+		if err != nil {
+			return err
 		}
 
-		i += int(rc)
 		data, err := readList(r, dt, bo, total)
 		if err != nil {
 			return err
 		}
 
-		arrVct = append(arrVct, &ArrayVector{
+		i += int(rc)
+
+		dv.ArrayVector = append(dv.ArrayVector, &ArrayVector{
 			rowCount: rc,
 			unit:     cc,
 			lengths:  buf,
@@ -239,8 +288,140 @@ func parseArrayVector(r protocol.Reader, bo protocol.ByteOrder, dv *Vector) erro
 		})
 	}
 
-	dv.ArrayVector = arrVct
 	return nil
+}
+
+func readDecimalArrayVector(r protocol.Reader, dt DataTypeByte, bo protocol.ByteOrder, dv *Vector) error {
+	dv.ArrayVector = make([]*ArrayVector, 0)
+	scaRaw, err := r.ReadCertainBytes(4)
+	if err != nil {
+		return err
+	}
+
+	dv.scale = int32(bo.Uint32(scaRaw))
+	for i := 0; i < int(dv.RowCount); {
+		rc, cc, err := read2Uint16(r, bo)
+		if err != nil {
+			return err
+		}
+
+		buf, err := r.ReadCertainBytes(int(rc * cc))
+		if err != nil {
+			return err
+		}
+
+		total, err := countArrayVectorElem(rc, cc, buf)
+		if err != nil {
+			return err
+		}
+
+		data, err := readDecimal(r, dt, bo, total, dv.scale)
+		if err != nil {
+			return err
+		}
+
+		i += int(rc)
+
+		dv.ArrayVector = append(dv.ArrayVector, &ArrayVector{
+			rowCount: rc,
+			unit:     cc,
+			lengths:  buf,
+			data:     data,
+		})
+	}
+
+	return nil
+}
+
+func readDecimal(r protocol.Reader, t DataTypeByte, bo protocol.ByteOrder, count int, sca int32) (DataTypeList, error) {
+	dt := &dataTypeList{
+		t:     t,
+		count: count,
+		bo:    bo,
+	}
+
+	var err error
+	if bo == protocol.LittleEndian {
+		err = readDecimalWithLittleEndian(dt, r, t, count, sca)
+	} else {
+		err = readDecimalWithBigEndian(dt, r, bo, t, count, sca)
+	}
+
+	return dt, err
+}
+
+func readDecimalWithBigEndian(dt *dataTypeList, r protocol.Reader, bo protocol.ByteOrder, t DataTypeByte, count int, sca int32) error {
+	switch t {
+	case DtDecimal32:
+		d32, err := readIntWithBigEndian(count, r, bo)
+		if err != nil {
+			return err
+		}
+
+		dt.decimal32Data = make([]int32, count+1)
+		dt.decimal32Data[0] = sca
+		copy(dt.decimal32Data[1:], d32)
+	case DtDecimal64:
+		d64, err := readLongsWithBigEndian(count, r, bo)
+		if err != nil {
+			return err
+		}
+
+		dt.decimal64Data = make([]int64, count+1)
+		dt.decimal64Data[0] = int64(sca)
+		copy(dt.decimal64Data[1:], d64)
+	}
+
+	return nil
+}
+
+func readDecimalWithLittleEndian(dt *dataTypeList, r protocol.Reader, t DataTypeByte, count int, sca int32) error {
+	switch t {
+	case DtDecimal32:
+		d32, err := readIntWithLittleEndian(count, r)
+		if err != nil {
+			return err
+		}
+
+		dt.decimal32Data = make([]int32, count+1)
+		dt.decimal32Data[0] = sca
+		copy(dt.decimal32Data[1:], d32)
+	case DtDecimal64:
+		d64, err := readLongsWithLittleEndian(count, r)
+		if err != nil {
+			return err
+		}
+
+		dt.decimal64Data = make([]int64, count+1)
+		dt.decimal64Data[0] = int64(sca)
+		copy(dt.decimal64Data[1:], d64)
+	}
+
+	return nil
+}
+
+func countArrayVectorElem(rc, cc uint16, buf []byte) (int, error) {
+	total := 0
+
+	switch {
+	case cc == 1:
+		res := protocol.Uint8SliceFromByteSlice(buf)
+		for _, v := range res {
+			total += int(v)
+		}
+	case cc == 2:
+		res := protocol.Uint16SliceFromByteSlice(buf)
+		for _, v := range res {
+			total += int(v)
+		}
+	case cc == 4:
+		res := protocol.Uint32SliceFromByteSlice(buf)
+		for _, v := range res {
+			total += int(v)
+		}
+	}
+
+	return total, nil
 }
 
 func parseScalar(r protocol.Reader, bo protocol.ByteOrder, c *Category) (*Scalar, error) {

@@ -13,6 +13,7 @@ import (
 // Refer to https://www.dolphindb.cn/cn/help/130/DataTypesandStructures/DataForms/Vector/index.html for more details.
 type Vector struct {
 	category *Category
+	scale    int32
 
 	RowCount    uint32
 	ColumnCount uint32
@@ -86,6 +87,10 @@ func NewVectorWithArrayVector(data []*ArrayVector) *Vector {
 		ColumnCount: uint32(len(data)),
 	}
 
+	if dt == 101 || dt == 102 {
+		res.scale = getScale(data[0].data.(*dataTypeList))
+	}
+
 	for _, v := range data {
 		res.RowCount += uint32(v.rowCount)
 	}
@@ -124,7 +129,7 @@ func (vct *Vector) GetDataForm() DataFormByte {
 // otherwise cover the original value.
 func (vct *Vector) Set(ind int, d DataType) error {
 	if vct.Extend != nil {
-		if vct.Extend.BaseSize == 0 {
+		if vct.Extend.Base == nil || vct.Extend.Base.Len() == 0 {
 			return nil
 		}
 
@@ -148,7 +153,7 @@ func (vct *Vector) Get(ind int) DataType {
 
 	switch {
 	case vct.Extend != nil:
-		if vct.Extend.BaseSize == 0 {
+		if vct.Extend.Base == nil || vct.Extend.Base.Len() == 0 {
 			return &dataType{
 				t:    DtString,
 				bo:   protocol.LittleEndian,
@@ -290,12 +295,22 @@ func combineBase(vct, in *Vector) (map[int]int, *dataTypeList) {
 	return indMap, nb
 }
 
+func getScale(dt *dataTypeList) int32 {
+	if dt.t == DtDecimal32 {
+		return dt.decimal32Data[0]
+	} else if dt.t == DtDecimal64 {
+		return int32(dt.decimal64Data[0])
+	}
+
+	return 0
+}
+
 // SetNull sets the value of DataType in vector to null based on ind.
 // ArrayVector does not support SetNull.
 func (vct *Vector) SetNull(ind int) {
 	switch {
 	case vct.Extend != nil:
-		if vct.Extend.BaseSize == 0 {
+		if vct.Extend.Base == nil || vct.Extend.Base.Len() == 0 {
 			return
 		}
 
@@ -313,7 +328,7 @@ func (vct *Vector) SetNull(ind int) {
 func (vct *Vector) IsNull(ind int) bool {
 	switch {
 	case vct.Extend != nil:
-		if vct.Extend.BaseSize == 0 {
+		if vct.Extend.Base == nil || vct.Extend.Base.Len() == 0 {
 			return true
 		}
 
@@ -406,6 +421,11 @@ func (vct *Vector) GetDataTypeString() string {
 	return GetDataTypeString(vct.category.DataType)
 }
 
+// GetDataFormString returns the string format of the DataForm.
+func (vct *Vector) GetDataFormString() string {
+	return GetDataFormString(vct.category.DataForm)
+}
+
 // String returns the string of the DataForm.
 func (vct *Vector) String() string {
 	by := strings.Builder{}
@@ -420,24 +440,112 @@ func (vct *Vector) String() string {
 }
 
 func (vct *Vector) renderArrayVector(w *protocol.Writer, bo protocol.ByteOrder) error {
-	for _, v := range vct.ArrayVector {
-		buf := make([]byte, 4)
+	dt := vct.GetDataType() - 64
+	if dt == DtDecimal32 || dt == DtDecimal64 || dt == DtDecimal128 {
+		err := vct.renderDecimalArrayVector(w, bo)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := vct.renderCommonArrayVector(w, bo)
+		if err != nil {
+			return err
+		}
+	}
 
-		bo.PutUint16(buf[0:2], v.rowCount)
-		bo.PutUint16(buf[2:4], v.unit)
+	return nil
+}
+
+func (vct *Vector) renderDecimalArrayVector(w *protocol.Writer, bo protocol.ByteOrder) error {
+	buf := make([]byte, 4)
+	bo.PutUint32(buf, uint32(vct.scale))
+	err := w.Write(buf)
+	if err != nil {
+		return err
+	}
+
+	for _, avt := range vct.ArrayVector {
+		bo.PutUint16(buf[0:2], avt.rowCount)
+		bo.PutUint16(buf[2:4], avt.unit)
 		err := w.Write(buf)
 		if err != nil {
 			return err
 		}
 
-		if v.data.Len() > 0 {
-			err = w.Write(v.lengths)
+		if avt.data.Len() > 0 {
+			err = w.Write(avt.lengths)
 			if err != nil {
 				return err
 			}
 		}
 
-		err = v.data.Render(w, bo)
+		err = writeDecimalArrayVector(w, avt.data.(*dataTypeList), vct.scale)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func writeDecimalArrayVector(w *protocol.Writer, d *dataTypeList, scale int32) error {
+	var err error
+	switch d.t {
+	case DtDecimal32:
+		err = writeDecimal32Data(w, d, scale)
+	case DtDecimal64:
+		err = writeDecimal64Data(w, d, int64(scale))
+	}
+
+	return err
+}
+
+func writeDecimal32Data(w *protocol.Writer, d *dataTypeList, scale int32) error {
+	data := make([]int32, len(d.decimal32Data[1:]))
+	copy(data, d.decimal32Data[1:])
+	if scale != d.decimal32Data[0] {
+		for k, v := range data {
+			if v != NullInt {
+				data[k] = int32(float64(v) * math.Pow10(int(scale-d.decimal32Data[0])))
+			}
+		}
+	}
+
+	return w.Write(protocol.ByteSliceFromInt32Slice(data))
+}
+
+func writeDecimal64Data(w *protocol.Writer, d *dataTypeList, scale int64) error {
+	data := make([]int64, len(d.decimal64Data[1:]))
+	copy(data, d.decimal64Data[1:])
+	if scale != d.decimal64Data[0] {
+		for k, v := range data {
+			if v != NullLong {
+				data[k] = int64(float64(v) * math.Pow10(int(scale-d.decimal64Data[0])))
+			}
+		}
+	}
+
+	return w.Write(protocol.ByteSliceFromInt64Slice(data))
+}
+
+func (vct *Vector) renderCommonArrayVector(w *protocol.Writer, bo protocol.ByteOrder) error {
+	buf := make([]byte, 4)
+	for _, avt := range vct.ArrayVector {
+		bo.PutUint16(buf[0:2], avt.rowCount)
+		bo.PutUint16(buf[2:4], avt.unit)
+		err := w.Write(buf)
+		if err != nil {
+			return err
+		}
+
+		if avt.data.Len() > 0 {
+			err = w.Write(avt.lengths)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = avt.data.Render(w, bo)
 		if err != nil {
 			return err
 		}
@@ -450,7 +558,7 @@ func (vct *Vector) renderExtend(w *protocol.Writer, bo protocol.ByteOrder) error
 	ext := vct.Extend
 	buf := make([]byte, 8)
 	bo.PutUint32(buf[0:4], ext.BaseID)
-	bo.PutUint32(buf[4:8], ext.BaseSize)
+	bo.PutUint32(buf[4:8], uint32(ext.Base.Len()))
 	err := w.Write(buf)
 	if err != nil {
 		return err
@@ -471,6 +579,30 @@ func (vct *Vector) renderExtend(w *protocol.Writer, bo protocol.ByteOrder) error
 	return nil
 }
 
+func (vct *Vector) renderSymbolExtendVector(w *protocol.Writer, bo protocol.ByteOrder, symBases *symbolBaseCollection) error {
+	err := vct.category.render(w)
+	if err != nil {
+		return err
+	}
+
+	err = vct.renderLength(w, bo)
+	if err != nil {
+		return err
+	}
+
+	err = symBases.write(w, bo, vct.Extend)
+	if err != nil {
+		return err
+	}
+
+	err = vct.Data.Render(w, bo)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (vct *Vector) renderLength(w *protocol.Writer, bo protocol.ByteOrder) error {
 	buf := make([]byte, 8)
 	bo.PutUint32(buf[0:4], vct.RowCount)
@@ -481,6 +613,33 @@ func (vct *Vector) renderLength(w *protocol.Writer, bo protocol.ByteOrder) error
 
 func (vct *Vector) renderData(w *protocol.Writer, bo protocol.ByteOrder) error {
 	return vct.Data.Render(w, bo)
+}
+
+// GetRawValue returns an array of values of the elements in the Vector.
+func (vct *Vector) GetRawValue() []interface{} {
+	res := make([]interface{}, 0, vct.RowCount*vct.ColumnCount)
+	switch {
+	case vct.Extend != nil:
+		d := vct.Data.(*dataTypeList)
+		sl := vct.Extend.Base.StringList()
+		for _, v := range d.intData {
+			res = append(res, sl[v])
+		}
+	case vct.Data != nil:
+		res = vct.Data.Value()
+	case vct.ArrayVector != nil:
+		for _, v := range vct.ArrayVector {
+			asl := v.data.Value()
+			si := 0
+			for _, l := range v.lengths {
+				length := int(l)
+				res = append(res, asl[si:si+length])
+				si += length
+			}
+		}
+	}
+
+	return res
 }
 
 func (vct *Vector) formatString() []string {

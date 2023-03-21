@@ -51,6 +51,11 @@ func (p *Pair) GetDataTypeString() string {
 	return GetDataTypeString(p.category.DataType)
 }
 
+// GetDataFormString returns the string format of the DataForm.
+func (p *Pair) GetDataFormString() string {
+	return GetDataFormString(p.category.DataForm)
+}
+
 // Render serializes the DataForm with bo and input it into w.
 func (p *Pair) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 	err := p.category.render(w)

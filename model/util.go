@@ -2,11 +2,13 @@ package model
 
 import (
 	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/shopspring/decimal"
 )
 
 var dataTypeStringMap = map[DataTypeByte]string{
@@ -344,4 +346,34 @@ func contains(raw []string, s string) (int, bool) {
 	}
 
 	return 0, false
+}
+
+func calculateDecimal32(scale int32, value float64) (float64, error) {
+	if value == NullDecimal32Value {
+		return value, nil
+	}
+	d1 := decimal.NewFromFloat(value)
+	d2 := decimal.NewFromFloat(math.Pow10(int(scale)))
+	res := d1.Mul(d2)
+	f, _ := res.Float64()
+	if f < NullDecimal32Value || f > maxDecimal32Value {
+		return 0, errors.New("Decimal math overflow")
+	}
+
+	return f, nil
+}
+
+func calculateDecimal64(scale int32, value float64) (float64, error) {
+	if value == NullDecimal64Value {
+		return value, nil
+	}
+	d1 := decimal.NewFromFloat(value)
+	d2 := decimal.NewFromFloat(math.Pow10(int(scale)))
+	res := d1.Mul(d2)
+	f, _ := res.Float64()
+	if f < NullDecimal64Value || f > maxDecimal64Value {
+		return 0, errors.New("Decimal math overflow")
+	}
+
+	return f, nil
 }

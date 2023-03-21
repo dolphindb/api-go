@@ -16,7 +16,7 @@ const (
 	TbName2      = "tb2"
 	DfsTBName1   = "pt1"
 	DfsTBName2   = "pt2"
-	DiskDBPath   = setup.WORKDIR + `/testTable`
+	DiskDBPath   = setup.WORK_DIR + `/testTable`
 	DBhandler    = "db"
 	MemTableName = "memTable"
 )

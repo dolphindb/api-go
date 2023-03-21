@@ -164,6 +164,26 @@ func newConnectedConn(address string) (dialer.Conn, error) {
 	return conn, err
 }
 
+func newReverseStreamConnectedConn(address string) (dialer.Conn, error) {
+	opt := &dialer.BehaviorOptions{
+		IsReverseStreaming: true,
+	}
+
+	conn, err := dialer.NewConn(context.TODO(), address, opt)
+	if err != nil {
+		fmt.Printf("Failed to new a conn: %s\n", err.Error())
+		return nil, err
+	}
+
+	err = conn.Connect()
+	if err != nil {
+		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		return nil, err
+	}
+
+	return conn, err
+}
+
 func getActiveSite(sites []*site) *site {
 	ind := 0
 	siteNum := len(sites)

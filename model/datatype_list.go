@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -483,12 +484,12 @@ func (d *dataTypeList) ElementString(ind int) string {
 		return fmt.Sprintf("%s", raw)
 	} else if d.t == DtDecimal32 {
 		dec := raw.(*Decimal32)
-		format := fmt.Sprintf("%%.%df", dec.Scale)
-		return fmt.Sprintf(format, dec.Value)
+		f := decimal.NewFromFloat(dec.Value)
+		return f.StringFixed(dec.Scale)
 	} else if d.t == DtDecimal64 {
 		dec := raw.(*Decimal64)
-		format := fmt.Sprintf("%%.%df", dec.Scale)
-		return fmt.Sprintf(format, dec.Value)
+		f := decimal.NewFromFloat(dec.Value)
+		return f.StringFixed(dec.Scale)
 	}
 
 	return fmt.Sprintf("%v", raw)
@@ -1250,35 +1251,48 @@ func (d *dataTypeList) StringList() []string {
 		for k, v := range tmp {
 			times[k] = v.(time.Time)
 		}
-		res = formatTime(d.t, times)
-	} else {
-		switch {
-		case d.t == DtBlob:
-			for k, v := range tmp {
-				res[k] = fmt.Sprintf("%s", v)
-			}
-		case d.t != DtUUID && d.t != DtIP && d.t != DtPoint && d.t != DtInt128:
-			for k, v := range tmp {
-				if d.IsNull(k) {
-					res[k] = ""
-				} else {
-					res[k] = fmt.Sprintf("%v", v)
-				}
-			}
-		default:
-			for k, v := range tmp {
+		return formatTime(d.t, times)
+	}
+
+	switch {
+	case d.t == DtBlob:
+		for k, v := range tmp {
+			res[k] = fmt.Sprintf("%s", v)
+		}
+	case d.t != DtUUID && d.t != DtIP && d.t != DtPoint && d.t != DtInt128:
+		for k, v := range tmp {
+			if d.IsNull(k) {
+				res[k] = ""
+			} else if d.t == DtFloat || d.t == DtDouble {
+				res[k] = floatString(v)
+			} else if d.t == DtInt || d.t == DtShort || d.t == DtLong {
+				res[k] = fmt.Sprintf("%d", v)
+			} else {
 				res[k] = fmt.Sprintf("%v", v)
 			}
+		}
+	default:
+		for k, v := range tmp {
+			res[k] = fmt.Sprintf("%v", v)
 		}
 	}
 
 	return res
 }
 
+func floatString(val interface{}) string {
+	switch val.(type) {
+	case float32:
+		return strconv.FormatFloat(float64(val.(float32)), 'f', -1, 32)
+	case float64:
+		return strconv.FormatFloat(val.(float64), 'f', -1, 64)
+	}
+	return ""
+}
+
 func decimal32sString(d32 []int32) []string {
-	res := make([]string, len(d32))
+	res := make([]string, len(d32)-1)
 	sca := d32[0]
-	format := fmt.Sprintf("%%.%df", sca)
 	for i := 1; i < len(d32); i++ {
 		val := d32[i]
 		if val == NullInt {
@@ -1286,16 +1300,16 @@ func decimal32sString(d32 []int32) []string {
 			continue
 		}
 
-		res[i-1] = fmt.Sprintf(format, decimal32Value(sca, val))
+		f := decimal.NewFromFloat(decimal32Value(sca, val).(float64))
+		res[i-1] = f.StringFixed(sca)
 	}
 
 	return res
 }
 
 func decimal64sString(d64 []int64) []string {
-	res := make([]string, len(d64))
+	res := make([]string, len(d64)-1)
 	sca := d64[0]
-	format := fmt.Sprintf("%%.%df", sca)
 	for i := 1; i < len(d64); i++ {
 		val := d64[i]
 		if val == NullLong {
@@ -1303,7 +1317,8 @@ func decimal64sString(d64 []int64) []string {
 			continue
 		}
 
-		res[i-1] = fmt.Sprintf(format, decimal64Value(sca, val))
+		f := decimal.NewFromFloat(decimal64Value(sca, val).(float64))
+		res[i-1] = f.StringFixed(int32(sca))
 	}
 
 	return res
@@ -1707,15 +1722,19 @@ func (d *dataTypeList) renderDecimal32(val interface{}) error {
 		return errors.New("the type of input must be *Decimal32s when datatype is DtDecimal32")
 	}
 
+	if dec.Scale < 0 || dec.Scale > 9 {
+		return fmt.Errorf("Scale out of bound(valid range: [0, 9], but get: %d)", dec.Scale)
+	}
+
 	length := len(dec.Value)
 	d.count = length
 	d.decimal32Data = make([]int32, 0, length+1)
 	d.decimal32Data = append(d.decimal32Data, dec.Scale)
 	for _, v := range dec.Value {
-		d1 := decimal.NewFromFloat(v)
-		d2 := decimal.NewFromFloat(math.Pow10(int(dec.Scale)))
-		res := d1.Mul(d2)
-		f, _ := res.Float64()
+		f, err := calculateDecimal32(dec.Scale, v)
+		if err != nil {
+			return err
+		}
 		d.decimal32Data = append(d.decimal32Data, int32(f))
 	}
 
@@ -1728,15 +1747,19 @@ func (d *dataTypeList) renderDecimal64(val interface{}) error {
 		return errors.New("the type of input must be *Decimal64s when datatype is DtDecimal64")
 	}
 
+	if dec.Scale < 0 || dec.Scale > 18 {
+		return fmt.Errorf("Scale out of bound(valid range: [0, 18], but get: %d)", dec.Scale)
+	}
+
 	length := len(dec.Value)
 	d.count = length
 	d.decimal64Data = make([]int64, 0, length+1)
 	d.decimal64Data = append(d.decimal64Data, int64(dec.Scale))
 	for _, v := range dec.Value {
-		d1 := decimal.NewFromFloat(v)
-		d2 := decimal.NewFromFloat(math.Pow10(int(dec.Scale)))
-		res := d1.Mul(d2)
-		f, _ := res.Float64()
+		f, err := calculateDecimal64(dec.Scale, v)
+		if err != nil {
+			return err
+		}
 		d.decimal64Data = append(d.decimal64Data, int64(f))
 	}
 
@@ -2047,10 +2070,16 @@ func parseDecimal32s(count int, raw []int32, res []interface{}) {
 }
 
 func decimal64(scale, value int64) *Decimal64 {
+	if value == NullLong {
+		return &Decimal64{Scale: int32(scale), Value: float64(value)}
+	}
 	return &Decimal64{Scale: int32(scale), Value: float64(value) / math.Pow10(int(scale))}
 }
 
 func decimal32(scale, value int32) *Decimal32 {
+	if value == NullInt {
+		return &Decimal32{Scale: int32(scale), Value: float64(value)}
+	}
 	return &Decimal32{Scale: int32(scale), Value: float64(value) / math.Pow10(int(scale))}
 }
 
@@ -2192,4 +2221,28 @@ func parseBools(raw []uint8, res []interface{}) {
 			res[k] = v == 1
 		}
 	}
+}
+
+func (d *Decimal64s) String() string {
+	res := make([]string, len(d.Value))
+	for k, v := range d.Value {
+		f, err := calculateDecimal64(d.Scale, v)
+		if f != NullDecimal64Value && err == nil {
+			res[k] = decimal.NewFromFloat(v).StringFixed(d.Scale)
+		}
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(res, ","))
+}
+
+func (d *Decimal32s) String() string {
+	res := make([]string, len(d.Value))
+	for k, v := range d.Value {
+		f, err := calculateDecimal32(d.Scale, v)
+		if f != NullDecimal32Value && err == nil {
+			res[k] = decimal.NewFromFloat(v).StringFixed(d.Scale)
+		}
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(res, ", "))
 }

@@ -27,6 +27,7 @@ type queueHandlerBinder struct {
 // which is used to listen on the listening port to receive subscription info.
 // When listeningHost is "", the default host is the local address.
 // When listeningPort is 0, the default port is the 8849.
+// When listeningPort is -1, enable the reverse stream subscription.
 func NewGoroutinePooledClient(listeningHost string, listeningPort int) *GoroutinePooledClient {
 	if listeningPort == 0 {
 		listeningPort = DefaultPort
@@ -37,8 +38,6 @@ func NewGoroutinePooledClient(listeningHost string, listeningPort int) *Goroutin
 		exit:          make(chan bool),
 		queueHandlers: sync.Map{},
 	}
-
-	go listening(t, listeningPort)
 
 	go t.run()
 
@@ -51,6 +50,11 @@ func (t *GoroutinePooledClient) Subscribe(req *SubscribeRequest) error {
 }
 
 func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
+	err := t.reviseSubscriber(req)
+	if err != nil {
+		return err
+	}
+
 	queue, err := t.subscribeInternal(req)
 	if err != nil {
 		fmt.Printf("Failed to subscribe: %s\n", err.Error())
@@ -75,6 +79,18 @@ func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
 	t.queueHandlers.Store(topicStr, queueHandler)
 
 	return nil
+}
+
+func (t *GoroutinePooledClient) reviseSubscriber(req *SubscribeRequest) error {
+	var err error
+	t.subscriber.once.Do(func() {
+		err = t.subscriber.checkServerVersion(req.Address)
+		if err == nil {
+			go listening(t)
+		}
+	})
+
+	return err
 }
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.

@@ -178,6 +178,11 @@ func (t *Table) GetDataTypeString() string {
 	return GetDataTypeString(t.category.DataType)
 }
 
+// GetDataFormString returns the string format of the DataForm.
+func (t *Table) GetDataFormString() string {
+	return GetDataFormString(t.category.DataForm)
+}
+
 // GetColumnByName returns the column in table with the column name.
 func (t *Table) GetColumnByName(colName string) *Vector {
 	for k, v := range t.ColNames {
@@ -225,8 +230,16 @@ func (t *Table) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 		return err
 	}
 
+	var symBases *symbolBaseCollection
 	for _, v := range t.columnValues {
-		err = v.Render(w, bo)
+		if v.Extend != nil {
+			if symBases == nil {
+				symBases = &symbolBaseCollection{}
+			}
+			err = v.renderSymbolExtendVector(w, bo, symBases)
+		} else {
+			err = v.Render(w, bo)
+		}
 		if err != nil {
 			return err
 		}

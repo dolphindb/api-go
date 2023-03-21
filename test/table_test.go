@@ -29,7 +29,9 @@ func TestTableDataType(t *testing.T) {
 					long([-94]) as longv,
 					short([65]) as shortv,
 					char([0]) as charv,
-					[true] as boolv
+					[true] as boolv,
+					decimal32(1.2356, 3) as decimal32v,
+					decimal64(1.2356, 3) as decimal64v
 					)`)
 				So(err, ShouldBeNil)
 				memTable := s.(*model.Table)
@@ -88,6 +90,20 @@ func TestTableDataType(t *testing.T) {
 						So(re[i], ShouldEqual, tmp[i])
 					}
 				})
+				Convey("Test table decimal32 type:", func() {
+					redecimal32 := memTable.GetColumnByName(memTable.GetColumnNames()[5])
+					So(redecimal32.GetDataType(), ShouldEqual, model.DtDecimal32)
+					So(redecimal32.GetDataForm(), ShouldResemble, model.DfVector)
+					So(redecimal32.Rows(), ShouldEqual, 1)
+					re := redecimal32.Data.Value()
+					Println(re[0])
+
+					tmp, _ := model.NewDataType(model.DtDecimal32, &model.Decimal32{Scale: 3, Value: 1.235})
+					Println(tmp.Value())
+					for i := 0; i < redecimal32.Rows(); i++ {
+						So(re[i], ShouldResemble, tmp.Value())
+					}
+				})
 			})
 			Convey("Test table string and symbol type:", func() {
 				s, err := db.RunScript(`
@@ -105,6 +121,36 @@ func TestTableDataType(t *testing.T) {
 					for i := 0; i < resym.Rows(); i++ {
 						So(re[i], ShouldEqual, tmp[i])
 					}
+				})
+				Convey("Test table insert into multi-symbol rows", func() {
+					_, err := db.RunScript(`t=table(100:0, ["sym1", "sym2", "sym3", "sym4"], [SYMBOL, SYMBOL, SYMBOL, SYMBOL])`)
+					So(err, ShouldBeNil)
+					var sym1v string = "AAPL"
+					var sym2v string = "A1"
+					var sym3v string = "A2"
+					var sym4v string = "A3"
+					_, err = db.RunScript(fmt.Sprintf("insert into t values('%s', '%s', '%s', '%s')", sym1v, sym2v, sym3v, sym4v))
+					So(err, ShouldBeNil)
+					s, err := db.RunScript("t")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					for _, i := range memTable.GetColumnNames() {
+						col := memTable.GetColumnByName(i)
+						So(col.GetDataForm(), ShouldResemble, model.DfVector)
+						So(col.Rows(), ShouldEqual, 1)
+					}
+					resymbol1 := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(resymbol1.GetDataType(), ShouldEqual, model.DtSymbol)
+					So(resymbol1.String(), ShouldEqual, "vector<symbol>([AAPL])")
+					resymbol2 := memTable.GetColumnByName(memTable.GetColumnNames()[1])
+					So(resymbol2.GetDataType(), ShouldEqual, model.DtSymbol)
+					So(resymbol2.String(), ShouldEqual, "vector<symbol>([A1])")
+					resymbol3 := memTable.GetColumnByName(memTable.GetColumnNames()[2])
+					So(resymbol3.GetDataType(), ShouldEqual, model.DtSymbol)
+					So(resymbol3.String(), ShouldEqual, "vector<symbol>([A2])")
+					resymbol4 := memTable.GetColumnByName(memTable.GetColumnNames()[3])
+					So(resymbol4.GetDataType(), ShouldEqual, model.DtSymbol)
+					So(resymbol4.String(), ShouldEqual, "vector<symbol>([A3])")
 				})
 				Convey("Test table string type:", func() {
 					reString := memTable.GetColumnByName(memTable.GetColumnNames()[1])
@@ -352,7 +398,38 @@ func TestTableDataType(t *testing.T) {
 				tmp := StringToBytes("ALMS")
 				So(re[0], ShouldResemble, tmp)
 			})
+			Convey("Test table decimal types", func() {
+				_, err := db.RunScript(`t=table(100:0, ["decimal32v", "decimal64v", "doublev", "floatv"], [DECIMAL32(3), DECIMAL64(3), DOUBLE, FLOAT])`)
+				So(err, ShouldBeNil)
+				decimal32v := `decimal32(0.2365, 5)`
+				decimal64v := `decimal64(0.4563, 5)`
+				doublev := `1.23456`
+				floatv := `9.365604`
+				_, err = db.RunScript(fmt.Sprintf("insert into t values(%s, %s, %s, %s)", decimal32v, decimal64v, doublev, floatv))
+				So(err, ShouldBeNil)
+				s, err := db.RunScript("t")
+				So(err, ShouldBeNil)
+				memTable := s.(*model.Table)
+				for _, i := range memTable.GetColumnNames() {
+					col := memTable.GetColumnByName(i)
+					So(col.GetDataForm(), ShouldResemble, model.DfVector)
+					So(col.Rows(), ShouldEqual, 1)
+				}
+				redecimal32 := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+				So(redecimal32.GetDataType(), ShouldEqual, model.DtDecimal32)
+				So(redecimal32.String(), ShouldEqual, "vector<decimal32>([0.236])")
+				redecimal64 := memTable.GetColumnByName(memTable.GetColumnNames()[1])
+				So(redecimal64.GetDataType(), ShouldEqual, model.DtDecimal64)
+				So(redecimal64.String(), ShouldEqual, "vector<decimal64>([0.456])")
+				reDouble := memTable.GetColumnByName(memTable.GetColumnNames()[2])
+				So(reDouble.GetDataType(), ShouldEqual, model.DtDouble)
+				So(reDouble.String(), ShouldEqual, "vector<double>([1.23456])")
+				reFloat := memTable.GetColumnByName(memTable.GetColumnNames()[3])
+				So(reFloat.GetDataType(), ShouldEqual, model.DtFloat)
+				So(reFloat.String(), ShouldEqual, "vector<float>([9.365604])")
+			})
 		})
+		So(db.Close(), ShouldBeNil)
 	})
 }
 
@@ -382,15 +459,22 @@ func TestTableWithCapacity(t *testing.T) {
 		Convey("Test_function_TableWithCapacityRequest_SetSize_10", func() {
 			l := new(api.TableWithCapacityRequest).
 				SetTableName(MemTableName).SetCapacity(100).SetSize(10).
-				SetColNames([]string{"id", "datev", "str"}).
-				SetColTypes([]string{"INT", "DATE", "STRING"})
+				SetColNames([]string{"id", "datev", "str", "decimal32v", "decimal64v"}).
+				SetColTypes([]string{"INT", "DATE", "STRING", "DECIMAL32(6)", "DECIMAL64(4)"})
 			t, err := ddb.TableWithCapacity(l)
 			So(err, ShouldBeNil)
 			originID := t.Data.GetColumnByName("id")
 			originDatev := t.Data.GetColumnByName("datev")
+			originStrv := t.Data.GetColumnByName("str")
+			originDecimal32v := t.Data.GetColumnByName("decimal32v")
+			originDecimal64v := t.Data.GetColumnByName("decimal64v")
 			So(originID.String(), ShouldEqual, "vector<int>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])")
 			So(originDatev.String(), ShouldEqual, "vector<date>([1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01])")
-			_, err = ddb.RunScript(`t=table(1..10 as id, 1969.12.26+ 1..10 as datev, "A"+string(1..10) as str); ` + MemTableName + `.append!(t)`)
+			So(originStrv.String(), ShouldEqual, "vector<string>([, , , , , , , , , ])")
+			So(originDecimal32v.String(), ShouldEqual, "vector<decimal32>([0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000])")
+			So(originDecimal64v.String(), ShouldEqual, "vector<decimal64>([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000])")
+
+			_, err = ddb.RunScript(`t=table(1..10 as id, 1969.12.26+ 1..10 as datev, "A"+string(1..10) as str, decimal32(1..10, 6) as decimal32v, decimal64(1..10, 6) as decimal64v); ` + MemTableName + `.append!(t)`)
 			So(err, ShouldBeNil)
 			reTmp, err := ddb.RunScript(`select * from ` + MemTableName + ``)
 			So(err, ShouldBeNil)
@@ -398,25 +482,57 @@ func TestTableWithCapacity(t *testing.T) {
 			reID := reTable.GetColumnByName("id")
 			reDatev := reTable.GetColumnByName("datev")
 			reStr := reTable.GetColumnByName("str")
+			reDecimal32v := reTable.GetColumnByName("decimal32v")
+			reDecimal64v := reTable.GetColumnByName("decimal64v")
 			So(reID.String(), ShouldEqual, "vector<int>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
 			So(reDatev.String(), ShouldEqual, "vector<date>([1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1970.01.01, 1969.12.27, 1969.12.28, 1969.12.29, 1969.12.30, 1969.12.31, 1970.01.01, 1970.01.02, 1970.01.03, 1970.01.04, 1970.01.05])")
 			So(reStr.String(), ShouldEqual, "vector<string>([, , , , , , , , , , A1, A2, A3, A4, A5, A6, A7, A8, A9, A10])")
+			So(reDecimal32v.String(), ShouldEqual, "vector<decimal32>([0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000, 2.000000, 3.000000, 4.000000, 5.000000, 6.000000, 7.000000, 8.000000, 9.000000, 10.000000])")
+			So(reDecimal64v.String(), ShouldEqual, "vector<decimal64>([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 2.0000, 3.0000, 4.0000, 5.0000, 6.0000, 7.0000, 8.0000, 9.0000, 10.0000])")
+		})
+
+		Convey("Test_function_TableWithCapacityRequest_multi_symbol_col", func() {
+			l := new(api.TableWithCapacityRequest).
+				SetTableName(MemTableName).SetCapacity(100).SetSize(10).
+				SetColNames([]string{"str1", "str2", "str3"}).
+				SetColTypes([]string{"SYMBOL", "SYMBOL", "SYMBOL"})
+			t, err := ddb.TableWithCapacity(l)
+			So(err, ShouldBeNil)
+			originID := t.Data.GetColumnByName("str1")
+			originDatev := t.Data.GetColumnByName("str2")
+			So(originID.String(), ShouldEqual, "vector<symbolExtend>([, , , , , , , , , ])")
+			So(originDatev.String(), ShouldEqual, "vector<symbolExtend>([, , , , , , , , , ])")
+			_, err = ddb.RunScript(`t=table(string(1..10) as id, "APKD"+string(1..10) as datev, "A"+string(1..10) as str); ` + MemTableName + `.append!(t)`)
+			So(err, ShouldBeNil)
+			reTmp, err := ddb.RunScript(`select * from ` + MemTableName + ``)
+			So(err, ShouldBeNil)
+			reTable := reTmp.(*model.Table)
+			reID := reTable.GetColumnByName("str1")
+			reDatev := reTable.GetColumnByName("str2")
+			reStr := reTable.GetColumnByName("str3")
+			So(reID.String(), ShouldEqual, "vector<symbol>([, , , , , , , , , , 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+			So(reDatev.String(), ShouldEqual, "vector<symbol>([, , , , , , , , , , APKD1, APKD2, APKD3, APKD4, APKD5, APKD6, APKD7, APKD8, APKD9, APKD10])")
+			So(reStr.String(), ShouldEqual, "vector<symbol>([, , , , , , , , , , A1, A2, A3, A4, A5, A6, A7, A8, A9, A10])")
 		})
 
 		Convey("Test_function_TableWithCapacityRequest_SetSize_0", func() {
 			l := new(api.TableWithCapacityRequest).
 				SetTableName(MemTableName).SetCapacity(100).SetSize(0).
-				SetColNames([]string{"id", "datev", "str"}).
-				SetColTypes([]string{"INT", "DATE", "STRING"})
+				SetColNames([]string{"id", "datev", "str", "decimal32v", "decimal64v"}).
+				SetColTypes([]string{"INT", "DATE", "STRING", "DECIMAL32(3)", "DECIMAL64(3)"})
 			t, err := ddb.TableWithCapacity(l)
 			So(err, ShouldBeNil)
 			originID := t.Data.GetColumnByName("id")
 			originDatev := t.Data.GetColumnByName("datev")
 			originstr := t.Data.GetColumnByName("str")
+			originDecimal32v := t.Data.GetColumnByName("decimal32v")
+			originDecimal64v := t.Data.GetColumnByName("decimal64v")
 			So(originID.String(), ShouldEqual, "vector<int>([])")
 			So(originDatev.String(), ShouldEqual, "vector<date>([])")
 			So(originstr.String(), ShouldEqual, "vector<string>([])")
-			_, err = ddb.RunScript(`t=table(1..10 as id, 1969.12.26+ 1..10 as datev, "A"+string(1..10) as str); ` + MemTableName + `.append!(t)`)
+			So(originDecimal32v.String(), ShouldEqual, "vector<decimal32>([])")
+			So(originDecimal64v.String(), ShouldEqual, "vector<decimal64>([])")
+			_, err = ddb.RunScript(`t=table(1..10 as id, 1969.12.26+ 1..10 as datev, "A"+string(1..10) as str, decimal32(1..10, 6) as decimal32v, decimal64(1..10, 6) as decimal64v); ` + MemTableName + `.append!(t)`)
 			So(err, ShouldBeNil)
 			reTmp, err := ddb.RunScript(`select * from ` + MemTableName + ``)
 			So(err, ShouldBeNil)
@@ -424,9 +540,13 @@ func TestTableWithCapacity(t *testing.T) {
 			reID := reTable.GetColumnByName("id")
 			reDatev := reTable.GetColumnByName("datev")
 			reStr := reTable.GetColumnByName("str")
+			reDecimal32v := reTable.GetColumnByName("decimal32v")
+			reDecimal64v := reTable.GetColumnByName("decimal64v")
 			So(reID.String(), ShouldEqual, "vector<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
 			So(reDatev.String(), ShouldEqual, "vector<date>([1969.12.27, 1969.12.28, 1969.12.29, 1969.12.30, 1969.12.31, 1970.01.01, 1970.01.02, 1970.01.03, 1970.01.04, 1970.01.05])")
 			So(reStr.String(), ShouldEqual, "vector<string>([A1, A2, A3, A4, A5, A6, A7, A8, A9, A10])")
+			So(reDecimal32v.String(), ShouldEqual, "vector<decimal32>([1.000, 2.000, 3.000, 4.000, 5.000, 6.000, 7.000, 8.000, 9.000, 10.000])")
+			So(reDecimal64v.String(), ShouldEqual, "vector<decimal64>([1.000, 2.000, 3.000, 4.000, 5.000, 6.000, 7.000, 8.000, 9.000, 10.000])")
 		})
 		Convey("Test_function_TableWithCapacityRequest_SetCapacity_1023", func() {
 			l := new(api.TableWithCapacityRequest).
@@ -481,7 +601,7 @@ func TestTableWithCapacity(t *testing.T) {
 	})
 }
 
-func TestTable(t *testing.T) {
+func TestTableUpload(t *testing.T) {
 	Convey("Test_function_Table_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -697,5 +817,106 @@ func TestTable(t *testing.T) {
 			So(ex1, ShouldEqual, tb.GetRowJSON(1))
 			So(ex2, ShouldEqual, tb.GetRowJSON(2))
 		})
+	})
+}
+
+func TestTableDataType_arrayVector(t *testing.T) {
+	Convey("Test table prepare", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test table only one rows:", func() {
+			Convey("Test table decimal arrayVector type:", func() {
+				s, err := db.RunScript(`
+				 t=table(100:0, ["intv", "longv", "shortv", "charv", "boolv", "decimal32v", "decimal64v"], [INT[], LONG[], SHORT[], CHAR[], BOOL[], DECIMAL32(3)[], DECIMAL64(4)[]]);
+					intv = array(INT[], 0, 10).append!([1..10, 2..5, [], [2, NULL, 20]])
+					shortv = array(SHORT[], 0, 10).append!([1..10, 2..5, [], [2, NULL, 20]])
+					longv = array(LONG[], 0, 10).append!([1..10, 2..5, [], [2, NULL, 20]])
+					charv = array(CHAR[], 0, 10).append!([1..10, 2..5, [], [2, NULL, 20]])
+					boolv = array(BOOL[], 0, 10).append!([[true, false], [true], [], [true, false, NULL]])
+					decimal32v = array(DECIMAL32(4)[], 0, 10).append!([[-2.3645, -2.346], [0.231], [], [2.2356, 1.2356, NULL]])
+					decimal64v = array(DECIMAL64(4)[], 0, 10).append!([[-2.3645, -2.346], [0.54897513], [], [2.2356, 1.2356, NULL]])
+					m = table(intv,longv,shortv,charv,boolv,decimal32v,decimal64v);
+					t.append!(m); t`)
+				So(err, ShouldBeNil)
+				memTable := s.(*model.Table)
+				Convey("Test table int type:", func() {
+					reInt := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reInt.GetDataType(), ShouldEqual, model.DtInt+64)
+					So(reInt.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reInt.Rows(), ShouldEqual, 4)
+
+					So(reInt.GetVectorValue(0).String(), ShouldEqual, "vector<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+					So(reInt.GetVectorValue(1).String(), ShouldEqual, "vector<int>([2, 3, 4, 5])")
+					So(reInt.GetVectorValue(2).String(), ShouldEqual, "vector<int>([])")
+					So(reInt.GetVectorValue(3).String(), ShouldEqual, "vector<int>([2, , 20])")
+				})
+				Convey("Test table long type:", func() {
+					reLong := memTable.GetColumnByName(memTable.GetColumnNames()[1])
+					So(reLong.GetDataType(), ShouldEqual, model.DtLong+64)
+					So(reLong.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reLong.Rows(), ShouldEqual, 4)
+
+					So(reLong.GetVectorValue(0).String(), ShouldEqual, "vector<long>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+					So(reLong.GetVectorValue(1).String(), ShouldEqual, "vector<long>([2, 3, 4, 5])")
+					So(reLong.GetVectorValue(2).String(), ShouldEqual, "vector<long>([])")
+					So(reLong.GetVectorValue(3).String(), ShouldEqual, "vector<long>([2, , 20])")
+				})
+				Convey("Test table short type:", func() {
+					reShort := memTable.GetColumnByName(memTable.GetColumnNames()[2])
+					So(reShort.GetDataType(), ShouldEqual, model.DtShort+64)
+					So(reShort.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reShort.Rows(), ShouldEqual, 4)
+
+					So(reShort.GetVectorValue(0).String(), ShouldEqual, "vector<short>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+					So(reShort.GetVectorValue(1).String(), ShouldEqual, "vector<short>([2, 3, 4, 5])")
+					So(reShort.GetVectorValue(2).String(), ShouldEqual, "vector<short>([])")
+					So(reShort.GetVectorValue(3).String(), ShouldEqual, "vector<short>([2, , 20])")
+				})
+				Convey("Test table char type:", func() {
+					reChar := memTable.GetColumnByName(memTable.GetColumnNames()[3])
+					So(reChar.GetDataType(), ShouldEqual, model.DtChar+64)
+					So(reChar.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reChar.Rows(), ShouldEqual, 4)
+
+					So(reChar.GetVectorValue(0).String(), ShouldEqual, "vector<char>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+					So(reChar.GetVectorValue(1).String(), ShouldEqual, "vector<char>([2, 3, 4, 5])")
+					So(reChar.GetVectorValue(2).String(), ShouldEqual, "vector<char>([])")
+					So(reChar.GetVectorValue(3).String(), ShouldEqual, "vector<char>([2, , 20])")
+				})
+				Convey("Test table bool type:", func() {
+					reBool := memTable.GetColumnByName(memTable.GetColumnNames()[4])
+					So(reBool.GetDataType(), ShouldEqual, model.DtBool+64)
+					So(reBool.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reBool.Rows(), ShouldEqual, 4)
+
+					So(reBool.GetVectorValue(0).String(), ShouldEqual, "vector<bool>([true, false])")
+					So(reBool.GetVectorValue(1).String(), ShouldEqual, "vector<bool>([true])")
+					So(reBool.GetVectorValue(2).String(), ShouldEqual, "vector<bool>([])")
+					So(reBool.GetVectorValue(3).String(), ShouldEqual, "vector<bool>([true, false, ])")
+				})
+				Convey("Test table decimal32 type:", func() {
+					redecimal32 := memTable.GetColumnByName(memTable.GetColumnNames()[5])
+					So(redecimal32.GetDataType(), ShouldEqual, model.DtDecimal32+64)
+					So(redecimal32.GetDataForm(), ShouldResemble, model.DfVector)
+					So(redecimal32.Rows(), ShouldEqual, 4)
+					So(redecimal32.GetVectorValue(0).String(), ShouldEqual, "vector<decimal32>([-2.364, -2.346])")
+					So(redecimal32.GetVectorValue(1).String(), ShouldEqual, "vector<decimal32>([0.231])")
+					So(redecimal32.GetVectorValue(2).String(), ShouldEqual, "vector<decimal32>([])")
+					So(redecimal32.GetVectorValue(3).String(), ShouldEqual, "vector<decimal32>([2.235, 1.235, ])")
+				})
+				Convey("Test table decimal64 type:", func() {
+					redecimal64 := memTable.GetColumnByName(memTable.GetColumnNames()[6])
+					So(redecimal64.GetDataType(), ShouldEqual, model.DtDecimal64+64)
+					So(redecimal64.GetDataForm(), ShouldResemble, model.DfVector)
+					So(redecimal64.Rows(), ShouldEqual, 4)
+					So(redecimal64.GetVectorValue(0).String(), ShouldEqual, "vector<decimal64>([-2.3645, -2.3460])")
+					So(redecimal64.GetVectorValue(1).String(), ShouldEqual, "vector<decimal64>([0.5489])")
+					So(redecimal64.GetVectorValue(2).String(), ShouldEqual, "vector<decimal64>([])")
+					So(redecimal64.GetVectorValue(3).String(), ShouldEqual, "vector<decimal64>([2.2355, 1.2356, ])")
+				})
+			})
+
+		})
+		So(db.Close(), ShouldBeNil)
 	})
 }

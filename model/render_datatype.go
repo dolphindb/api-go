@@ -2,13 +2,12 @@ package model
 
 import (
 	"errors"
-	"math"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/shopspring/decimal"
 )
 
 var originalTime = time.Date(1970, time.Month(1), 1, 0, 0, 0, 0, time.UTC)
@@ -155,10 +154,14 @@ func renderDecimal32(val interface{}) ([2]int32, error) {
 		return [2]int32{}, errors.New("the type of in must be *Decimal32 when datatype is DtDecimal32")
 	}
 
-	d1 := decimal.NewFromFloat(d.Value)
-	d2 := decimal.NewFromFloat(math.Pow10(int(d.Scale)))
-	res := d1.Mul(d2)
-	f, _ := res.Float64()
+	if d.Scale < 0 || d.Scale > 9 {
+		return [2]int32{}, fmt.Errorf("Scale out of bound(valid range: [0, 9], but get: %d)", d.Scale)
+	}
+
+	f, err := calculateDecimal32(d.Scale, d.Value)
+	if err != nil {
+		return [2]int32{}, err
+	}
 
 	return [2]int32{d.Scale, int32(f)}, nil
 }
@@ -169,10 +172,14 @@ func renderDecimal64(val interface{}) ([2]int64, error) {
 		return [2]int64{}, errors.New("the type of in must be *Decimal64 when datatype is DtDecimal64")
 	}
 
-	d1 := decimal.NewFromFloat(d.Value)
-	d2 := decimal.NewFromFloat(math.Pow10(int(d.Scale)))
-	res := d1.Mul(d2)
-	f, _ := res.Float64()
+	if d.Scale < 0 || d.Scale > 18 {
+		return [2]int64{}, fmt.Errorf("Scale out of bound(valid range: [0, 18], but get: %d)", d.Scale)
+	}
+
+	f, err := calculateDecimal64(d.Scale, d.Value)
+	if err != nil {
+		return [2]int64{}, err
+	}
 
 	return [2]int64{int64(d.Scale), int64(f)}, nil
 }

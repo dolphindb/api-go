@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/dolphindb/api-go/api"
@@ -40,6 +41,9 @@ func TestLoadTable(t *testing.T) {
 			CreateDfsDimensiondb(DfsDBPath, TbName1, TbName2)
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `")`)
 			So(err, ShouldBeNil)
+			_, err = ddb.RunScript(fmt.Sprintf(`select * from %s`, "''"))
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, `client error response. select * from "" => FROM clause must return a table.`)
 			exTmp := tmp.(*model.Table)
 			reTmp, err := LoadTable(ddb, TbName1, DfsDBPath)
 			So(err, ShouldBeNil)

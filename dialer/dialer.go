@@ -54,6 +54,8 @@ type Conn interface {
 	RunFunc(s string, args []model.DataForm) (model.DataForm, error)
 	// Upload sends local objects to dolphindb server and the specified variable is generated on the dolphindb
 	Upload(vars map[string]model.DataForm) (model.DataForm, error)
+	// GetTCPConn returns the TCPConn
+	GetTCPConn() *net.TCPConn
 }
 
 type conn struct {
@@ -78,6 +80,10 @@ type BehaviorOptions struct {
 	Parallelism *int
 	// FetchSize specifies the fetchSize of the task
 	FetchSize *int
+	// IsReverseStreaming specifies whether the job is a reverse stream subscription
+	IsReverseStreaming bool
+	// IsClearSessionMemory specifies whether to clear session memory after the job
+	IsClearSessionMemory bool
 }
 
 // SetPriority sets the priority of the task.
@@ -198,6 +204,10 @@ func (c *conn) RefreshTimeout(t time.Duration) {
 	c.timeout = t
 }
 
+func (c *conn) GetTCPConn() *net.TCPConn {
+	return c.Conn.(*net.TCPConn)
+}
+
 func (c *conn) Connect() error {
 	h, _, err := c.run(&requestParams{
 		commandType: connectCmd,
@@ -307,7 +317,7 @@ func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 }
 
 func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, error) {
-	if params.commandType == scriptCmd || params.commandType == functionCmd {
+	if params.commandType == scriptCmd || params.commandType == functionCmd || params.commandType == connectCmd {
 		if c.behaviorOpt == nil {
 			c.behaviorOpt = &BehaviorOptions{}
 		}

@@ -1367,7 +1367,7 @@ func Test_Scalar_DownLoad_Datatype_decimal32(t *testing.T) {
 			result := s.(*model.Scalar)
 			re := result.DataType.Value()
 			reType := result.GetDataType()
-			decimal32Val := &model.Decimal32s{2, []float64{2.36510}}
+			decimal32Val := &model.Decimal32s{Scale: 2, Value: []float64{2.36510}}
 
 			So(re.(*model.Decimal32).Scale, ShouldEqual, decimal32Val.Scale)
 			So(result.String(), ShouldEqual, "decimal32(2.36)")
@@ -1391,7 +1391,7 @@ func Test_Scalar_DownLoad_Datatype_decimal32(t *testing.T) {
 			result := s.(*model.Scalar)
 			re := result.DataType.Value()
 			reType := result.GetDataType()
-			decimal32Val := &model.Decimal32s{4, []float64{2.3}}
+			decimal32Val := &model.Decimal32s{Scale: 4, Value: []float64{2.3}}
 
 			So(re.(*model.Decimal32).Scale, ShouldEqual, decimal32Val.Scale)
 			So(result.String(), ShouldEqual, "decimal32(2.3000)")
@@ -1412,7 +1412,7 @@ func Test_Scalar_DownLoad_Datatype_decimal64(t *testing.T) {
 			result := s.(*model.Scalar)
 			re := result.DataType.Value()
 			reType := result.GetDataType()
-			decimal64Val := &model.Decimal64s{4, []float64{2.36510}}
+			decimal64Val := &model.Decimal64s{Scale: 4, Value: []float64{2.36510}}
 
 			So(re.(*model.Decimal64).Scale, ShouldEqual, decimal64Val.Scale)
 			So(result.String(), ShouldEqual, "decimal64(2.3651)")
@@ -1437,7 +1437,7 @@ func Test_Scalar_DownLoad_Datatype_decimal64(t *testing.T) {
 			result := s.(*model.Scalar)
 			re := result.DataType.Value()
 			reType := result.GetDataType()
-			decimal64Val := &model.Decimal64s{11, []float64{2.3}}
+			decimal64Val := &model.Decimal64s{Scale: 11, Value: []float64{2.3}}
 
 			So(re.(*model.Decimal64).Scale, ShouldEqual, decimal64Val.Scale)
 			So(result.String(), ShouldEqual, "decimal64(2.29999999999)")
@@ -2250,7 +2250,7 @@ func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_scalar_decimal32_scale_lt_digits:", func() {
-			dc32 := &model.Decimal32{2, -0.369545}
+			dc32 := &model.Decimal32{Scale: 2, Value: -0.369545}
 			dt, err := model.NewDataType(model.DtDecimal32, dc32)
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
@@ -2260,7 +2260,7 @@ func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
 		})
 		Convey("Test_scalar_decimal32_scale_gt_digits:", func() {
-			dc32 := &model.Decimal32{8, -0.36}
+			dc32 := &model.Decimal32{Scale: 8, Value: -0.36}
 			dt, err := model.NewDataType(model.DtDecimal32, dc32)
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
@@ -2268,6 +2268,18 @@ func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
 			res, err := db.RunScript("eqObj(s, decimal32(-0.36, 8))")
 			So(err, ShouldBeNil)
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		Convey("Test_scalar_decimal32_scale_negative:", func() {
+			dc32 := &model.Decimal32{Scale: -3, Value: -0.36}
+			_, err := model.NewDataType(model.DtDecimal32, dc32)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 9], but get: -3)")
+		})
+		Convey("Test_scalar_decimal32_scale_large_than_9:", func() {
+			dc32 := &model.Decimal32{Scale: 10, Value: -0.36}
+			_, err := model.NewDataType(model.DtDecimal32, dc32)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 9], but get: 10)")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -2277,7 +2289,7 @@ func Test_Scalar_UpLoad_Datatype_decimal64(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_scalar_decimal64_gt_digits:", func() {
-			dc64 := &model.Decimal64{11, -0.369545}
+			dc64 := &model.Decimal64{Scale: 11, Value: -0.369545}
 			dt, err := model.NewDataType(model.DtDecimal64, dc64)
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
@@ -2287,7 +2299,7 @@ func Test_Scalar_UpLoad_Datatype_decimal64(t *testing.T) {
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
 		})
 		Convey("Test_scalar_decimal64_lt_digits:", func() {
-			dc64 := &model.Decimal64{2, -0.369545}
+			dc64 := &model.Decimal64{Scale: 2, Value: -0.369545}
 			dt, err := model.NewDataType(model.DtDecimal64, dc64)
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
@@ -2295,6 +2307,18 @@ func Test_Scalar_UpLoad_Datatype_decimal64(t *testing.T) {
 			res, err := db.RunScript("eqObj(s, decimal64(-0.369545, 2))")
 			So(err, ShouldBeNil)
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		Convey("Test_scalar_decimal64_scale_negative:", func() {
+			dc32 := &model.Decimal64{Scale: -3, Value: -0.36}
+			_, err := model.NewDataType(model.DtDecimal64, dc32)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 18], but get: -3)")
+		})
+		Convey("Test_scalar_decimal64_scale_large_than_18:", func() {
+			dc32 := &model.Decimal64{Scale: 19, Value: -0.36}
+			_, err := model.NewDataType(model.DtDecimal64, dc32)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 18], but get: 19)")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -2317,6 +2341,21 @@ func Test_Scalar_UpLoad_Datatype_float(t *testing.T) {
 			So(df.GetDataForm(), ShouldEqual, model.DfScalar)
 			So(res.GetDataType(), ShouldEqual, model.DtFloat)
 		})
+		Convey("Test_scalar_float_special_data:", func() {
+			dt, _ := model.NewDataType(model.DtFloat, float32(45.456743986987345798734))
+			s := model.NewScalar(dt)
+			Println(dt)
+			df, _ := db.Upload(map[string]model.DataForm{"s": s})
+			res, err := db.RunScript("s")
+			ty, _ := db.RunScript("typestr(s)")
+			re := res.(*model.Scalar)
+			So(re.Value(), ShouldEqual, 45.456745)
+			So(res, ShouldResemble, s)
+			So(err, ShouldBeNil)
+			So(ty.String(), ShouldEqual, "string(FLOAT)")
+			So(df.GetDataForm(), ShouldEqual, model.DfScalar)
+			So(res.GetDataType(), ShouldEqual, model.DtFloat)
+		})
 		So(db.Close(), ShouldBeNil)
 	})
 }
@@ -2332,6 +2371,20 @@ func Test_Scalar_UpLoad_Datatype_double(t *testing.T) {
 			ty, _ := db.RunScript("typestr(s)")
 			re := res.(*model.Scalar)
 			So(re.Value(), ShouldEqual, 28.504875)
+			So(res, ShouldResemble, s)
+			So(err, ShouldBeNil)
+			So(ty.String(), ShouldEqual, "string(DOUBLE)")
+			So(df.GetDataForm(), ShouldEqual, model.DfScalar)
+			So(res.GetDataType(), ShouldEqual, model.DtDouble)
+		})
+		Convey("Test_scalar_double_special_data:", func() {
+			dt, _ := model.NewDataType(model.DtDouble, float64(45.456743986987345798734))
+			s := model.NewScalar(dt)
+			df, _ := db.Upload(map[string]model.DataForm{"s": s})
+			res, err := db.RunScript("s")
+			ty, _ := db.RunScript("typestr(s)")
+			re := res.(*model.Scalar)
+			So(re.Value(), ShouldEqual, 45.45674398698735)
 			So(res, ShouldResemble, s)
 			So(err, ShouldBeNil)
 			So(ty.String(), ShouldEqual, "string(DOUBLE)")

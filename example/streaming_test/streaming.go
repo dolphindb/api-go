@@ -100,7 +100,7 @@ func GoroutineClient(db api.DolphinDB) {
 	prepareStreamTable(db, "pub")
 	prepareStreamTable(db, "sub1")
 	writeStreamTable(db, "pub", 1000)
-	client := streaming.NewGoroutineClient("localhost", 8100)
+	client := streaming.NewGoroutineClient("localhost", -1)
 	req := &streaming.SubscribeRequest{
 		Address:    apis.TestAddr,
 		TableName:  "pub",
@@ -109,6 +109,8 @@ func GoroutineClient(db api.DolphinDB) {
 		Offset:     0,
 		Reconnect:  true,
 	}
+
+	client.UnSubscribe(req)
 
 	err = client.Subscribe(req)
 	util.AssertNil(err)
