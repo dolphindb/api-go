@@ -12,9 +12,9 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var pc = streaming.NewPollingClient(setup.IP, 9999)
+var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 
-func CreateStreamingTable() {
+func CreateStreamingTable_r() {
 	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 	AssertNil(err)
 	script := "try{ dropStreamTable(`tradesTable) }catch(ex){};go;" +
@@ -25,7 +25,7 @@ func CreateStreamingTable() {
 	AssertNil(err)
 }
 
-func TestSubscribe_exception(t *testing.T) {
+func TestSubscribe_exception_r(t *testing.T) {
 	Convey("Test_subscribe_exception", t, func() {
 		Convey("Test_AbstractClient_shared_table_polling_doesnot_exist_exception", func() {
 			req := &streaming.SubscribeRequest{
@@ -35,7 +35,7 @@ func TestSubscribe_exception(t *testing.T) {
 				Offset:     0,
 				Reconnect:  true,
 			}
-			_, err := pc.Subscribe(req)
+			_, err := pc_r.Subscribe(req)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_subscribe_err_host", func() {
@@ -46,7 +46,7 @@ func TestSubscribe_exception(t *testing.T) {
 				Offset:     0,
 				Reconnect:  true,
 			}
-			_, err := pc.Subscribe(req)
+			_, err := pc_r.Subscribe(req)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_subscribe_err_port", func() {
@@ -57,7 +57,7 @@ func TestSubscribe_exception(t *testing.T) {
 				Offset:     0,
 				Reconnect:  true,
 			}
-			_, err := pc.Subscribe(req)
+			_, err := pc_r.Subscribe(req)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_subscribe_err_TableName", func() {
@@ -68,7 +68,7 @@ func TestSubscribe_exception(t *testing.T) {
 				Offset:     0,
 				Reconnect:  true,
 			}
-			_, err := pc.Subscribe(req)
+			_, err := pc_r.Subscribe(req)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_subscribe_ActionName_null", func() {
@@ -79,17 +79,17 @@ func TestSubscribe_exception(t *testing.T) {
 				Offset:     0,
 				Reconnect:  true,
 			}
-			_, err := pc.Subscribe(req)
+			_, err := pc_r.Subscribe(req)
 			So(err, ShouldNotBeNil)
 		})
 	})
 }
 
-func TestPollingClient(t *testing.T) {
+func TestPollingClient_r(t *testing.T) {
 	Convey("Test_PollingClient_test_size", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		CreateStreamingTable()
+		CreateStreamingTable_r()
 		req := &streaming.SubscribeRequest{
 			Address:    setup.Address,
 			TableName:  "tradesTable",
@@ -97,7 +97,7 @@ func TestPollingClient(t *testing.T) {
 			Offset:     0,
 			Reconnect:  true,
 		}
-		poller, err := pc.Subscribe(req)
+		poller, err := pc_r.Subscribe(req)
 		So(err, ShouldBeNil)
 		Convey("Test_GetTopicPoller_exitsing_data", func() {
 			msg := poller.Poll(1000, 10)
@@ -203,12 +203,12 @@ func TestPollingClient(t *testing.T) {
 				}
 			}
 		})
-		err = pc.UnSubscribe(req)
+		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
 	})
 }
 
-func TestSubsribe_size(t *testing.T) {
+func TestSubsribe_size_r(t *testing.T) {
 	Convey("TestSubsribe_size", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -242,7 +242,7 @@ func TestSubsribe_size(t *testing.T) {
 	})
 }
 
-func TestSubsribe_take(t *testing.T) {
+func TestSubsribe_take_r(t *testing.T) {
 	Convey("TestSubsribe_take", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -294,12 +294,12 @@ func TestSubsribe_take(t *testing.T) {
 	})
 }
 
-func TestPollingClientClose(t *testing.T) {
+func TestPollingClientClose_r(t *testing.T) {
 	Convey("TestPollingClientClose", t, func() {
-		IsClosed := pc.IsClosed()
+		IsClosed := pc_r.IsClosed()
 		So(IsClosed, ShouldBeFalse)
-		pc.Close()
-		IsClosed = pc.IsClosed()
+		pc_r.Close()
+		IsClosed = pc_r.IsClosed()
 		So(IsClosed, ShouldBeTrue)
 	})
 }

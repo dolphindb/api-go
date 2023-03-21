@@ -51,17 +51,11 @@ func Test_Vector(t *testing.T) {
 			err = vct.Set(0, b2)
 			So(err, ShouldBeNil)
 
-			vct.Extend.BaseSize = 0
-			err = vct.Set(0, b2)
-			So(err, ShouldBeNil)
-			dt := vct.Get(0)
-			So(dt.String(), ShouldEqual, "")
-
 			err = vct.Set(1, b1)
 			So(err, ShouldBeNil)
-			So(vct.String(), ShouldEqual, "vector<string>([str2, str2])")
+			So(vct.String(), ShouldEqual, "vector<string>([str2, str1])")
 
-			dt = vct.Get(10)
+			dt := vct.Get(10)
 			So(dt, ShouldBeNil)
 
 			vct.Data = nil

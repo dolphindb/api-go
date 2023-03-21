@@ -17,7 +17,7 @@ import (
 
 const (
 	DBdfsPath     = "dfs://test_multiGoroutineTable"
-	DBDiskPath    = setup.WORKDIR + "/test_multiGoroutineTable"
+	DBDiskPath    = setup.WORK_DIR + "/test_multiGoroutineTable"
 	DfsTableName1 = "pt1"
 	DfsTableName2 = "pt2"
 )

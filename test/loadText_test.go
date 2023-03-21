@@ -14,7 +14,7 @@ func TestLoadTest(t *testing.T) {
 	Convey("test_loadText_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		data := setup.DATADIR + "/TradesSmall.csv"
+		data := setup.DATA_DIR + "/TradesSmall.csv"
 		Convey("test_loadText_filName_not_exist_exception", func() {
 			loadT := new(api.LoadTextRequest).
 				SetFileName("mssn.csv")

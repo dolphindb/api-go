@@ -46,6 +46,11 @@ func (s *Scalar) GetDataTypeString() string {
 	return GetDataTypeString(s.category.DataType)
 }
 
+// GetDataFormString returns the string format of the DataForm.
+func (s *Scalar) GetDataFormString() string {
+	return GetDataFormString(s.category.DataForm)
+}
+
 // SetNull sets the value of scalar to null.
 func (s *Scalar) SetNull() {
 	s.DataType.SetNull()

@@ -6,7 +6,7 @@ const (
 	// Password is password of the user.
 	Password = "123456"
 	// TestAddr is the Dolphindb server address.
-	TestAddr = "127.0.0.1:8848"
+	TestAddr = "192.168.0.16:9002"
 
 	dbPath               = "/tmp/db"
 	segmentDBPath        = "dfs://db"

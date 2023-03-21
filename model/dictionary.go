@@ -71,6 +71,11 @@ func (dict *Dictionary) GetDataTypeString() string {
 	return GetDataTypeString(dict.category.DataType)
 }
 
+// GetDataFormString returns the string format of the DataForm.
+func (dict *Dictionary) GetDataFormString() string {
+	return GetDataFormString(dict.category.DataForm)
+}
+
 // Get returns the value in dictionary based on the specified key.
 func (dict *Dictionary) Get(key string) (DataType, error) {
 	if dict.Keys == nil || dict.Keys.Data == nil ||

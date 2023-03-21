@@ -1,10 +1,15 @@
 package streaming
 
+import (
+	"net"
+)
+
 // AbstractClient is the client interface for streaming subscription.
 type AbstractClient interface {
 	activeCloseConnection(si *site) error
 	doReconnect(si *site) bool
 	getSubscriber() *subscriber
+	getTCPConn() *net.TCPConn
 
 	subscribe(req *SubscribeRequest) error
 	// UnSubscribe helps you to unsubscribe the specific action of the table according to the req

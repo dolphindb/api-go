@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/shopspring/decimal"
 )
 
 // DataType interface declares functions to handle DataType data.
@@ -298,12 +299,16 @@ func (d *dataType) String() string {
 		return fmt.Sprintf("%s", res)
 	case DtDecimal32:
 		r := res.(*Decimal32)
-		format := fmt.Sprintf("%%.%df", r.Scale)
-		return fmt.Sprintf(format, r.Value)
+		f := decimal.NewFromFloat(r.Value)
+		return f.StringFixed(r.Scale)
 	case DtDecimal64:
 		r := res.(*Decimal64)
-		format := fmt.Sprintf("%%.%df", r.Scale)
-		return fmt.Sprintf(format, r.Value)
+		f := decimal.NewFromFloat(r.Value)
+		return f.StringFixed(r.Scale)
+	case DtFloat, DtDouble:
+		return floatString(res)
+	case DtInt, DtShort, DtLong:
+		return fmt.Sprintf("%d", res)
 	default:
 		return fmt.Sprintf("%v", res)
 	}
@@ -626,4 +631,22 @@ func (d *dataType) intHashBucket(buckets int) int {
 	default:
 		return (int(value) + 4294967296) % buckets
 	}
+}
+
+func (d *Decimal64) String() string {
+	f, err := calculateDecimal64(d.Scale, d.Value)
+	if f == NullDecimal64Value || err != nil {
+		return ""
+	}
+
+	return decimal.NewFromFloat(d.Value).StringFixed(d.Scale)
+}
+
+func (d *Decimal32) String() string {
+	f, err := calculateDecimal32(d.Scale, d.Value)
+	if f == NullDecimal32Value || err != nil {
+		return ""
+	}
+
+	return decimal.NewFromFloat(d.Value).StringFixed(d.Scale)
 }

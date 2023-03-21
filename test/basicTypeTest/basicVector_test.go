@@ -9,6 +9,7 @@ import (
 	"github.com/dolphindb/api-go/model"
 	"github.com/dolphindb/api-go/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Vector_Download_Datatype_string(t *testing.T) {
@@ -2172,7 +2173,7 @@ func Test_Vector_UpLoad_Datatype_decimal32(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_decimal32:", func() {
-			dls, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{2, []float64{3.21235, -1, model.NullDecimal32Value}})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 2, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			So(err, ShouldBeNil)
@@ -2187,7 +2188,7 @@ func Test_Vector_UpLoad_Datatype_decimal64(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_vector_decimal64:", func() {
-			dls, _ := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{2, []float64{3.21235, -1, model.NullDecimal64Value}})
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 2, Value: []float64{3.21235, -1, model.NullDecimal64Value}})
 			s := model.NewVector(dls)
 			_, err := db.Upload(map[string]model.DataForm{"s": s})
 			So(err, ShouldBeNil)
@@ -2426,8 +2427,8 @@ func Test_Vector_UpLoad_int_array_vector(t *testing.T) {
 		So(err, ShouldBeNil)
 		int3v, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{model.NullInt, model.NullInt, model.NullInt, model.NullInt})
 		So(err, ShouldBeNil)
-		av := model.NewArrayVector([]*model.Vector{model.NewVector(int1v), model.NewVector(int2v), model.NewVector(int3v)})
-		s := model.NewVectorWithArrayVector(av)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(int1v), model.NewVector(int2v), model.NewVector(int3v)})
+		s := model.NewVectorWithArrayVector(NewData)
 		_, err = db.Upload(map[string]model.DataForm{"s": s})
 		So(err, ShouldBeNil)
 		res, err := db.RunScript("s")
@@ -2451,8 +2452,8 @@ func Test_Vector_UpLoad_bool_array_vector(t *testing.T) {
 		So(err, ShouldBeNil)
 		bool3v, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{model.NullBool, model.NullBool, model.NullBool})
 		So(err, ShouldBeNil)
-		av := model.NewArrayVector([]*model.Vector{model.NewVector(bool1v), model.NewVector(bool2v), model.NewVector(bool3v)})
-		s := model.NewVectorWithArrayVector(av)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(bool1v), model.NewVector(bool2v), model.NewVector(bool3v)})
+		s := model.NewVectorWithArrayVector(NewData)
 		_, err = db.Upload(map[string]model.DataForm{"s": s})
 		So(err, ShouldBeNil)
 		res, err := db.RunScript("s")
@@ -2482,8 +2483,8 @@ func Test_Vector_UpLoad_big_array_vector(t *testing.T) {
 		So(err, ShouldBeNil)
 		int3v, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{model.NullInt, model.NullInt, model.NullInt, model.NullInt})
 		So(err, ShouldBeNil)
-		av := model.NewArrayVector([]*model.Vector{model.NewVector(int1v), model.NewVector(int2v), model.NewVector(int3v)})
-		s := model.NewVectorWithArrayVector(av)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(int1v), model.NewVector(int2v), model.NewVector(int3v)})
+		s := model.NewVectorWithArrayVector(NewData)
 		_, err = db.Upload(map[string]model.DataForm{"s": s})
 		So(err, ShouldBeNil)
 		res, err := db.RunScript("s")
@@ -2497,6 +2498,3177 @@ func Test_Vector_UpLoad_big_array_vector(t *testing.T) {
 		So(re.IsNull(1048579+2), ShouldBeTrue)
 		So(ty.String(), ShouldEqual, "string(FAST INT[] VECTOR)")
 		So(res.GetDataType(), ShouldEqual, model.DtInt+64)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_int(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(INT[], 0, 10).append!([1..10]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 68)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "intArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(INT[], 0, 10).append!([1 NULL 3]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<int>([1, , 3])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 68)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "intArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).Value(), ShouldEqual, 1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, 3)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(INT[], 0, 10).append!([take(00i, 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<int>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 68)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "intArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_long(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(LONG[], 0, 10).append!([1..10]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<long>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 69)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "longArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(LONG[], 0, 10).append!([1 NULL 3]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<long>([1, , 3])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 69)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "longArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).Value(), ShouldEqual, 1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, 3)
+		})
+
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(LONG[], 0, 10).append!([take(00i, 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<long>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 69)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "longArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_short(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(SHORT[], 0, 10).append!([1..10]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<short>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 67)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "shortArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(SHORT[], 0, 10).append!([1 NULL 3]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<short>([1, , 3])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 67)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "shortArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).Value(), ShouldEqual, 1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, 3)
+		})
+
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(SHORT[], 0, 10).append!([take(00i, 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<short>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 67)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "shortArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_double(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(DOUBLE[], 0, 10).append!([1..10]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<double>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 80)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "doubleArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(DOUBLE[], 0, 10).append!([1 NULL 3]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<double>([1, , 3])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 80)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "doubleArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).Value(), ShouldEqual, 1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, 3)
+		})
+
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(DOUBLE[], 0, 10).append!([take(00i, 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<double>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 80)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "doubleArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_float(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(FLOAT[], 0, 10).append!([1..10]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<float>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 79)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "floatArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(FLOAT[], 0, 10).append!([1 NULL 3]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<float>([1, , 3])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 79)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "floatArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).Value(), ShouldEqual, 1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, 3)
+		})
+
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(FLOAT[], 0, 10).append!([take(00i, 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<float>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 79)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "floatArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_bool(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(BOOL[], 0, 10).append!([[true, false, true]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<bool>([true, false, true])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 65)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "boolArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(BOOL[], 0, 10).append!([true NULL false]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<bool>([true, , false])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 65)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "boolArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).Value(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, false)
+		})
+
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(BOOL[], 0, 10).append!([take(00i, 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<bool>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 65)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "boolArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_char(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(CHAR[], 0, 10).append!([[1, 2, 3]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<char>([1, 2, 3])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 66)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "charArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(CHAR[], 0, 10).append!([1 NULL 4]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<char>([1, , 4])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 66)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "charArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).Value(), ShouldEqual, 1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, 4)
+		})
+
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(CHAR[], 0, 10).append!([take(00i, 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<char>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 66)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "charArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_date(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(DATE[], 0, 10).append!([[1969.12.31, 1970.01.01, 1972.12.03]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<date>([1969.12.31, 1970.01.01, 1972.12.03])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 70)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "dateArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(DATE[], 0, 10).append!([[1970.01.01, NULL, 1969.12.03]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<date>([1970.01.01, , 1969.12.03])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 70)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "dateArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timestamp1 := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+			timestamp2 := time.Date(1969, 12, 03, 0, 0, 0, 0, time.UTC)
+			So(re.Get(0).Value(), ShouldEqual, timestamp1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, timestamp2)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(DATE[], 0, 10).append!([take(date(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<date>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 70)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "dateArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_month(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(MONTH[], 0, 10).append!([[1969.03M, 1970.01M, 1972.12M]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<month>([1969.03M, 1970.01M, 1972.12M])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 71)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "monthArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(MONTH[], 0, 10).append!([[1970.01M, NULL, 1969.12M]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<month>([1970.01M, , 1969.12M])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 71)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "monthArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timestamp1 := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+			timestamp2 := time.Date(1969, 12, 01, 0, 0, 0, 0, time.UTC)
+			So(re.Get(0).Value(), ShouldEqual, timestamp1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, timestamp2)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(MONTH[], 0, 10).append!([take(month(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<month>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 71)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "monthArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_time(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(TIME[], 0, 10).append!([[00:00:00.001, 00:00:00.003, 00:00:00.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<time>([00:00:00.001, 00:00:00.003, 00:00:00.100])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 72)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "timeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(TIME[], 0, 10).append!([[00:00:00.001, NULL, 00:00:00.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<time>([00:00:00.001, , 00:00:00.100])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 72)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "timeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timex := [3]string{"1970-01-01T00:00:00.001", "", "1970-01-01T00:00:00.100"}
+			m, _ := time.Parse("2006-01-02T15:04:05.000", timex[0])
+			n, _ := time.Parse("2006-01-02T15:04:05.000", timex[2])
+			So(re.Get(0).Value(), ShouldEqual, m)
+			So(re.Get(2).Value(), ShouldEqual, n)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(TIME[], 0, 10).append!([take(time(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<time>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 72)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "timeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_minute(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(MINUTE[], 0, 10).append!([[12:12:14.001, 13:24:59.003, 12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<minute>([12:12m, 13:24m, 12:45m])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 73)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "minuteArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(MINUTE[], 0, 10).append!([[12:12:14.001, NULL, 12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<minute>([12:12m, , 12:45m])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 73)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "minuteArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timex := [3]string{"1970-01-01T12:12:00.000", "", "1970-01-01T12:45:00.000"}
+			m, _ := time.Parse("2006-01-02T15:04:05.000", timex[0])
+			n, _ := time.Parse("2006-01-02T15:04:05.000", timex[2])
+			So(re.Get(0).Value(), ShouldEqual, m)
+			So(re.Get(2).Value(), ShouldEqual, n)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(MINUTE[], 0, 10).append!([take(minute(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<minute>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 73)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "minuteArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_second(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(SECOND[], 0, 10).append!([[12:12:14.001, 13:24:59.003, 12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<second>([12:12:14, 13:24:59, 12:45:59])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 74)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "secondArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(SECOND[], 0, 10).append!([[12:12:14.001, NULL, 12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<second>([12:12:14, , 12:45:59])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 74)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "secondArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timex := [3]string{"1970-01-01T12:12:14.000", "", "1970-01-01T12:45:59.000"}
+			m, _ := time.Parse("2006-01-02T15:04:05.000", timex[0])
+			n, _ := time.Parse("2006-01-02T15:04:05.000", timex[2])
+			So(re.Get(0).Value(), ShouldEqual, m)
+			So(re.Get(2).Value(), ShouldEqual, n)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(SECOND[], 0, 10).append!([take(second(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<second>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 74)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "secondArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_datetime(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(DATETIME[], 0, 10).append!([[2012.01.01T12:12:14.001, 2012.01.01T13:24:59.003, 2012.01.01T12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<datetime>([2012.01.01T12:12:14, 2012.01.01T13:24:59, 2012.01.01T12:45:59])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 75)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "datetimeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(DATETIME[], 0, 10).append!([[1969.01.01T12:12:14.001, NULL, 1970.12.13T12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<datetime>([1969.01.01T12:12:14, , 1970.12.13T12:45:59])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 75)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "datetimeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timestamp1 := time.Date(1969, 1, 1, 12, 12, 14, 0, time.UTC)
+			timestamp2 := time.Date(1970, 12, 13, 12, 45, 59, 0, time.UTC)
+			So(re.Get(0).Value(), ShouldEqual, timestamp1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, timestamp2)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(DATETIME[], 0, 10).append!([take(datetime(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<datetime>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 75)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "datetimeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_timestamp(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(TIMESTAMP[], 0, 10).append!([[2012.01.01T12:12:14.001, 2012.01.01T13:24:59.003, 2012.01.01T12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<timestamp>([2012.01.01T12:12:14.001, 2012.01.01T13:24:59.003, 2012.01.01T12:45:59.100])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 76)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "timestampArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(TIMESTAMP[], 0, 10).append!([[1969.01.01T12:12:14.123, NULL, 1970.12.13T12:45:50.123]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<timestamp>([1969.01.01T12:12:14.123, , 1970.12.13T12:45:50.123])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 76)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "timestampArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timestamp1 := time.Date(1969, 1, 1, 12, 12, 14, 123000000, time.UTC)
+			timestamp2 := time.Date(1970, 12, 13, 12, 45, 50, 123000000, time.UTC)
+			So(re.Get(0).Value(), ShouldEqual, timestamp1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, timestamp2)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(TIMESTAMP[], 0, 10).append!([take(timestamp(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<timestamp>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 76)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "timestampArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_nanotime(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(NANOTIME[], 0, 10).append!([[2012.01.01T12:12:14.001456793, 2012.01.01T13:24:59.003154697, 2012.01.01T12:45:59.100123456]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<nanotime>([12:12:14.001456793, 13:24:59.003154697, 12:45:59.100123456])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 77)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "nanotimeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(NANOTIME[], 0, 10).append!([[1969.01.01T12:12:14.123, NULL, 1970.12.13T12:45:50.123]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<nanotime>([12:12:14.123000000, , 12:45:50.123000000])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 77)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "nanotimeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timestamp1 := time.Date(1970, 1, 1, 12, 12, 14, 123000000, time.UTC)
+			timestamp2 := time.Date(1970, 1, 1, 12, 45, 50, 123000000, time.UTC)
+			So(re.Get(0).Value(), ShouldEqual, timestamp1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, timestamp2)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(NANOTIME[], 0, 10).append!([take(timestamp(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<nanotime>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 77)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "nanotimeArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_nanotimestamp(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr=array(NANOTIMESTAMP[], 0, 10).append!([[2012.01.01T12:12:14.001, 2012.01.01T13:24:59.003, 2012.01.01T12:45:59.100]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<nanotimestamp>([2012.01.01T12:12:14.001000000, 2012.01.01T13:24:59.003000000, 2012.01.01T12:45:59.100000000])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 78)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "nanotimestampArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(result.HashBucket(1, 1), ShouldEqual, 0)
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(NANOTIMESTAMP[], 0, 10).append!([[1969.01.01T12:12:14.123, NULL, 1970.12.13T12:45:50.123]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<nanotimestamp>([1969.01.01T12:12:14.123000000, , 1970.12.13T12:45:50.123000000])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 78)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "nanotimestampArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			timestamp1 := time.Date(1969, 1, 1, 12, 12, 14, 123000000, time.UTC)
+			timestamp2 := time.Date(1970, 12, 13, 12, 45, 50, 123000000, time.UTC)
+			So(re.Get(0).Value(), ShouldEqual, timestamp1)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).Value(), ShouldEqual, timestamp2)
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(NANOTIMESTAMP[], 0, 10).append!([take(nanotimestamp(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<nanotimestamp>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 78)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "nanotimestampArray")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_decimal32(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr = array(DECIMAL32(3)[], 0, 10).append!([[2.3, 4.5, 7.9]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<decimal32>([2.300, 4.500, 7.900])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 101)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			formString := result.GetDataFormString()
+			So(formString, ShouldEqual, "vector")
+			rem := re.Data.Value()
+			So(rem[0].(*model.Decimal32).Scale, ShouldEqual, 3)
+			So(rem[1].(*model.Decimal32).Scale, ShouldEqual, 3)
+			So(rem[2].(*model.Decimal32).Scale, ShouldEqual, 3)
+			So(rem[0].(*model.Decimal32).Value, ShouldEqual, 2.3)
+			So(rem[1].(*model.Decimal32).Value, ShouldEqual, 4.5)
+			So(rem[2].(*model.Decimal32).Value, ShouldEqual, 7.9)
+			So(re.Get(0).String(), ShouldEqual, "2.300")
+			So(re.Get(1).String(), ShouldEqual, "4.500")
+			So(re.Get(2).String(), ShouldEqual, "7.900")
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(DECIMAL32(3)[], 0, 10).append!([[2.3, NULL, 7.9]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<decimal32>([2.300, , 7.900])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 101)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).String(), ShouldEqual, "2.300")
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).String(), ShouldEqual, "7.900")
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(DECIMAL32(3)[], 0, 10).append!([take(double(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<decimal32>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 101)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal32Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_arrayvector_Download_Datatype_decimal64(t *testing.T) {
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("arr = array(DECIMAL64(3)[], 0, 10).append!([[2.3, 4.5, 7.9]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<decimal64>([2.300, 4.500, 7.900])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 102)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			formString := result.GetDataFormString()
+			So(formString, ShouldEqual, "vector")
+			rem := re.Data.Value()
+			So(rem[0].(*model.Decimal64).Scale, ShouldEqual, 3)
+			So(rem[1].(*model.Decimal64).Scale, ShouldEqual, 3)
+			So(rem[2].(*model.Decimal64).Scale, ShouldEqual, 3)
+			So(rem[0].(*model.Decimal64).Value, ShouldEqual, 2.3)
+			So(rem[1].(*model.Decimal64).Value, ShouldEqual, 4.5)
+			So(rem[2].(*model.Decimal64).Value, ShouldEqual, 7.9)
+			So(re.Get(0).String(), ShouldEqual, "2.300")
+			So(re.Get(1).String(), ShouldEqual, "4.500")
+			So(re.Get(2).String(), ShouldEqual, "7.900")
+		})
+		Convey("Test_arrayVector_contain_null:", func() {
+			s, err := db.RunScript("arr=array(DECIMAL64(3)[], 0, 10).append!([[2.3, NULL, 7.9]]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<decimal64>([2.300, , 7.900])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 102)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).String(), ShouldEqual, "2.300")
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).String(), ShouldEqual, "7.900")
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(DECIMAL64(3)[], 0, 10).append!([take(double(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<decimal64>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 102)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal64Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_short(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{-1024, 1048, 1024, 0, -1024})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{0, -1024, model.NullShort, 10})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{model.NullShort, model.NullShort, model.NullShort, model.NullShort})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtShort+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST SHORT[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<shortArray>([[-1024, 1048, 1024, 0, -1024], [0, -1024, , 10], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_long(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{-1024, 1048576, 1048580, 1024, 1030, 65537, -1048579, 3000000})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{0, 1048576, model.NullLong, 3000000})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{model.NullLong, model.NullLong, model.NullLong, model.NullLong})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<longArray>([[-1024, 1048576, 1048580, 1024, 1030, 65537, -1048579, 3000000], [0, 1048576, , 3000000], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(typestr.String(), ShouldEqual, "string(FAST LONG[] VECTOR)")
+		So(res.GetDataType(), ShouldEqual, model.DtLong+64)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_char(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{99, 10, 20, 0, 3})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{0, 19, model.NullChar, 10})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{model.NullChar, model.NullChar, model.NullChar, model.NullChar})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtChar+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST CHAR[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<charArray>([[99, 10, 20, 0, 3], [0, 19, , 10], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_bool(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{1, 0})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{0, 19, model.NullBool, 10})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{model.NullBool, model.NullBool, model.NullBool, model.NullBool})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtBool+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST BOOL[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<boolArray>([[true, false], [false, true, , true], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_float(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{2.365, 5.694})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{0.2354, 1.9, model.NullFloat, 1.0})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{model.NullFloat, model.NullFloat, model.NullFloat, model.NullFloat})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtFloat+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST FLOAT[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<floatArray>([[2.365, 5.694], [0.2354, 1.9, , 1], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_double(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{2.365, 5.694})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{0.2354, 1.9, model.NullDouble, 1.0})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{model.NullDouble, model.NullDouble, model.NullDouble, model.NullDouble})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDouble+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DOUBLE[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<doubleArray>([[2.365, 5.694], [0.2354, 1.9, , 1], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_date(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDate+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DATE[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<dateArray>([[1969.12.31, 1970.01.01, 1970.01.02, 2006.01.02, 2006.01.03, 2022.08.03], [1969.12.31, 1970.01.01, 1970.01.02, 2006.01.02, 2006.01.03, 2022.08.03, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_month(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtMonth, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtMonth+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST MONTH[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<monthArray>([[1969.12M, 1970.01M, 1970.01M, 2006.01M, 2006.01M, 2022.08M], [1969.12M, 1970.01M, 1970.01M, 2006.01M, 2006.01M, 2022.08M, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_datetime(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDatetime+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DATETIME[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<datetimeArray>([[1969.12.31T00:00:00, 1970.01.01T12:23:46, 1970.01.02T00:12:00, 2006.01.02T12:12:00, 2006.01.03T00:00:00, 2022.08.03T00:00:00], [1969.12.31T00:00:00, 1970.01.01T12:46:59, 1970.01.02T00:00:59, 2006.01.02T15:12:00, 2006.01.03T00:00:00, 2022.08.03T00:00:00, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_timestamp(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtTimestamp+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST TIMESTAMP[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<timestampArray>([[1969.12.31T00:00:00.000, 1970.01.01T12:23:46.000, 1970.01.02T00:12:00.000, 2006.01.02T12:12:00.000, 2006.01.03T00:00:00.000, 2022.08.03T00:00:00.000], [1969.12.31T00:00:00.000, 1970.01.01T12:46:59.000, 1970.01.02T00:00:59.000, 2006.01.02T15:12:00.000, 2006.01.03T00:00:00.000, 2022.08.03T00:00:00.000, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_nanotimestamp(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtNanoTimestamp+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST NANOTIMESTAMP[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<nanotimestampArray>([[1969.12.31T00:00:00.000000000, 1970.01.01T12:23:46.000102456, 1970.01.02T00:12:00.000000000, 2006.01.02T12:12:00.000000000, 2006.01.03T00:00:00.000000000, 2022.08.03T00:00:00.000000000], [1969.12.31T00:00:00.000000000, 1970.01.01T12:46:59.000000000, 1970.01.02T00:00:59.000000000, 2006.01.02T15:12:00.000000000, 2006.01.03T00:00:00.000000000, 2022.08.03T00:00:00.000000000, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_time(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtTime+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST TIME[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<timeArray>([[00:00:00.000, 12:23:46.000, 00:12:00.000, 12:12:00.000, 00:00:00.000, 00:00:00.000], [00:00:00.000, 12:46:59.000, 00:00:59.000, 15:12:00.000, 00:00:00.000, 00:00:00.000, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_second(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtSecond+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST SECOND[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<secondArray>([[00:00:00, 12:23:46, 00:12:00, 12:12:00, 00:00:00, 00:00:00], [00:00:00, 12:46:59, 00:00:59, 15:12:00, 00:00:00, 00:00:00, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_minute(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtMinute+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST MINUTE[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<minuteArray>([[00:00m, 12:23m, 00:12m, 12:12m, 00:00m, 00:00m], [00:00m, 12:46m, 00:00m, 15:12m, 00:00m, 00:00m, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_nanotime(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtNanoTime+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST NANOTIME[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<nanotimeArray>([[00:00:00.000000000, 12:23:46.000102456, 00:12:00.000000000, 12:12:00.000000000, 00:00:00.000000000, 00:00:00.000000000], [00:00:00.000000000, 12:46:59.000000000, 00:00:59.000000000, 15:12:00.000000000, 00:00:00.000000000, 00:00:00.000000000, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_datehour(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 23, 46, 102456, time.UTC), time.Date(1970, 1, 2, 0, 12, 0, 0, time.UTC), time.Date(2006, 1, 2, 12, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1970, 1, 1, 12, 46, 59, 0, time.UTC), time.Date(1970, 1, 2, 0, 0, 59, 0, time.UTC), time.Date(2006, 1, 2, 15, 12, 0, 0, time.UTC), time.Date(2006, 1, 3, 0, 0, 0, 0, time.UTC), time.Date(2022, 8, 3, 0, 0, 0, 0, time.UTC), model.NullTime})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDateHour+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DATEHOUR[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<datehourArray>([[1969.12.31T00, 1970.01.01T12, 1970.01.02T00, 2006.01.02T12, 2006.01.03T00, 2022.08.03T00], [1969.12.31T00, 1970.01.01T12, 1970.01.02T00, 2006.01.02T15, 2006.01.03T00, 2022.08.03T00, ], [, , , ]])")
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldEqual, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldEqual, vec2.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_decimal32(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 6, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 5, Value: []float64{0.2354, 1.9, model.NullDecimal32Value, 1.0}})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 3, Value: []float64{model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDecimal32+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DECIMAL32[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		ex := "vector<decimal32Array>([[3.212350, -1.000000, ], [0.235400, 1.900000, , 1.000000], [, , , ]])"
+		So(m, ShouldEqual, ex)
+
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldResemble, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		vecm, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 6, Value: []float64{0.2354, 1.9, model.NullDecimal32Value, 1.0}})
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldResemble, vecm.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_Vector_UpLoad_array_vector_decimal64(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 6, Value: []float64{3.21235, -1, model.NullDecimal64Value}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 8, Value: []float64{0.2354, 1.9, model.NullDecimal64Value, 1.0}})
+		So(err, ShouldBeNil)
+		Println(vec2.Value())
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 3, Value: []float64{model.NullDecimal64Value, model.NullDecimal64Value, model.NullDecimal64Value, model.NullDecimal64Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDecimal64+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DECIMAL64[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		ex := "vector<decimal64Array>([[3.212350, -1.000000, ], [0.235400, 1.900000, , 1.000000], [, , , ]])"
+		So(m, ShouldEqual, ex)
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldResemble, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		vecm, _ := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 6, Value: []float64{0.2354, 1.9, model.NullDecimal64Value, 1.0}})
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldResemble, vecm.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_decimal32_scale_min_in_first_vector(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 3, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 4, Value: []float64{0.2354, 1.9, model.NullDecimal32Value, 1.0}})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 8, Value: []float64{model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDecimal32+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DECIMAL32[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		ex := "vector<decimal32Array>([[3.212, -1.000, ], [0.235, 1.900, , 1.000], [, , , ]])"
+		So(m, ShouldEqual, ex)
+
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldResemble, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		vecm, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 3, Value: []float64{0.235, 1.900, model.NullDecimal32Value, 1.000}})
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldResemble, vecm.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_decimal32_scale_zero_in_first_vector(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 0, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 4, Value: []float64{2.354, 1.9, model.NullDecimal32Value, 1.0}})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 8, Value: []float64{model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDecimal32+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DECIMAL32[] VECTOR)")
+		re := res.(*model.Vector)
+		m := re.String()
+		ex := "vector<decimal32Array>([[3, -1, ], [2, 1, , 1], [, , , ]])"
+		So(m, ShouldEqual, ex)
+
+		for i := 0; i < vec1.Len(); i++ {
+			So(re.Get(i).Value(), ShouldResemble, vec1.Value()[i])
+		}
+		result1 := re.GetVectorValue(1)
+		vecm, _ := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 0, Value: []float64{2, 1, model.NullDecimal32Value, 1}})
+		for i := 0; i < vec2.Len(); i++ {
+			So(result1.Get(i).Value(), ShouldResemble, vecm.Value()[i])
+		}
+		result2 := re.GetVectorValue(2)
+		So(result2.Get(0).IsNull(), ShouldBeTrue)
+		So(result2.Get(1).IsNull(), ShouldBeTrue)
+		So(result2.Get(2).IsNull(), ShouldBeTrue)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_vector_decimal32_scale_negative(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: -2, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 9], but get: -2)")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_vector_decimal64_scale_negative(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: -2, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 18], but get: -2)")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_vector_decimal64_scale_12(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		m, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 12, Value: []float64{12345.12345, -1, model.NullDecimal64Value}})
+		So(err, ShouldBeNil)
+		result := model.NewArrayVector([]*model.Vector{model.NewVector(m)})
+		s := model.NewVectorWithArrayVector(result)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(err, ShouldBeNil)
+		So(res.GetDataType(), ShouldEqual, model.DtDecimal64+64)
+		re := res.(*model.Vector)
+		So(re.String(), ShouldEqual, "vector<decimal64Array>([[12345.123450000000, -1.000000000000, ]])")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_vector_decimal32_scale_10(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 10, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 9], but get: 10)")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_vector_decimal64_scale_19(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 19, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 18], but get: 19)")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_decimal32_scale_9_in_first_vector(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 9, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Decimal math overflow")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_array_vector_decimal64_scale_17_in_first_vector(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 17, Value: []float64{3.21235, -1, model.NullDecimal32Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Decimal math overflow")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_int(t *testing.T) {
+	Convey("Test_vector_int:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("123 -21 0 1024 12")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("123 NULL 0 NULL 12")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("take(00i, 10)")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		res3 := result3.GetRawValue()
+		ex1 := []int32{123, -21, 0, 1024, 12}
+		ex2 := []int32{123, model.NullInt, 0, model.NullInt, 12}
+		for i := 0; i < 5; i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res2[i], ShouldEqual, ex2[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res3[i], ShouldEqual, -2147483648)
+		}
+		vec4, _ := db.RunScript("1..1020")
+		result4 := vec4.(*model.Vector)
+		re4 := result4.GetRawValue()
+		var k int
+		for i := 0; i < 1020; i++ {
+			if re4[i] == i+1 {
+				k++
+			}
+		}
+		vec5, _ := db.RunScript("1..1030")
+		result5 := vec5.(*model.Vector)
+		re5 := result5.GetRawValue()
+		var k2 int
+		for i := 0; i < 1020; i++ {
+			if re5[i] == i+1 {
+				k2++
+			}
+		}
+		vec6, _ := db.RunScript("1..1048580")
+		result6 := vec6.(*model.Vector)
+		re6 := result6.GetRawValue()
+		var k3 int
+		for i := 0; i < 1020; i++ {
+			if re6[i] == i+1 {
+				k3++
+			}
+		}
+		vec7, _ := db.RunScript("1..65538")
+		result7 := vec7.(*model.Vector)
+		re7 := result7.GetRawValue()
+		var k4 int
+		for i := 0; i < 1020; i++ {
+			if re7[i] == i+1 {
+				k4++
+			}
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_long(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("long(123 -21 0 1024 12)")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("long(123 NULL 0 NULL 12)")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("long(take(00i, 10))")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "long")
+		So(result2.GetDataTypeString(), ShouldEqual, "long")
+		So(result3.GetDataTypeString(), ShouldEqual, "long")
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		res3 := result3.GetRawValue()
+		ex1 := []int64{123, -21, 0, 1024, 12}
+		ex2 := []int64{123, model.NullLong, 0, model.NullLong, 12}
+		for i := 0; i < 5; i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res2[i], ShouldEqual, ex2[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res3[i], ShouldEqual, -9223372036854775808)
+		}
+		vec4, _ := db.RunScript("1..1020")
+		result4 := vec4.(*model.Vector)
+		re4 := result4.GetRawValue()
+		var k int
+		for i := 0; i < 1020; i++ {
+			if re4[i] == i+1 {
+				k++
+			}
+		}
+		vec5, _ := db.RunScript("1..1030")
+		result5 := vec5.(*model.Vector)
+		re5 := result5.GetRawValue()
+		var k2 int
+		for i := 0; i < 1020; i++ {
+			if re5[i] == i+1 {
+				k2++
+			}
+		}
+		vec6, _ := db.RunScript("1..1048580")
+		result6 := vec6.(*model.Vector)
+		re6 := result6.GetRawValue()
+		var k3 int
+		for i := 0; i < 1020; i++ {
+			if re6[i] == i+1 {
+				k3++
+			}
+		}
+		vec7, _ := db.RunScript("1..65538")
+		result7 := vec7.(*model.Vector)
+		re7 := result7.GetRawValue()
+		var k4 int
+		for i := 0; i < 1020; i++ {
+			if re7[i] == i+1 {
+				k4++
+			}
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_short(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("short(123 -21 0 1024 12)")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("short(123 NULL 0 NULL 12)")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("short(take(00i, 10))")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "short")
+		So(result2.GetDataTypeString(), ShouldEqual, "short")
+		So(result3.GetDataTypeString(), ShouldEqual, "short")
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		res3 := result3.GetRawValue()
+		ex1 := []int16{123, -21, 0, 1024, 12}
+		ex2 := []int16{123, model.NullShort, 0, model.NullShort, 12}
+		for i := 0; i < 5; i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res2[i], ShouldEqual, ex2[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res3[i], ShouldEqual, -32768)
+		}
+		vec4, _ := db.RunScript("1..1020")
+		result4 := vec4.(*model.Vector)
+		re4 := result4.GetRawValue()
+		var k int
+		for i := 0; i < 1020; i++ {
+			if re4[i] == i+1 {
+				k++
+			}
+		}
+		vec5, _ := db.RunScript("1..1030")
+		result5 := vec5.(*model.Vector)
+		re5 := result5.GetRawValue()
+		var k2 int
+		for i := 0; i < 1020; i++ {
+			if re5[i] == i+1 {
+				k2++
+			}
+		}
+		vec6, _ := db.RunScript("1..1048580")
+		result6 := vec6.(*model.Vector)
+		re6 := result6.GetRawValue()
+		var k3 int
+		for i := 0; i < 1020; i++ {
+			if re6[i] == i+1 {
+				k3++
+			}
+		}
+		vec7, _ := db.RunScript("1..65538")
+		result7 := vec7.(*model.Vector)
+		re7 := result7.GetRawValue()
+		var k4 int
+		for i := 0; i < 1020; i++ {
+			if re7[i] == i+1 {
+				k4++
+			}
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_char(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("char(12 1 0 24 2)")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("char(3 NULL 0 NULL 2)")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("char(take(00i, 10))")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "char")
+		So(result2.GetDataTypeString(), ShouldEqual, "char")
+		So(result3.GetDataTypeString(), ShouldEqual, "char")
+		res1 := result1.GetRawValue()
+		// res2 := result2.GetRawValue()
+		// res3 := result3.GetRawValue()
+		ex1 := []byte{12, 1, 0, 24, 2}
+		// ex2 := []byte{3, model.NullChar, 0, model.NullChar, 2}
+		for i := 0; i < 5; i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		// for i := 0; i < 5; i++ {
+		// 	So(res2[i], ShouldEqual, ex2[i])
+		// }
+		// for i := 0; i < 5; i++ {
+		// 	So(res3[i], ShouldEqual, -128)
+		// }
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_bool(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("true false")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("true false true NULL")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("take(bool(), 10)")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "bool")
+		So(result2.GetDataTypeString(), ShouldEqual, "bool")
+		So(result3.GetDataTypeString(), ShouldEqual, "bool")
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		// res3 := result3.GetRawValue()
+		So(res1[0], ShouldBeTrue)
+		So(res1[1], ShouldBeFalse)
+		So(res2[0], ShouldBeTrue)
+		So(res2[1], ShouldBeFalse)
+		So(res2[2], ShouldBeTrue)
+		// So(res2[3], ShouldEqual, model.NullBool)
+		// for i := 0; i < 5; i++ {
+		// 	So(res3[i], ShouldEqual, -128)
+		// }
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_double(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("double(1.2345823 -2.125451 0.154646 1.2365024 1.23562)")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("double(1.2345823 NULL 0.2356564 NULL 1.235646462)")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("take(double(), 10)")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "double")
+		So(result2.GetDataTypeString(), ShouldEqual, "double")
+		So(result3.GetDataTypeString(), ShouldEqual, "double")
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		res3 := result3.GetRawValue()
+		ex1 := []float64{1.2345823, -2.125451, 0.154646, 1.2365024, 1.23562}
+		ex2 := []float64{1.2345823, model.NullDouble, 0.2356564, model.NullDouble, 1.235646462}
+		for i := 0; i < 5; i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res2[i], ShouldEqual, ex2[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res3[i], ShouldEqual, model.NullDouble)
+		}
+		vec4, _ := db.RunScript("take(1.23645897, 1020)")
+		result4 := vec4.(*model.Vector)
+		re4 := result4.GetRawValue()
+		var k int
+		for i := 0; i < 1020; i++ {
+			if re4[i] == 1.23645897 {
+				k++
+			}
+		}
+		vec5, _ := db.RunScript("take(1.23645897, 1030)")
+		result5 := vec5.(*model.Vector)
+		re5 := result5.GetRawValue()
+		var k2 int
+		for i := 0; i < 1030; i++ {
+			if re5[i] == 1.23645897 {
+				k2++
+			}
+		}
+		vec6, _ := db.RunScript("take(1.23645897, 1048580)")
+		result6 := vec6.(*model.Vector)
+		re6 := result6.GetRawValue()
+		var k3 int
+		for i := 0; i < 1048580; i++ {
+			if re6[i] == 1.23645897 {
+				k3++
+			}
+		}
+		vec7, _ := db.RunScript("take(1.23645897, 65538)")
+		result7 := vec7.(*model.Vector)
+		re7 := result7.GetRawValue()
+		var k4 int
+		for i := 0; i < 65538; i++ {
+			if re7[i] == i+1 {
+				k4++
+			}
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_float(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("float(1.2345823 -2.125451 0.154646 1.2365024 1.23562)")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("float(1.2345823 NULL 0.2356564 NULL 1.235646462)")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("take(float(), 10)")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "float")
+		So(result2.GetDataTypeString(), ShouldEqual, "float")
+		So(result3.GetDataTypeString(), ShouldEqual, "float")
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		res3 := result3.GetRawValue()
+		ex1 := []float32{1.2345823, -2.125451, 0.154646, 1.2365024, 1.23562}
+		ex2 := []float32{1.2345823, model.NullFloat, 0.2356564, model.NullFloat, 1.235646462}
+		for i := 0; i < 5; i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res2[i], ShouldEqual, ex2[i])
+		}
+		for i := 0; i < 5; i++ {
+			So(res3[i], ShouldEqual, model.NullFloat)
+		}
+		vec4, _ := db.RunScript("take(1.23645897, 1020)")
+		result4 := vec4.(*model.Vector)
+		re4 := result4.GetRawValue()
+		var k int
+		for i := 0; i < 1020; i++ {
+			if re4[i] == 1.23645897 {
+				k++
+			}
+		}
+		vec5, _ := db.RunScript("take(1.23645897, 1030)")
+		result5 := vec5.(*model.Vector)
+		re5 := result5.GetRawValue()
+		var k2 int
+		for i := 0; i < 1030; i++ {
+			if re5[i] == 1.23645897 {
+				k2++
+			}
+		}
+		vec6, _ := db.RunScript("take(1.23645897, 1048580)")
+		result6 := vec6.(*model.Vector)
+		re6 := result6.GetRawValue()
+		var k3 int
+		for i := 0; i < 1048580; i++ {
+			if re6[i] == 1.23645897 {
+				k3++
+			}
+		}
+		vec7, _ := db.RunScript("take(1.23645897, 65538)")
+		result7 := vec7.(*model.Vector)
+		re7 := result7.GetRawValue()
+		var k4 int
+		for i := 0; i < 65538; i++ {
+			if re7[i] == i+1 {
+				k4++
+			}
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_Date(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("1970.01.01 1969.12.31 1972.12.31")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("1970.01.01 NULL 1969.12.31 NULL 1972.12.31")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("take(date(), 10)")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "date")
+		So(result2.GetDataTypeString(), ShouldEqual, "date")
+		So(result3.GetDataTypeString(), ShouldEqual, "date")
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		res3 := result3.GetRawValue()
+		ex1 := []time.Time{time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), time.Date(1972, 12, 31, 0, 0, 0, 0, time.UTC)}
+		ex2 := []time.Time{time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), model.NullTime, time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC), model.NullTime, time.Date(1972, 12, 31, 0, 0, 0, 0, time.UTC)}
+		for i := 0; i < len(ex1); i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		for i := 0; i < len(ex2); i++ {
+			So(res2[i], ShouldEqual, ex2[i])
+		}
+		for i := 0; i < len(res3); i++ {
+			So(res3[i], ShouldEqual, model.NullTime)
+		}
+		vec4, _ := db.RunScript("take(1970.01.01, 1020)")
+		result4 := vec4.(*model.Vector)
+		re4 := result4.GetRawValue()
+		var k int
+		for i := 0; i < 1020; i++ {
+			if re4[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k++
+			}
+		}
+		vec5, _ := db.RunScript("take(1970.01.01, 1030)")
+		result5 := vec5.(*model.Vector)
+		re5 := result5.GetRawValue()
+		var k2 int
+		for i := 0; i < 1030; i++ {
+			if re5[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k2++
+			}
+		}
+		vec6, _ := db.RunScript("take(1970.01.01, 1048580)")
+		result6 := vec6.(*model.Vector)
+		re6 := result6.GetRawValue()
+		var k3 int
+		for i := 0; i < 1048580; i++ {
+			if re6[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k3++
+			}
+		}
+		vec7, _ := db.RunScript("take(1970.01.01, 65538)")
+		result7 := vec7.(*model.Vector)
+		re7 := result7.GetRawValue()
+		var k4 int
+		for i := 0; i < 65538; i++ {
+			if re7[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k4++
+			}
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_Vector_Download_Datatype_DateTime(t *testing.T) {
+	Convey("Test_vector_long:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := db.RunScript("datetime(1970.01.01T12:12:12 1969.12.31T12:59:12 1972.12.31T23:12:45)")
+		So(err, ShouldBeNil)
+		vec2, err := db.RunScript("datetime([1970.01.01T12:23:12, NULL, 1969.12.31T12:59:12, NULL, 1972.12.31T23:12:45])")
+		So(err, ShouldBeNil)
+		vec3, err := db.RunScript("take(datetime(), 10)")
+		So(err, ShouldBeNil)
+		result1 := vec1.(*model.Vector)
+		result2 := vec2.(*model.Vector)
+		result3 := vec3.(*model.Vector)
+		So(result1.GetDataTypeString(), ShouldEqual, "datetime")
+		So(result2.GetDataTypeString(), ShouldEqual, "datetime")
+		So(result3.GetDataTypeString(), ShouldEqual, "datetime")
+		res1 := result1.GetRawValue()
+		res2 := result2.GetRawValue()
+		res3 := result3.GetRawValue()
+		ex1 := []time.Time{time.Date(1970, 1, 1, 12, 12, 12, 0, time.UTC), time.Date(1969, 12, 31, 12, 59, 12, 0, time.UTC), time.Date(1972, 12, 31, 23, 12, 45, 0, time.UTC)}
+		ex2 := []time.Time{time.Date(1970, 1, 1, 12, 23, 12, 0, time.UTC), model.NullTime, time.Date(1969, 12, 31, 12, 59, 12, 0, time.UTC), model.NullTime, time.Date(1972, 12, 31, 23, 12, 45, 0, time.UTC)}
+		for i := 0; i < len(ex1); i++ {
+			So(res1[i], ShouldEqual, ex1[i])
+		}
+		for i := 0; i < len(ex2); i++ {
+			So(res2[i], ShouldEqual, ex2[i])
+		}
+		for i := 0; i < len(res3); i++ {
+			So(res3[i], ShouldEqual, model.NullTime)
+		}
+		vec4, _ := db.RunScript("take(1970.01.01, 1020)")
+		result4 := vec4.(*model.Vector)
+		re4 := result4.GetRawValue()
+		var k int
+		for i := 0; i < 1020; i++ {
+			if re4[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k++
+			}
+		}
+		vec5, _ := db.RunScript("take(1970.01.01, 1030)")
+		result5 := vec5.(*model.Vector)
+		re5 := result5.GetRawValue()
+		var k2 int
+		for i := 0; i < 1030; i++ {
+			if re5[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k2++
+			}
+		}
+		vec6, _ := db.RunScript("take(1970.01.01, 1048580)")
+		result6 := vec6.(*model.Vector)
+		re6 := result6.GetRawValue()
+		var k3 int
+		for i := 0; i < 1048580; i++ {
+			if re6[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k3++
+			}
+		}
+		vec7, _ := db.RunScript("take(1970.01.01, 65538)")
+		result7 := vec7.(*model.Vector)
+		re7 := result7.GetRawValue()
+		var k4 int
+		for i := 0; i < 65538; i++ {
+			if re7[i] == time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) {
+				k4++
+			}
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_double(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{2.365878945, model.NullDouble, -5.69154974})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{-0.2354, 1.925498941, 0, model.NullDouble, 1.0})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{model.NullDouble, model.NullDouble, model.NullDouble, model.NullDouble})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, 2.365878945)
+		So(re.GetRawValue()[1], ShouldEqual, model.NullDouble)
+		So(re.GetRawValue()[2], ShouldEqual, -5.69154974)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDouble+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DOUBLE[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<doubleArray>([[2.365878945, , -5.69154974], [-0.2354, 1.925498941, 0, , 1], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullDouble)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullDouble)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullDouble)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_float(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{2.365878945, model.NullFloat, -5.69154974})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{-0.2354, 1.925498941, 0, model.NullFloat, 1.0})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtFloat, []float32{model.NullFloat, model.NullFloat, model.NullFloat, model.NullFloat})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, 2.365878945)
+		So(re.GetRawValue()[1], ShouldEqual, model.NullFloat)
+		So(re.GetRawValue()[2], ShouldEqual, -5.69154974)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtFloat+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST FLOAT[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<floatArray>([[2.365879, , -5.69155], [-0.2354, 1.925499, 0, , 1], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullFloat)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullFloat)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullFloat)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_int(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{2, model.NullInt, -5})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{0, 5, 0, model.NullInt, 1})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{model.NullInt, model.NullInt, model.NullInt, model.NullInt})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, 2)
+		So(re.GetRawValue()[1], ShouldEqual, model.NullInt)
+		So(re.GetRawValue()[2], ShouldEqual, -5)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtInt+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST INT[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<intArray>([[2, , -5], [0, 5, 0, , 1], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullInt)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullInt)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullInt)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_short(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{2, model.NullShort, -5})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{0, 5, 0, model.NullShort, 1})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtShort, []int16{model.NullShort, model.NullShort, model.NullShort, model.NullShort})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, 2)
+		So(re.GetRawValue()[1], ShouldEqual, model.NullShort)
+		So(re.GetRawValue()[2], ShouldEqual, -5)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtShort+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST SHORT[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<shortArray>([[2, , -5], [0, 5, 0, , 1], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullShort)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullShort)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullShort)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_long(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{2, model.NullLong, -5})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{0, 5, 0, model.NullLong, 1})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtLong, []int64{model.NullLong, model.NullLong, model.NullLong, model.NullLong})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, 2)
+		So(re.GetRawValue()[1], ShouldEqual, model.NullLong)
+		So(re.GetRawValue()[2], ShouldEqual, -5)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtLong+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST LONG[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<longArray>([[2, , -5], [0, 5, 0, , 1], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullLong)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullLong)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullLong)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_char(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{2, model.NullChar, 5})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{0, 5, 0, model.NullChar, 1})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtChar, []byte{model.NullChar, model.NullChar, model.NullChar, model.NullChar})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, 2)
+		// So(re.GetRawValue()[1], ShouldEqual, model.NullChar)
+		So(re.GetRawValue()[2], ShouldEqual, 5)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtChar+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST CHAR[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<charArray>([[2, , 5], [0, 5, 0, , 1], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		// result3 := re.GetVectorValue(2)
+		// So(result3.GetRawValue()[0], ShouldEqual, model.NullChar)
+		// So(result3.GetRawValue()[1], ShouldEqual, model.NullChar)
+		// So(result3.GetRawValue()[2], ShouldEqual, model.NullChar)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_bool(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtBool, []bool{true, true, false})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtBool, []bool{true, false, true})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtBool, []byte{model.NullBool, model.NullBool, model.NullBool, model.NullBool})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, true)
+		So(re.GetRawValue()[1], ShouldEqual, true)
+		So(re.GetRawValue()[2], ShouldEqual, false)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtBool+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST BOOL[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<boolArray>([[true, true, false], [true, false, true], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		// result3 := re.GetVectorValue(2)
+		// So(result3.GetRawValue()[0], ShouldEqual, model.nullBool)
+		// So(result3.GetRawValue()[1], ShouldEqual, model.nullBool)
+		// So(result3.GetRawValue()[2], ShouldEqual, model.nullBool)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_date(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDate, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1969, 1, 1, 0, 0, 0, 0, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDate+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DATE[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<dateArray>([[1970.01.01, 1969.01.01, 2012.01.01], [, 1969.01.01, 2012.01.01], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_datetime(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDatetime, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 0, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1969, 1, 1, 12, 23, 45, 0, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(2012, 1, 1, 12, 23, 45, 0, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDatetime+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DATETIME[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<datetimeArray>([[1970.01.01T12:23:45, 1969.01.01T12:23:45, 2012.01.01T12:23:45], [, 1969.01.01T12:23:45, 2012.01.01T12:23:45], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_datehour(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 0, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 0, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDateHour, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 0, 0, 0, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1969, 1, 1, 12, 0, 0, 0, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(2012, 1, 1, 12, 0, 0, 0, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDateHour+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DATEHOUR[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<datehourArray>([[1970.01.01T12, 1969.01.01T12, 2012.01.01T12], [, 1969.01.01T12, 2012.01.01T12], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_timestamp(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 999123456, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 959836563, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 956125463, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 125123456, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1969, 1, 1, 12, 23, 45, 999000000, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(2012, 1, 1, 12, 23, 45, 959000000, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtTimestamp+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST TIMESTAMP[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<timestampArray>([[1970.01.01T12:23:45.999, 1969.01.01T12:23:45.999, 2012.01.01T12:23:45.959], [, 1969.01.01T12:23:45.956, 2012.01.01T12:23:45.125], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_nanotimestamp(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 999123456, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 959836563, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 956125463, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 125123456, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1969, 1, 1, 12, 23, 45, 999123456, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(2012, 1, 1, 12, 23, 45, 959836563, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtNanoTimestamp+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST NANOTIMESTAMP[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<nanotimestampArray>([[1970.01.01T12:23:45.999000000, 1969.01.01T12:23:45.999123456, 2012.01.01T12:23:45.959836563], [, 1969.01.01T12:23:45.956125463, 2012.01.01T12:23:45.125123456], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_nanotime(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 999123456, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 959836563, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 956125463, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 125123456, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtNanoTime, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 999123456, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 959836563, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtNanoTime+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST NANOTIME[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<nanotimeArray>([[12:23:45.999000000, 12:23:45.999123456, 12:23:45.959836563], [, 12:23:45.956125463, 12:23:45.125123456], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_time(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 999123456, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 959836563, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 956125463, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 125123456, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtTime, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 959000000, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtTime+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST TIME[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<timeArray>([[12:23:45.999, 12:23:45.999, 12:23:45.959], [, 12:23:45.956, 12:23:45.125], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_second(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 999123456, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 959836563, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 956125463, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 125123456, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtSecond, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 0, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 0, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 45, 0, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtSecond+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST SECOND[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<secondArray>([[12:23:45, 12:23:45, 12:23:45], [, 12:23:45, 12:23:45], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_minute(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{time.Date(1970, 1, 1, 12, 23, 45, 999000000, time.UTC), time.Date(1969, 1, 1, 12, 23, 45, 999123456, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 959836563, time.UTC)})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{model.NullTime, time.Date(1969, 1, 1, 12, 23, 45, 956125463, time.UTC), time.Date(2012, 1, 1, 12, 23, 45, 125123456, time.UTC)})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtMinute, []time.Time{model.NullTime, model.NullTime, model.NullTime, model.NullTime})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		So(re.GetRawValue()[0], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 0, 0, time.UTC))
+		So(re.GetRawValue()[1], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 0, 0, time.UTC))
+		So(re.GetRawValue()[2], ShouldEqual, time.Date(1970, 1, 1, 12, 23, 0, 0, time.UTC))
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtMinute+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST MINUTE[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<minuteArray>([[12:23m, 12:23m, 12:23m], [, 12:23m, 12:23m], [, , , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldEqual, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[1], ShouldEqual, model.NullTime)
+		So(result3.GetRawValue()[2], ShouldEqual, model.NullTime)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_decimal32(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 3, Value: []float64{2.365878945, model.NullDecimal32Value, -5.69154974}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 3, Value: []float64{2.365878945, model.NullDecimal32Value, -5.69154974}})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{Scale: 3, Value: []float64{model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		m1, _ := model.NewDataType(model.DtDecimal32, &model.Decimal32{Scale: 3, Value: 2.365})
+		m2, _ := model.NewDataType(model.DtDecimal32, &model.Decimal32{Scale: 3, Value: -5.691})
+		So(re.GetRawValue()[0], ShouldResemble, model.NewScalar(m1).Value())
+		So(re.GetRawValue()[1].(*model.Decimal32).Value, ShouldEqual, model.NullDecimal32Value)
+		So(re.GetRawValue()[2], ShouldResemble, model.NewScalar(m2).Value())
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDecimal32+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DECIMAL32[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<decimal32Array>([[2.365, , -5.691], [2.365, , -5.691], [, , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldResemble, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldResemble, vec2.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0].(*model.Decimal32).Value, ShouldEqual, model.NullDecimal32Value)
+		So(result3.GetRawValue()[1].(*model.Decimal32).Value, ShouldEqual, model.NullDecimal32Value)
+		So(result3.GetRawValue()[2].(*model.Decimal32).Value, ShouldEqual, model.NullDecimal32Value)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+func Test_GetRawValue_UpLoad_array_vector_decimal64(t *testing.T) {
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 3, Value: []float64{2.365878945, model.NullDecimal64Value, -5.69154974}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 6, Value: []float64{2.365878945, model.NullDecimal64Value, -5.69154974}})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 2, Value: []float64{model.NullDecimal64Value, model.NullDecimal64Value, model.NullDecimal64Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		m1, _ := model.NewDataType(model.DtDecimal64, &model.Decimal64{Scale: 3, Value: 2.365})
+		m2, _ := model.NewDataType(model.DtDecimal64, &model.Decimal64{Scale: 3, Value: -5.691})
+		So(re.GetRawValue()[0], ShouldResemble, model.NewScalar(m1).Value())
+		So(re.GetRawValue()[1].(*model.Decimal64).Value, ShouldEqual, model.NullDecimal64Value)
+		So(re.GetRawValue()[2], ShouldResemble, model.NewScalar(m2).Value())
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, model.DtDecimal64+64)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DECIMAL64[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<decimal64Array>([[2.365, , -5.691], [2.365, , -5.691], [, , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldResemble, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		vec2M, _ := model.NewDataTypeListFromRawData(model.DtDecimal64, &model.Decimal64s{Scale: 3, Value: []float64{2.365878945, model.NullDecimal64Value, -5.69154974}})
+
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldResemble, vec2M.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0].(*model.Decimal64).Value, ShouldEqual, model.NullDecimal64Value)
+		So(result3.GetRawValue()[1].(*model.Decimal64).Value, ShouldEqual, model.NullDecimal64Value)
+		So(result3.GetRawValue()[2].(*model.Decimal64).Value, ShouldEqual, model.NullDecimal64Value)
 		So(db.Close(), ShouldBeNil)
 	})
 }

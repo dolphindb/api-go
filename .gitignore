@@ -25,3 +25,6 @@ bin
 *.dos
 coverage.txt
 performance/
+cover.sh
+gobco-counts.json
+branchCover.sh

@@ -12,6 +12,8 @@ type DataForm interface {
 
 	// GetDataForm returns the byte type of the DataForm
 	GetDataForm() DataFormByte
+	// GetDataFormString returns the string format of the DataForm
+	GetDataFormString() string
 	// GetDataType returns the byte type of the DataType
 	GetDataType() DataTypeByte
 	// GetDataTypeString returns the string format of the DataType

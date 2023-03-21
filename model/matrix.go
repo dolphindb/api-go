@@ -49,6 +49,11 @@ func (mtx *Matrix) GetDataTypeString() string {
 	return GetDataTypeString(mtx.category.DataType)
 }
 
+// GetDataFormString returns the string format of the DataForm.
+func (mtx *Matrix) GetDataFormString() string {
+	return GetDataFormString(mtx.category.DataForm)
+}
+
 // Rows returns the row num of the DataForm.
 func (mtx *Matrix) Rows() int {
 	return int(mtx.Data.RowCount)

@@ -15,10 +15,23 @@ func TestPloadTest(t *testing.T) {
 	Convey("test_PloadTest_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		data := setup.DATADIR + "/TradesSmall.csv"
+		data := setup.DATA_DIR + "/TradesSmall.csv"
 		fmt.Println(data)
-		Convey("test_PloadTest_para_filename", func() {
+		Convey("test_ploadText_ex1", func() {
+			_, err = ddb.RunScript(fmt.Sprintf(`%s=ploadText("%s","%s")`, "m", "''", ","))
+			So(err, ShouldNotBeNil)
+		})
+		Convey("test_loadTest_para_filename", func() {
 			tmp, err := ddb.RunScript("select * from loadText(\"" + data + "\")")
+			ex := tmp.(*model.Table)
+			So(err, ShouldBeNil)
+			re, err := PloadTextFileName(ddb, data)
+			So(err, ShouldBeNil)
+			result := CompareTablesDataformTable(ex, re)
+			So(result, ShouldBeTrue)
+		})
+		Convey("test_PloadTest_para_filename", func() {
+			tmp, err := ddb.RunScript("select * from ploadText(\"" + data + "\")")
 			ex := tmp.(*model.Table)
 			So(err, ShouldBeNil)
 			re, err := PloadTextFileName(ddb, data)

@@ -36,7 +36,7 @@ func writeRequest(wr *protocol.Writer, params *requestParams, opt *BehaviorOptio
 func writeFlag(opt *BehaviorOptions) []byte {
 	bs := bytes.Buffer{}
 
-	bs.WriteString(fmt.Sprintf(" / %d_1_%d_%d", generatorRequestFlag(false), opt.GetPriority(), opt.GetParallelism()))
+	bs.WriteString(fmt.Sprintf(" / %d_1_%d_%d", generatorRequestFlag(opt), opt.GetPriority(), opt.GetParallelism()))
 	if opt.GetFetchSize() > 0 {
 		bs.WriteString(fmt.Sprintf("__%d", opt.GetFetchSize()))
 	}
@@ -50,7 +50,7 @@ func writeHeader(w *protocol.Writer, opt *BehaviorOptions, sessionID []byte, com
 	_ = w.Write(sessionID)
 	_ = w.WriteByte(protocol.EmptySpace)
 	_ = w.Write([]byte(strconv.Itoa(commandLength)))
-	if commandType == scriptCmd || commandType == functionCmd {
+	if commandType == scriptCmd || commandType == functionCmd || commandType == connectCmd {
 		_ = w.Write(writeFlag(opt))
 	}
 	_ = w.WriteByte(protocol.NewLine)

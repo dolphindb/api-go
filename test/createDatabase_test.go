@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,50 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestExistsDatabase_ex(t *testing.T) {
+	Convey("Test_ExistsDatabase_ex", t, func() {
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = ExistsDatabase(ddb, "''''''''")
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, `client error response. existsDatabase(["","","","",""]) => Usage: existsDatabase(dbUrl). dbUrl must be a local path or a dfs path.`)
+		ddb.Close()
+	})
+}
+
+func TestExistsTable_ex(t *testing.T) {
+	Convey("Test_TestExistsTable_ex", t, func() {
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = ddb.RunScript(fmt.Sprintf("existsTable('%s','%s')", "''", "tables"))
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, `client error response. existsTable(["",""], "tables") => Usage: existsTable(dbUrl, tableName). dbUrl must be a local path or a dfs path.`)
+		ddb.Close()
+	})
+}
+
+func TestCreateDatabase_ex(t *testing.T) {
+	Convey("Test_CreateDatabase_ex", t, func() {
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = ddb.RunScript(fmt.Sprintf("%s=database(%s)", DBhandler, "db"))
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, `client error response. db = database(db) => Variable 'db' isn't initialized yet.`)
+		ddb.Close()
+	})
+}
+
+func TestDropDatabase_ex(t *testing.T) {
+	Convey("Test_DropDataBase_ex", t, func() {
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = ddb.RunScript(fmt.Sprintf("dropDatabase('%s')", "nj"))
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, `client error response. dropDatabase("nj") => There is no database in the directory nj`)
+		ddb.Close()
+	})
+}
 
 func TestCreateDatabase(t *testing.T) {
 	Convey("Test_CreateDatabase_prepare", t, func() {
@@ -55,7 +100,7 @@ func TestCreateDatabase(t *testing.T) {
 			So(rePartitionTypeName.Value().(*model.Scalar).Value(), ShouldEqual, "VALUE")
 			rePartitionSchema, _ := re4.Get("partitionSchema")
 			j := 0
-			for i := 30; i > 0; i-- {
+			for i := 1; i < 30; i++ {
 				datev := time.Date(2010, time.January, i, 0, 0, 0, 0, time.UTC)
 				tmpPartitionSchema := append([]time.Time{}, datev)
 				So(rePartitionSchema.Value().(*model.Vector).Data.Value()[j], ShouldEqual, tmpPartitionSchema[0])
@@ -497,7 +542,7 @@ func TestCreateDatabase(t *testing.T) {
 			rePartitionSchema, _ := re4.Get("partitionSchema")
 			re := rePartitionSchema.Value().(*model.Vector).Get(0).Value().(*model.Vector).Data.Value()
 			j := 0
-			for i := 30; i >= 1; i-- {
+			for i := 1; i < 30; i++ {
 				datev := time.Date(2010, time.January, i, 0, 0, 0, 0, time.UTC)
 				tmp := []time.Time{datev}
 				So(re[j], ShouldEqual, tmp[0])

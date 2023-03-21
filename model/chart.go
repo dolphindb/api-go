@@ -110,6 +110,11 @@ func (ch *Chart) GetDataTypeString() string {
 	return GetDataTypeString(ch.category.DataType)
 }
 
+// GetDataFormString returns the string format of the DataForm.
+func (ch *Chart) GetDataFormString() string {
+	return GetDataFormString(ch.category.DataForm)
+}
+
 // Rows returns the row num of the DataForm.
 func (ch *Chart) Rows() int {
 	return ch.rowCount

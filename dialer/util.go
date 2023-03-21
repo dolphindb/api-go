@@ -51,12 +51,15 @@ func generateVariableCommand(names string, bo byte, count int) []byte {
 	return bs.Bytes()
 }
 
-func generatorRequestFlag(clear bool) int {
+func generatorRequestFlag(opt *BehaviorOptions) int {
 	flag := 0
-	if clear {
+	if opt.IsClearSessionMemory {
 		flag += 16
 	}
 
+	if opt.IsReverseStreaming {
+		flag += 131072
+	}
 	return flag
 }
 

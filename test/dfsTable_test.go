@@ -402,3 +402,285 @@ func TestDfsTable(t *testing.T) {
 		// })
 	})
 }
+
+func CreateDecimalTypeScript(Num int) string {
+	script := `
+	dbName="dfs://test_dfs_table"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)	
+	}
+	n=` + strconv.Itoa(Num) + `
+	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v", "decimal32v", "decimal64v"], 
+	[SYMBOL, BOOL, INT, LONG, SHORT, DOUBLE, FLOAT, STRING, CHAR, TIMESTAMP, DATE, DATETIME, MONTH, TIME, MINUTE, SECOND, NANOTIME, NANOTIMESTAMP, DATEHOUR, UUID, IPADDR, INT128, DECIMAL32(3), DECIMAL64(10)])
+	db=database(dbName, VALUE, ["A", "B", "C", "D", "E", "F"])
+	pt=db.createPartitionedTable(t, "pt", "sym")
+	sym = take(["A", "B", "C", "D", "E", "F"], n)
+	boolv = take([true, false, true, false, false, true, true], n)
+	intv = take([91,NULL,69,16,35,NULL,57,-28,-81,26], n)
+	longv = take([99,23,92,NULL,49,67,NULL,81,-38,14], n)
+	shortv = take([47,26,-39,NULL,97,NULL,4,39,-51,25], n)
+	doublev = take([4.7,2.6,-3.9,NULL,9.7,4.9,NULL,3.9,5.1,2.5], n)
+	floatv = take([5.2f, 11.3f, -3.9, 1.2f, 7.8f, -4.9f, NULL, 3.9f, 5.1f, 2.5f], n)
+	str = take("str" + string(1..10), n)
+	charv = take(char([70, 72, 15, 98, 94]), n)
+	timestampv = take([2012.01.01T12:23:56.166, NULL, 1970.01.01T12:23:56.148, 1969.12.31T23:59:59.138, 2012.01.01T12:23:56.132], n)
+	datev = take([NULL, 1969.01.11, 1970.01.24, 1969.12.31, 2012.03.30], n)
+	datetimev = take([NULL, 2012.01.01T12:24:04, 2012.01.01T12:25:04, 2012.01.01T12:24:55, 2012.01.01T12:24:27], n)
+	monthv = take([1970.06M, 2014.05M, 1970.06M, 2017.12M, 1969.11M], n)
+	timev = take([12:23:56.156, NULL, 12:23:56.206, 12:23:56.132, 12:23:56.201], n)
+	minutev = take([12:47m,13:13m, NULL, 13:49m, 13:17m], n)
+	secondv = take([NULL, 00:03:11, 00:01:52, 00:02:43, 00:02:08], n)
+	nanotimev = take(nanotime(1..10) join nanotime(), n)
+	nanotimestampv = take(nanotimestamp(-5..5) join nanotimestamp(), n)
+	datehourv = take(datehour([1969.12.01, 1969.01.11, NULL, 1969.12.31, 2012.03.30]), n)
+	uuidv = take([uuid("7d943e7f-5660-e015-a895-fa4da2b36c43"), uuid("3272fc73-5a91-34f5-db39-6ee71aa479a4"), uuid("62746671-9870-5b92-6deb-a6f5d59e715e"), uuid("dd05902d-5561-ee7f-6318-41a107371a8d"), uuid("14f82b2a-cf0f-7a0c-4cba-3df7be0ba0fc"), uuid("1f9093c3-9132-7200-4893-0f937a0d52c9")], n)
+	ipaddrv = take([ipaddr("a9b7:f65:9be1:20fd:741a:97ac:6ce5:1dd"), ipaddr("8494:3a0e:13db:a097:d3fd:8dc:56e4:faed"), ipaddr("4d93:5be:edbc:1830:344d:f71b:ce65:a4a3"), ipaddr("70ff:6bb4:a554:5af5:d90c:49f4:e8e6:eff0"), ipaddr("51b3:1bf0:1e65:740a:2b:51d9:162f:385a"), ipaddr("d6ea:3fcb:54bf:169f:9ab5:63bf:a960:19fb")], n)
+	int128v = take([int128("7667974ea2fb155252559cc28b4a8efa"), int128("e7ef2788305d0f9c2c53cbfe3c373250"), int128("e602ccab7ff343e227b9596368ad5a44"), int128("709f888e885cfa716e0f36a0387477d5"), int128("978b68ce63f35ffbb79f23bd022269d8"), int128("022fd928ccbfc91efa6719ac22ccd239")], n)
+	decimal32v = take(decimal32([0.235, -1.20345, -0.23564648, NULL, NULL, 2.36445], 5),n)
+	decimal64v = take(decimal64([0, -1.20345, -0.23564648, NULL, NULL, 2.36445], 10),n)
+	t = table(sym, boolv, intv, longv, shortv, doublev, floatv, str, charv, timestampv, datev, datetimev, monthv, timev, minutev, secondv, nanotimev, nanotimestampv, datehourv, uuidv, ipaddrv, int128v, decimal32v, decimal64v)
+	pt.append!(t)`
+	return script
+}
+
+func TestDfsTable_decimal(t *testing.T) {
+	Convey("test dfsTable download data", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		var rowNum int
+		Convey("test dfsTable only one rows", func() {
+			rowNum = 1
+			_, err = db.RunScript(CreateDecimalTypeScript(rowNum))
+			So(err, ShouldBeNil)
+			Convey("Test select single col from dfsTable:", func() {
+				Convey("Test select decimal32v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal32v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal32v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal32v.GetDataType(), ShouldEqual, model.DtDecimal32)
+					So(reDecimal32v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal32v.Rows(), ShouldEqual, rowNum)
+					So(reDecimal32v.Get(0).String(), ShouldEqual, "0.235")
+				})
+				Convey("Test select decimal64v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal64v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal64v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal64v.GetDataType(), ShouldEqual, model.DtDecimal64)
+					So(reDecimal64v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal64v.Rows(), ShouldEqual, rowNum)
+					So(reDecimal64v.Get(0).String(), ShouldEqual, "0.0000000000")
+				})
+			})
+		})
+
+		Convey("test dfsTable 1024 rows", func() {
+			rowNum = 1030
+			_, err = db.RunScript(CreateDecimalTypeScript(rowNum))
+			So(err, ShouldBeNil)
+			Convey("Test select single col from dfsTable:", func() {
+				Convey("Test select decimal32v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal32v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal32v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal32v.GetDataType(), ShouldEqual, model.DtDecimal32)
+					So(reDecimal32v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal32v.Rows(), ShouldEqual, rowNum)
+					temp1 := []string{}
+					temp2 := []string{}
+					temp3 := []string{}
+					for i := 0; i < 171; i++ {
+						temp1 = append(temp1, "0.235")
+						temp2 = append(temp2, "-1.203")
+						temp3 = append(temp3, "-0.235")
+					}
+					for i := 0; i < 171; i++ {
+						if reDecimal32v.Get(i).String() != temp1[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal32v.Get(i+172).String() != temp2[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal32v.Get(i+172+172).String() != temp3[i] {
+							So(1, ShouldEqual, 0)
+						}
+					}
+				})
+				Convey("Test select decimal64v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal64v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal64v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal64v.GetDataType(), ShouldEqual, model.DtDecimal64)
+					So(reDecimal64v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal64v.Rows(), ShouldEqual, rowNum)
+					So(reDecimal64v.Get(0).String(), ShouldEqual, "0.0000000000")
+					temp1 := []string{}
+					temp2 := []string{}
+					temp3 := []string{}
+					for i := 0; i < 171; i++ {
+						temp1 = append(temp1, "0.0000000000")
+						temp2 = append(temp2, "-1.2034500000")
+						temp3 = append(temp3, "-0.2356464800")
+					}
+					for i := 0; i < 171; i++ {
+						if reDecimal64v.Get(i).String() != temp1[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal64v.Get(i+172).String() != temp2[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal64v.Get(i+172+172).String() != temp3[i] {
+							So(1, ShouldEqual, 0)
+						}
+					}
+				})
+			})
+		})
+
+	})
+}
+
+func CreateDecimalTypeScript_arrayVector(Num int) string {
+	script := `
+	dbName="dfs://test_dfs_table"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)	
+	}
+	n=` + strconv.Itoa(Num) + `
+	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v", "decimal32v", "decimal64v"], 
+	[SYMBOL, BOOL, INT, LONG, SHORT, DOUBLE, FLOAT, STRING, CHAR, TIMESTAMP, DATE, DATETIME, MONTH, TIME, MINUTE, SECOND, NANOTIME, NANOTIMESTAMP, DATEHOUR, UUID, IPADDR, INT128, DECIMAL32(3)[], DECIMAL64(10)[]])
+	db=database(dbName, VALUE, ["A", "B", "C", "D", "E", "F"], , "TSDB")
+	pt=db.createPartitionedTable(t, "pt", "sym", , ["sym", "timestampv"])
+	sym = take(["A", "B", "C", "D", "E", "F"], n)
+	boolv = take([true, false, true, false, false, true, true], n)
+	intv = take([91,NULL,69,16,35,NULL,57,-28,-81,26], n)
+	longv = take([99,23,92,NULL,49,67,NULL,81,-38,14], n)
+	shortv = take([47,26,-39,NULL,97,NULL,4,39,-51,25], n)
+	doublev = take([4.7,2.6,-3.9,NULL,9.7,4.9,NULL,3.9,5.1,2.5], n)
+	floatv = take([5.2f, 11.3f, -3.9, 1.2f, 7.8f, -4.9f, NULL, 3.9f, 5.1f, 2.5f], n)
+	str = take("str" + string(1..10), n)
+	charv = take(char([70, 72, 15, 98, 94]), n)
+	timestampv = take([2012.01.01T12:23:56.166, NULL, 1970.01.01T12:23:56.148, 1969.12.31T23:59:59.138, 2012.01.01T12:23:56.132], n)
+	datev = take([NULL, 1969.01.11, 1970.01.24, 1969.12.31, 2012.03.30], n)
+	datetimev = take([NULL, 2012.01.01T12:24:04, 2012.01.01T12:25:04, 2012.01.01T12:24:55, 2012.01.01T12:24:27], n)
+	monthv = take([1970.06M, 2014.05M, 1970.06M, 2017.12M, 1969.11M], n)
+	timev = take([12:23:56.156, NULL, 12:23:56.206, 12:23:56.132, 12:23:56.201], n)
+	minutev = take([12:47m,13:13m, NULL, 13:49m, 13:17m], n)
+	secondv = take([NULL, 00:03:11, 00:01:52, 00:02:43, 00:02:08], n)
+	nanotimev = take(nanotime(1..10) join nanotime(), n)
+	nanotimestampv = take(nanotimestamp(-5..5) join nanotimestamp(), n)
+	datehourv = take(datehour([1969.12.01, 1969.01.11, NULL, 1969.12.31, 2012.03.30]), n)
+	uuidv = take([uuid("7d943e7f-5660-e015-a895-fa4da2b36c43"), uuid("3272fc73-5a91-34f5-db39-6ee71aa479a4"), uuid("62746671-9870-5b92-6deb-a6f5d59e715e"), uuid("dd05902d-5561-ee7f-6318-41a107371a8d"), uuid("14f82b2a-cf0f-7a0c-4cba-3df7be0ba0fc"), uuid("1f9093c3-9132-7200-4893-0f937a0d52c9")], n)
+	ipaddrv = take([ipaddr("a9b7:f65:9be1:20fd:741a:97ac:6ce5:1dd"), ipaddr("8494:3a0e:13db:a097:d3fd:8dc:56e4:faed"), ipaddr("4d93:5be:edbc:1830:344d:f71b:ce65:a4a3"), ipaddr("70ff:6bb4:a554:5af5:d90c:49f4:e8e6:eff0"), ipaddr("51b3:1bf0:1e65:740a:2b:51d9:162f:385a"), ipaddr("d6ea:3fcb:54bf:169f:9ab5:63bf:a960:19fb")], n)
+	int128v = take([int128("7667974ea2fb155252559cc28b4a8efa"), int128("e7ef2788305d0f9c2c53cbfe3c373250"), int128("e602ccab7ff343e227b9596368ad5a44"), int128("709f888e885cfa716e0f36a0387477d5"), int128("978b68ce63f35ffbb79f23bd022269d8"), int128("022fd928ccbfc91efa6719ac22ccd239")], n)
+	decimal32v = array(DECIMAL32(4)[], 0, 10).append!(take([[-2.3645, -2.346], [0.231], [], [2.2356, 1.2356, NULL]], n))
+	decimal64v = array(DECIMAL64(4)[], 0, 10).append!(take([[-2.3645, -2.346], [0.231], [], [2.2356, 1.2356, NULL]], n))
+	t = table(sym, boolv, intv, longv, shortv, doublev, floatv, str, charv, timestampv, datev, datetimev, monthv, timev, minutev, secondv, nanotimev, nanotimestampv, datehourv, uuidv, ipaddrv, int128v, decimal32v, decimal64v)
+	pt.append!(t)`
+	return script
+}
+func TestDfsTable_decimal_arrayVector(t *testing.T) {
+	Convey("test dfsTable download data", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		var rowNum int
+		Convey("test dfsTable only one rows", func() {
+			rowNum = 1
+			_, err = db.RunScript(CreateDecimalTypeScript_arrayVector(rowNum))
+			So(err, ShouldBeNil)
+			Convey("Test select single col from dfsTable:", func() {
+				Convey("Test select decimal32v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal32v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal32v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal32v.GetDataType(), ShouldEqual, model.DtDecimal32+64)
+					So(reDecimal32v.GetDataTypeString(), ShouldEqual, "decimal32Array")
+					So(reDecimal32v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal32v.Rows(), ShouldEqual, rowNum)
+					So(reDecimal32v.String(), ShouldEqual, "vector<decimal32Array>([[-2.364, -2.346]])")
+				})
+				Convey("Test select decimal64v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal64v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal64v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal64v.GetDataType(), ShouldEqual, model.DtDecimal64+64)
+					So(reDecimal64v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal64v.Rows(), ShouldEqual, rowNum)
+					So(reDecimal64v.String(), ShouldEqual, "vector<decimal64Array>([[-2.3645000000, -2.3460000000]])")
+				})
+			})
+		})
+
+		Convey("test dfsTable 1024 rows", func() {
+			rowNum = 1030
+			_, err = db.RunScript(CreateDecimalTypeScript(rowNum))
+			So(err, ShouldBeNil)
+			Convey("Test select single col from dfsTable:", func() {
+				Convey("Test select decimal32v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal32v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal32v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal32v.GetDataType(), ShouldEqual, model.DtDecimal32)
+					So(reDecimal32v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal32v.Rows(), ShouldEqual, rowNum)
+					temp1 := []string{}
+					temp2 := []string{}
+					temp3 := []string{}
+					for i := 0; i < 171; i++ {
+						temp1 = append(temp1, "0.235")
+						temp2 = append(temp2, "-1.203")
+						temp3 = append(temp3, "-0.235")
+					}
+					for i := 0; i < 171; i++ {
+						if reDecimal32v.Get(i).String() != temp1[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal32v.Get(i+172).String() != temp2[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal32v.Get(i+172+172).String() != temp3[i] {
+							So(1, ShouldEqual, 0)
+						}
+					}
+				})
+				Convey("Test select decimal64v col from dfsTable:", func() {
+					s, err := db.RunScript("select decimal64v from loadTable(dbName, `pt)")
+					So(err, ShouldBeNil)
+					memTable := s.(*model.Table)
+					reDecimal64v := memTable.GetColumnByName(memTable.GetColumnNames()[0])
+					So(reDecimal64v.GetDataType(), ShouldEqual, model.DtDecimal64)
+					So(reDecimal64v.GetDataForm(), ShouldResemble, model.DfVector)
+					So(reDecimal64v.Rows(), ShouldEqual, rowNum)
+					So(reDecimal64v.Get(0).String(), ShouldEqual, "0.0000000000")
+					temp1 := []string{}
+					temp2 := []string{}
+					temp3 := []string{}
+					for i := 0; i < 171; i++ {
+						temp1 = append(temp1, "0.0000000000")
+						temp2 = append(temp2, "-1.2034500000")
+						temp3 = append(temp3, "-0.2356464800")
+					}
+					for i := 0; i < 171; i++ {
+						if reDecimal64v.Get(i).String() != temp1[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal64v.Get(i+172).String() != temp2[i] {
+							So(1, ShouldEqual, 0)
+						}
+						if reDecimal64v.Get(i+172+172).String() != temp3[i] {
+							So(1, ShouldEqual, 0)
+						}
+					}
+				})
+			})
+		})
+
+	})
+}

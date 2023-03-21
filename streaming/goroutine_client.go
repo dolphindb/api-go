@@ -21,6 +21,7 @@ type GoroutineClient struct {
 // NewGoroutineClient instantiates an instance of GoroutineClient, which is used to listen on the listening port to receive subscription info.
 // When listeningHost is "", the default host is the local address.
 // When listeningPort is 0, the default port is the 8849.
+// When listeningPort is -1, enable the reverse stream subscription.
 func NewGoroutineClient(listeningHost string, listeningPort int) *GoroutineClient {
 	if listeningPort == 0 {
 		listeningPort = DefaultPort
@@ -32,8 +33,6 @@ func NewGoroutineClient(listeningHost string, listeningPort int) *GoroutineClien
 		handlerLoppers: sync.Map{},
 	}
 
-	go listening(t, listeningPort)
-
 	return t
 }
 
@@ -44,6 +43,11 @@ func (t *GoroutineClient) Subscribe(req *SubscribeRequest) error {
 
 // Subscribe helps you to subscribe the specific action of the table according to the req.
 func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
+	err := t.reviseSubscriber(req)
+	if err != nil {
+		return err
+	}
+
 	queue, err := t.subscribeInternal(req)
 	if err != nil {
 		return err
@@ -60,6 +64,18 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 	t.handlerLoppers.Store(topicStr, handlerLooper)
 
 	return nil
+}
+
+func (t *GoroutineClient) reviseSubscriber(req *SubscribeRequest) error {
+	var err error
+	t.subscriber.once.Do(func() {
+		err = t.subscriber.checkServerVersion(req.Address)
+		if err == nil {
+			go listening(t)
+		}
+	})
+
+	return err
 }
 
 func (t *GoroutineClient) initHandlerLooper(queue *chanx.UnboundedChan, req *SubscribeRequest) *handlerLopper {
