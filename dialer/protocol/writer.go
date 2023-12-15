@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"bufio"
+	"errors"
 	"io"
 )
 
@@ -34,6 +35,10 @@ func (w *Writer) WriteByte(d byte) error {
 // If the count is less than len(s), it also returns an error
 // explaining why the write is short.
 func (w *Writer) WriteString(d string) error {
+	if len(d) >= 262144 {
+		return errors.New("Serialized string length must less than 256k bytes.")
+	}
+
 	_, err := w.wr.WriteString(d)
 	return err
 }

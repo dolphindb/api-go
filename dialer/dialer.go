@@ -2,6 +2,7 @@ package dialer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -41,9 +42,20 @@ type Conn interface {
 	Close() error
 	// IsClosed checks whether the connection is closed
 	IsClosed() bool
+	// IsConnected checks whether the connection is connected
+	IsConnected() bool
 	// AddInitScript(script string)
 	// SetInitScripts(scripts []string)
 	// GetInitScripts() []string
+
+	// GetUserID gets the userID
+	GetUserID() string
+	// SetUserID sets the userID
+	SetUserID(userID string)
+	// GetPassword gets the password
+	GetPassword() string
+	// SetPassword sets the password
+	SetPassword(password string)
 
 	// RunScript sends script to dolphindb and returns the execution result
 	RunScript(s string) (model.DataForm, error)
@@ -56,105 +68,56 @@ type Conn interface {
 	Upload(vars map[string]model.DataForm) (model.DataForm, error)
 	// GetTCPConn returns the TCPConn
 	GetTCPConn() *net.TCPConn
+
+	GetReader() protocol.Reader
 }
 
 type conn struct {
 	lock sync.Mutex
 
 	net.Conn
-	reader      protocol.Reader
-	behaviorOpt *BehaviorOptions
-	sessionID   []byte
-	connected   bool
+	reader                 protocol.Reader
+	behaviorOpt            *BehaviorOptions
+	sessionID              []byte
+	isConnected            bool
+	isClosed               bool
+	loadBalance            bool
+	enableHighAvailability bool
+	reconnect              bool
+	nodePool               *nodePool
 	//	initScripts []string
+	highAvailabilitySites []string
 
-	timeout time.Duration
-}
-
-// BehaviorOptions helps you configure behavior identity.
-// Refer to https://github.com/dolphindb/Tutorials_CN/blob/master/api_protocol.md#254-%E8%A1%8C%E4%B8%BA%E6%A0%87%E8%AF%86 for more details.
-type BehaviorOptions struct {
-	// Priority specifies the priority of the task
-	Priority *int
-	// Parallelism specifies the parallelism of the task
-	Parallelism *int
-	// FetchSize specifies the fetchSize of the task
-	FetchSize *int
-	// IsReverseStreaming specifies whether the job is a reverse stream subscription
-	IsReverseStreaming bool
-	// IsClearSessionMemory specifies whether to clear session memory after the job
-	IsClearSessionMemory bool
-}
-
-// SetPriority sets the priority of the task.
-func (f *BehaviorOptions) SetPriority(p int) *BehaviorOptions {
-	f.Priority = &p
-	return f
-}
-
-// SetParallelism sets the parallelism of the task.
-func (f *BehaviorOptions) SetParallelism(p int) *BehaviorOptions {
-	f.Parallelism = &p
-	return f
-}
-
-// SetFetchSize sets the fetchSize of the task.
-func (f *BehaviorOptions) SetFetchSize(fs int) *BehaviorOptions {
-	f.FetchSize = &fs
-	return f
-}
-
-// GetPriority gets the priority of the task.
-func (f *BehaviorOptions) GetPriority() int {
-	if f.Priority == nil {
-		return 4
-	}
-	return *f.Priority
-}
-
-// GetParallelism gets the parallelism of the task.
-func (f *BehaviorOptions) GetParallelism() int {
-	if f.Parallelism == nil {
-		return 2
-	}
-	return *f.Parallelism
-}
-
-// GetFetchSize gets the fetchSize of the task.
-func (f *BehaviorOptions) GetFetchSize() int {
-	if f.FetchSize == nil {
-		return 0
-	}
-	return *f.FetchSize
+	userID, password, addr string
+	timeout                time.Duration
 }
 
 // NewConn instantiates a new connection with the addr.
 // BehaviorOpt will affect every request sent by conn.
 // You can input opts to configure conn.
 func NewConn(ctx context.Context, addr string, behaviorOpt *BehaviorOptions) (Conn, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		return nil, err
+	if behaviorOpt == nil {
+		return &conn{
+			behaviorOpt: behaviorOpt,
+			addr:        addr,
+			timeout:     defaultTimeout,
+		}, nil
 	}
-
-	dc, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		return nil, err
+	if behaviorOpt.EnableHighAvailability && len(behaviorOpt.HighAvailabilitySites) == 0 {
+		return nil, errors.New("if EnableHighAvailability is true, HighAvailabilitySites should be specified")
 	}
-
-	err = dc.SetKeepAlive(true)
-	if err != nil {
-		return nil, err
+	if !behaviorOpt.EnableHighAvailability && len(behaviorOpt.HighAvailabilitySites) != 0 {
+		fmt.Println("Warn: HighAvailabilitySites is not empty but EnableHighAvailability is false")
 	}
-
-	c := &conn{
-		behaviorOpt: behaviorOpt,
-		Conn:        dc,
-		reader:      protocol.NewReader(dc),
-		timeout:     defaultTimeout,
-	}
-
-	return c, nil
+	return &conn{
+		behaviorOpt:            behaviorOpt,
+		addr:                   addr,
+		timeout:                defaultTimeout,
+		highAvailabilitySites:  behaviorOpt.HighAvailabilitySites,
+		enableHighAvailability: behaviorOpt.EnableHighAvailability,
+		loadBalance:            behaviorOpt.LoadBalance,
+		reconnect:              behaviorOpt.Reconnect,
+	}, nil
 }
 
 // NewSimpleConn instantiates a new connection with the addr,
@@ -164,6 +127,9 @@ func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, erro
 	if err != nil {
 		return nil, err
 	}
+
+	conn.SetPassword(pwd)
+	conn.SetUserID(userID)
 
 	err = conn.Connect()
 	if err != nil {
@@ -178,6 +144,9 @@ func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, erro
 	return conn, err
 }
 
+func (c *conn) GetReader() protocol.Reader  {
+	return c.reader
+}
 // Add an init script which will be run after you call connect
 // func (c *conn) AddInitScript(script string) {
 // 	if c.initScripts == nil {
@@ -187,6 +156,10 @@ func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, erro
 // }
 
 func (c *conn) GetLocalAddress() string {
+	if !c.connected() {
+		return ""
+	}
+
 	return strings.Split(c.LocalAddr().String(), ":")[0]
 }
 
@@ -200,6 +173,46 @@ func (c *conn) GetLocalAddress() string {
 // 	c.initScripts = scripts
 // }
 
+func (c *conn) GetUserID() string {
+	return c.userID
+}
+
+func (c *conn) SetUserID(userID string) {
+	c.userID = userID
+}
+
+// func (c *conn) GetEnableHighAvailability() bool {
+// 	return c.enableHighAvailability
+// }
+
+// func (c *conn) SetEnableHighAvailability(enableHighAvailability bool) {
+// 	c.enableHighAvailability = enableHighAvailability
+// }
+
+// func (c *conn) GetHighAvailabilitySites() []string {
+// 	return c.highAvailabilitySites
+// }
+
+// func (c *conn) SetHighAvailabilitySites(highAvailabilitySites []string) {
+// 	c.highAvailabilitySites = highAvailabilitySites
+// }
+
+// func (c *conn) GetLoadBalance() bool {
+// 	return c.loadBalance
+// }
+
+// func (c *conn) SetLoadBalance(loadBalance bool) {
+// 	c.loadBalance = loadBalance
+// }
+
+func (c *conn) GetPassword() string {
+	return c.password
+}
+
+func (c *conn) SetPassword(password string) {
+	c.password = password
+}
+
 func (c *conn) RefreshTimeout(t time.Duration) {
 	c.timeout = t
 }
@@ -209,6 +222,56 @@ func (c *conn) GetTCPConn() *net.TCPConn {
 }
 
 func (c *conn) Connect() error {
+	if c.enableHighAvailability {
+		c.nodePool = &nodePool{
+			nodes: make([]*node, 0),
+		}
+
+		c.nodePool.add(&node{address: c.addr})
+		for _, v := range c.highAvailabilitySites {
+			c.nodePool.add(&node{address: v})
+		}
+
+		_, err := c.connectMinNode()
+		return err
+	} else {
+		if c.reconnect {
+			c.nodePool = &nodePool{
+				nodes: []*node{{address: c.addr}},
+			}
+			return c.switchDatanode(&node{address: ""})
+		} else {
+			ok, err := c.connectNode(&node{address: c.addr})
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("failed to connect to %s", c.addr)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *conn) connect(addr string) error {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	dc, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		return err
+	}
+
+	err = dc.SetKeepAlivePeriod(30 * time.Second)
+	if err != nil {
+		return err
+	}
+
+	c.reader = protocol.NewReader(dc)
+	c.Conn = dc
 	h, _, err := c.run(&requestParams{
 		commandType: connectCmd,
 		Command:     generateConnectionCommand(),
@@ -217,17 +280,15 @@ func (c *conn) Connect() error {
 		return err
 	}
 
-	// if len(c.initScripts) != 0 {
-	// 	for _, v := range c.initScripts {
-	// 		_, err := c.RunScript(v)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
-
-	c.connected = true
+	c.isConnected = true
+	c.isClosed = false
 	c.refreshHeaderForResponse(h)
+	if c.userID != "" {
+		_, err = c.RunScript(fmt.Sprintf("login('%s','%s')", c.userID, c.password))
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -237,14 +298,19 @@ func (c *conn) Close() error {
 		return err
 	}
 
-	c.connected = false
+	c.isConnected = false
+	c.isClosed = true
 	c.sessionID = nil
 
 	return nil
 }
 
 func (c *conn) IsClosed() bool {
-	return !c.connected
+	return c.isClosed
+}
+
+func (c *conn) IsConnected() bool {
+	return c.isConnected
 }
 
 // RunScript sends script to dolphindb and return the execution result.
@@ -301,6 +367,9 @@ func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 	count := 0
 	args := make([]model.DataForm, len(vars))
 	for k, v := range vars {
+		if !isVariableCandidate(k) {
+			return nil, fmt.Errorf("%s is not a good variable name", k)
+		}
 		names[count] = k
 		args[count] = v
 		count++
@@ -317,6 +386,35 @@ func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 }
 
 func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, error) {
+	if c.nodePool != nil && c.nodePool.len > 0 {
+		for {
+			rh, df, err := c.runInternal(params)
+			if err != nil {
+				n := &node{}
+				if c.connected() {
+					et := c.nodePool.parseError(err.Error(), n)
+					if et == IGNORE {
+						return rh, df, nil
+					} else if et == UNKNOW {
+						return nil, nil, err
+					}
+				}
+				c.switchDatanode(n)
+				continue
+			}
+
+			return rh, df, nil
+		}
+	} else {
+		return c.runInternal(params)
+	}
+}
+
+func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataForm, error) {
+	if !c.isConnected && params.commandType != connectCmd {
+		return nil, nil, errors.New("database connection is not established yet")
+	}
+
 	if params.commandType == scriptCmd || params.commandType == functionCmd || params.commandType == connectCmd {
 		if c.behaviorOpt == nil {
 			c.behaviorOpt = &BehaviorOptions{}
@@ -338,6 +436,7 @@ func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, erro
 	w := protocol.NewWriter(c.Conn)
 	err = writeRequest(w, params, c.behaviorOpt)
 	if err != nil {
+		c.isConnected = false
 		return nil, nil, err
 	}
 

@@ -159,8 +159,9 @@ func parseUUID(raw interface{}, bo protocol.ByteOrder) string {
 
 func parseInt128(raw interface{}) string {
 	p := raw.([2]uint64)
-	if p[0] == 0 || p[1] == 0 {
+	if p[0] == 0 && p[1] == 0 {
 		return "00000000000000000000000000000000"
 	}
+
 	return fmt.Sprintf("%016x%016x", p[1], p[0])
 }

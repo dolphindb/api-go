@@ -4,7 +4,7 @@ import "sync"
 
 const (
 	// DefaultPort is default listening port.
-	DefaultPort = 8849
+	DefaultPort = 8848
 	localhost   = "localhost"
 )
 

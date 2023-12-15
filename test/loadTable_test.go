@@ -12,10 +12,12 @@ import (
 )
 
 func TestLoadTable(t *testing.T) {
+	t.Parallel()
 	Convey("Test LoadTable prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -35,6 +37,7 @@ func TestLoadTable(t *testing.T) {
 			}
 		})
 		Convey("Test_LoadTable_dfs_dimension:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -56,6 +59,7 @@ func TestLoadTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_range:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -74,6 +78,7 @@ func TestLoadTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_range_memoryMode_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -87,6 +92,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_range_partitions_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -100,6 +106,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_hash:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -118,6 +125,7 @@ func TestLoadTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_hash_memoryMode_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -131,6 +139,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_hash_partitions_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -144,6 +153,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_value:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -162,6 +172,7 @@ func TestLoadTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_value_memoryMode_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -175,6 +186,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_value_partitions_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -188,6 +200,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_list:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -206,6 +219,7 @@ func TestLoadTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_list_memoryMode_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -219,6 +233,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_list_partitions_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -232,6 +247,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_compo:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -250,6 +266,7 @@ func TestLoadTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_compo_range_range_memoryMode_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -263,6 +280,7 @@ func TestLoadTable(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTable_dfs_compo_range_range_partitions_exception:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)

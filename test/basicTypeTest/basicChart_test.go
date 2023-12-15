@@ -14,6 +14,7 @@ import (
 )
 
 func Test_Chart_DownLoad_DataType(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Chart:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -50,6 +51,7 @@ func Test_Chart_DownLoad_DataType(t *testing.T) {
 	})
 }
 func Test_Chart_UpLoad_DataType(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Chart_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)

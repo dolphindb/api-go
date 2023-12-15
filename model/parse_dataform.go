@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
 )
@@ -96,7 +97,7 @@ func parseTable(r protocol.Reader, bo protocol.ByteOrder, c *Category) (*Table, 
 		return nil, err
 	}
 
-	tl.tableName, err = readDataType(r, DtString, bo)
+	tl.tableName, err = ParseDataType(r, DtString, bo)
 	if err != nil {
 		return nil, err
 	}
@@ -370,6 +371,14 @@ func readDecimalWithBigEndian(dt *dataTypeList, r protocol.Reader, bo protocol.B
 		dt.decimal64Data = make([]int64, count+1)
 		dt.decimal64Data[0] = int64(sca)
 		copy(dt.decimal64Data[1:], d64)
+	case DtDecimal128:
+		d128, err := readBigIntWithBigEndian(count, r)
+		if err != nil {
+			return err
+		}
+
+		dt.decimal128Data = decimal128Datas{scale: sca, value: make([]*big.Int, count)}
+		copy(dt.decimal128Data.value, d128)
 	}
 
 	return nil
@@ -395,6 +404,14 @@ func readDecimalWithLittleEndian(dt *dataTypeList, r protocol.Reader, t DataType
 		dt.decimal64Data = make([]int64, count+1)
 		dt.decimal64Data[0] = int64(sca)
 		copy(dt.decimal64Data[1:], d64)
+	case DtDecimal128:
+		d128, err := readBigIntWithLittleEndian(count, r)
+		if err != nil {
+			return err
+		}
+
+		dt.decimal128Data = decimal128Datas{scale: sca, value: make([]*big.Int, count)}
+		copy(dt.decimal128Data.value, d128)
 	}
 
 	return nil
@@ -430,7 +447,7 @@ func parseScalar(r protocol.Reader, bo protocol.ByteOrder, c *Category) (*Scalar
 		category: c,
 	}
 
-	s.DataType, err = readDataType(r, c.DataType, bo)
+	s.DataType, err = ParseDataType(r, c.DataType, bo)
 	return s, err
 }
 

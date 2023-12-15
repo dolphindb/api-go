@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
+	"runtime"
 )
 
 var (
@@ -33,26 +33,35 @@ func listening(c AbstractClient) {
 
 	cs := make([]net.Conn, 0)
 	for !c.IsClosed() {
-		var conn *net.TCPConn
+		// fmt.Println("subscriber listening new connection")
+		// HACK use print to avoid stuck of regression test
+		fmt.Print("")
+		var conn net.Conn
+		var ok bool
 		if int(c.getSubscriber().listeningPort) == 0 {
-			conn = c.getTCPConn()
+			conn, ok = c.getConn()
+			if !ok {
+				runtime.Gosched()
+				continue;
+			}
 		} else {
-			conn, err = ln.AcceptTCP()
+			connTcp, err := ln.AcceptTCP()
 			if err != nil {
 				fmt.Printf("Failed to accept tcp: %s\n", err.Error())
 				continue
 			}
-		}
-
-		err = conn.SetKeepAlive(true)
-		if err != nil {
-			fmt.Printf("Failed to set conn keepAlive: %s\n", err.Error())
-			continue
+			err = connTcp.SetKeepAlive(true)
+			if err != nil {
+				fmt.Printf("Failed to set conn keepAlive: %s\n", err.Error())
+				continue
+			}
+			conn = connTcp
 		}
 
 		err = receiveData(ctx, conn, c)
 		if err != nil {
-			time.Sleep(100 * time.Millisecond)
+			runtime.Gosched()
+			// time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
@@ -65,7 +74,7 @@ func listening(c AbstractClient) {
 	}
 }
 
-func receiveData(ctx context.Context, conn *net.TCPConn, c AbstractClient) error {
+func receiveData(ctx context.Context, conn net.Conn, c AbstractClient) error {
 	mp := &messageParser{
 		ctx:              ctx,
 		Conn:             conn,

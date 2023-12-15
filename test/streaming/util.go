@@ -3,14 +3,16 @@ package test
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"reflect"
+	"time"
 
 	"github.com/dolphindb/api-go/api"
 	"github.com/dolphindb/api-go/model"
 	"github.com/dolphindb/api-go/test/setup"
 )
 
-const (
+var (
 	DfsDBPath    = "dfs://test_dfsTable"
 	TbName1      = "tb1"
 	TbName2      = "tb2"
@@ -684,7 +686,7 @@ func ClearStreamTable(tableName string) {
 	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 	AssertNil(err)
 	script := "login(`admin,`123456);" +
-		"try{dropStreamTable('" + tableName + "')}catch(ex){};"
+		"dropStreamTable('" + tableName + "');go"
 	_, err = ddb.RunScript(script)
 	AssertNil(err)
 	err = ddb.Close()
@@ -700,4 +702,31 @@ func CheckmodelTableEqual(t1 *model.Table, t2 *model.Table, n int) bool {
 		}
 	}
 	return true
+}
+
+func CheckmodelTableEqual_throttle(t1 *model.Table, t2 *model.Table, m int, n int) bool {
+	for i := 0; i < 1000; i++ {
+		for j := 0; j < len(t1.GetColumnNames()); j++ {
+			if t1.GetColumnByIndex(j).Get(i+m).Value() != t2.GetColumnByIndex(j).Get(n+i).Value() {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func getRandomStr(length int) string {
+	// 定义字符集
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	// 初始化随机数种子
+	rand.Seed(time.Now().UnixNano())
+
+	// 生成随机字符串
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = charset[rand.Intn(len(charset))]
+	}
+
+	return string(result)
 }

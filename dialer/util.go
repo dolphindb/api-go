@@ -6,10 +6,22 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
 	"github.com/dolphindb/api-go/model"
 )
+
+const (
+	IGNORE ErrorType = iota
+	UNKNOW
+	NEWLEADER
+	NODENOTAVAIL
+	NOINITIALIZED
+	UNEXPECT
+)
+
+type ErrorType int
 
 func generateScriptCommand(cmdStr string) []byte {
 	bs := bytes.Buffer{}
@@ -85,4 +97,13 @@ func readFile(path string) (string, error) {
 	}
 
 	return string(byt), err
+}
+
+func parseAddr(raw string) string {
+	strs := strings.Split(raw, ":")
+	if len(strs) < 2 {
+		return ""
+	}
+
+	return strings.Join(strs[:2], ":")
 }

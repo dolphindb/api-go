@@ -11,7 +11,9 @@ const (
 
 var (
 	// APIBytes is the bytes format of API.
-	APIBytes = []byte("API")
+	APIBytes = []byte("API2")
 	// RespOK is the bytes format of OK.
 	RespOK = []byte("OK")
+	// Msg is the bytes format of MSG.
+	Msg = []byte("MSG")
 )

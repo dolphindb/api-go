@@ -11,10 +11,12 @@ import (
 )
 
 func TestExistDatabaseAndDropDatabase(t *testing.T) {
+	t.Parallel()
 	Convey("Test ExistDatabase and dropDatabase prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -38,6 +40,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_dimension:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -52,6 +55,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_range:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -66,6 +70,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_hash:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -80,6 +85,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_value:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -94,6 +100,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_list:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -108,6 +115,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_compo_range_range:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -122,6 +130,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_compo_range_value:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -136,6 +145,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_compo_range_list:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -150,6 +160,7 @@ func TestExistDatabaseAndDropDatabase(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_ExistDatabase_and_dropDatabase_dfs_compo_range_hash:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)

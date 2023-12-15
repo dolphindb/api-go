@@ -3,13 +3,12 @@ package streaming
 import (
 	"testing"
 
-	"github.com/smallnest/chanx"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTopicPoller(t *testing.T) {
 	tp := &TopicPoller{
-		queue: chanx.NewUnboundedChan(1),
+		queue: NewUnboundedChan(1),
 		cache: make([]IMessage, 0),
 	}
 	var msg IMessage

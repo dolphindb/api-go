@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 )
 
@@ -11,6 +12,9 @@ type reconnectDetector struct {
 
 func (r *reconnectDetector) run() {
 	for !r.IsClosed() {
+		// HACK use print to avoid stuck of regression test
+		fmt.Print("")
+		// fmt.Println("streaming reconnect detecting")
 		for _, site := range getAllReconnectSites() {
 			err := r.handleReconnectSites(site)
 			if err != nil {
@@ -24,7 +28,8 @@ func (r *reconnectDetector) run() {
 			return true
 		})
 
-		time.Sleep(1 * time.Second)
+		runtime.Gosched()
+		// time.Sleep(1 * time.Second)
 	}
 }
 

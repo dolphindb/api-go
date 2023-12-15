@@ -119,7 +119,7 @@ func handleData(conn net.Conn) {
 		}
 
 		res = append(res, buf[0:l]...)
-		if len(res) == 15 || len(res) == 29 || len(res) == 30 || len(res) == 48 ||
+		if len(res) == 25 || len(res) == 29 || len(res) == 30 || len(res) == 48 ||
 			len(res) == 48 || len(res) == 54 || len(res) == 49 {
 			_, err = conn.Write([]byte{0x32, 0x30, 0x32, 0x36, 0x37, 0x33, 0x35, 0x39, 0x20, 0x30, 0x20, 0x31, 0x0a, 0x4f, 0x4b, 0x0a})
 			if err != nil {

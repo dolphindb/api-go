@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/shopspring/decimal"
 )
 
 // Vector is a DataForm.
@@ -87,7 +88,7 @@ func NewVectorWithArrayVector(data []*ArrayVector) *Vector {
 		ColumnCount: uint32(len(data)),
 	}
 
-	if dt == 101 || dt == 102 {
+	if dt == 101 || dt == 102 || dt == 103 {
 		res.scale = getScale(data[0].data.(*dataTypeList))
 	}
 
@@ -183,6 +184,23 @@ func (vct *Vector) Get(ind int) DataType {
 	return nil
 }
 
+func (arrayVector *ArrayVector) formNewLength() []int32 {
+	ret := make([]int32, 0)
+	if arrayVector.unit == 1 {
+		mid := protocol.Int8SliceFromByteSlice(arrayVector.lengths);
+		for _,v := range mid {
+			ret = append(ret, int32(v))
+		}
+		return ret
+	} else if arrayVector.unit == 2 {
+		mid := protocol.Int16SliceFromByteSlice(arrayVector.lengths);
+		for _,v := range mid {
+			ret = append(ret, int32(v))
+		}
+		return ret
+	}
+    return protocol.Int32SliceFromByteSlice(arrayVector.lengths);
+}
 // GetVectorValue returns the element of the ArrayVector based on the ind.
 func (vct *Vector) GetVectorValue(ind int) *Vector {
 	if ind >= vct.Rows() {
@@ -194,7 +212,8 @@ func (vct *Vector) GetVectorValue(ind int) *Vector {
 			rc := int(v.rowCount)
 			if ind < rc {
 				st := 0
-				for k, l := range v.lengths {
+				newLengths := v.formNewLength()
+				for k, l := range newLengths {
 					if k == ind {
 						return NewVector(v.data.Sub(st, st+int(l)))
 					}
@@ -213,6 +232,41 @@ func (vct *Vector) GetVectorValue(ind int) *Vector {
 // GetDataType returns the byte type of the DataType.
 func (vct *Vector) GetDataType() DataTypeByte {
 	return vct.category.DataType
+}
+
+// Append appends the DataType to the vector.
+// ArrayVector not support append value
+func (vct *Vector) Append(value DataType) (err error) {
+	switch {
+	case vct.Extend != nil:
+		if vct.Extend.Base == nil {
+			vct.Extend.Base, err = NewDataTypeListFromRawData(DtString, []string{""})
+			if err != nil {
+				return err
+			}
+		}
+
+		ind := -1
+		strs := vct.Extend.Base.StringList()
+		for k, v := range strs {
+			if v == value.String() {
+				ind = k
+			}
+		}
+		if ind == -1 {
+			vct.Extend.Base = vct.Extend.Base.Append(value)
+			vct.Data.Append(&dataType{t: DtInt, data: int32(vct.Extend.Base.Len() - 1)})
+			return
+		}
+
+		vct.Data.Append(&dataType{t: DtInt, data: int32(ind)})
+	case vct.Data != nil:
+		vct.Data.Append(value)
+	}
+
+	vct.RowCount++
+
+	return nil
 }
 
 // Combine combines two Vectors and returns a new one.
@@ -300,6 +354,8 @@ func getScale(dt *dataTypeList) int32 {
 		return dt.decimal32Data[0]
 	} else if dt.t == DtDecimal64 {
 		return int32(dt.decimal64Data[0])
+	} else if dt.t == DtDecimal128 {
+		return dt.decimal128Data.scale
 	}
 
 	return 0
@@ -400,20 +456,31 @@ func (vct *Vector) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 }
 
 // GetSubvector instantiates a Vector with the values in indexes.
-// ArrayVector does not support GetSubvector.
 // The specified indexes should be less than the length of Vector.
 func (vct *Vector) GetSubvector(indexes []int) *Vector {
-	if vct.Data == nil {
-		return nil
-	}
-
-	res := NewVector(vct.Data.GetSubList(indexes))
-	if vct.Extend != nil {
+	var res *Vector
+	dt := vct.GetDataType()
+	switch {
+	case dt < 64:
+		res = NewVector(vct.Data.GetSubList(indexes))
+	case dt > 64 && dt < 128:
+		res = vct.getArrayVectorSubVector(indexes)
+	case dt > 128:
+		res = NewVector(vct.Data.GetSubList(indexes))
 		res.Extend = vct.Extend
 		res.category = vct.category
 	}
 
 	return res
+}
+
+func (vct *Vector) getArrayVectorSubVector(indexes []int) *Vector {
+	rawVec := make([]*Vector, 0, len(indexes))
+	for _,v := range indexes {
+		rawVec = append(rawVec, vct.GetVectorValue(v))
+	}
+	newData := NewArrayVector(rawVec)
+	return NewVectorWithArrayVector(newData)
 }
 
 // GetDataTypeString returns the string format of the DataType.
@@ -495,6 +562,8 @@ func writeDecimalArrayVector(w *protocol.Writer, d *dataTypeList, scale int32) e
 		err = writeDecimal32Data(w, d, scale)
 	case DtDecimal64:
 		err = writeDecimal64Data(w, d, int64(scale))
+	case DtDecimal128:
+		err = writeDecimal128Data(w, d, scale)
 	}
 
 	return err
@@ -526,6 +595,39 @@ func writeDecimal64Data(w *protocol.Writer, d *dataTypeList, scale int64) error 
 	}
 
 	return w.Write(protocol.ByteSliceFromInt64Slice(data))
+}
+
+func writeDecimal128Data(w *protocol.Writer, d *dataTypeList, scale int32) error {
+	data := make([]byte, 16*len(d.decimal128Data.value))
+	if scale != d.decimal128Data.scale {
+		for k, v := range d.decimal128Data.value {
+			if v.Cmp(minBigIntValue) != 0 {
+				divNum, _ := decimal.NewFromString(fmt.Sprintf("1e+%d", d.decimal128Data.scale))
+				subNum, _ := decimal.NewFromString(fmt.Sprintf("1e+%d", scale))
+				dec := decimal.NewFromBigInt(v, 0).DivRound(divNum, d.decimal128Data.scale).Mul(subNum)
+				err := fullBigIntBytes(data, dec.BigInt(), 16*k)
+				if err != nil {
+					return err
+				}
+			} else {
+				err := fullBigIntBytes(data, v, 16*k)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		for k, v := range d.decimal128Data.value {
+			err := fullBigIntBytes(data, v, 16*k)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	reverseByteArrayEvery8Byte(data)
+
+	return w.Write(data)
 }
 
 func (vct *Vector) renderCommonArrayVector(w *protocol.Writer, bo protocol.ByteOrder) error {
@@ -631,7 +733,8 @@ func (vct *Vector) GetRawValue() []interface{} {
 		for _, v := range vct.ArrayVector {
 			asl := v.data.Value()
 			si := 0
-			for _, l := range v.lengths {
+			newLengths := v.formNewLength()
+			for _, l := range newLengths {
 				length := int(l)
 				res = append(res, asl[si:si+length])
 				si += length
@@ -657,7 +760,8 @@ func (vct *Vector) formatString() []string {
 		for _, v := range vct.ArrayVector {
 			asl := v.data.StringList()
 			si := 0
-			for _, l := range v.lengths {
+			newLengths := v.formNewLength()
+			for _, l := range newLengths {
 				length := int(l)
 				val = append(val, fmt.Sprintf("[%s]", strings.Join(asl[si:si+length], ", ")))
 				si += length
@@ -668,25 +772,25 @@ func (vct *Vector) formatString() []string {
 	return val
 }
 
-func packArrayVector(rowcount uint16, length uint32) (uint16, []byte) {
+func packArrayVector(rowCount uint16, length uint32) (uint16, []byte) {
 	switch {
 	case length < math.MaxUint8:
-		res := make([]int8, rowcount)
-		for i := 0; i < int(rowcount); i++ {
+		res := make([]int8, rowCount)
+		for i := 0; i < int(rowCount); i++ {
 			res[i] = int8(length)
 		}
 
 		return 1, protocol.ByteSliceFromInt8Slice(res)
 	case length < math.MaxUint16:
-		res := make([]int16, rowcount)
-		for i := 0; i < int(rowcount); i++ {
+		res := make([]int16, rowCount)
+		for i := 0; i < int(rowCount); i++ {
 			res[i] = int16(length)
 		}
 
 		return 2, protocol.ByteSliceFromInt16Slice(res)
 	default:
-		res := make([]int32, rowcount)
-		for i := 0; i < int(rowcount); i++ {
+		res := make([]int32, rowCount)
+		for i := 0; i < int(rowCount); i++ {
 			res[i] = int32(length)
 		}
 

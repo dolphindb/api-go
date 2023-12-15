@@ -2,7 +2,9 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +53,7 @@ var dataTypeStringMap = map[DataTypeByte]string{
 	DtDuration:      "duration",
 	DtDecimal32:     "decimal32",
 	DtDecimal64:     "decimal64",
+	DtDecimal128:    "decimal128",
 	DtObject:        "object",
 }
 
@@ -94,6 +97,7 @@ var dataTypeByteMap = map[string]DataTypeByte{
 	"duration":      DtDuration,
 	"decimal32":     DtDecimal32,
 	"decimal64":     DtDecimal64,
+	"decimal128":    DtDecimal128,
 	"object":        DtObject,
 }
 
@@ -193,7 +197,7 @@ func GetCategory(d DataTypeByte) CategoryString {
 		return LITERAL
 	case d == DtInt128 || d == DtUUID || d == DtIP:
 		return BINARY
-	case d == DtDecimal32, d == DtDecimal64:
+	case d == DtDecimal32, d == DtDecimal64, d == DtDecimal128:
 		return DENARY
 	case d == DtAny:
 		return MIXED
@@ -352,9 +356,7 @@ func calculateDecimal32(scale int32, value float64) (float64, error) {
 	if value == NullDecimal32Value {
 		return value, nil
 	}
-	d1 := decimal.NewFromFloat(value)
-	d2 := decimal.NewFromFloat(math.Pow10(int(scale)))
-	res := d1.Mul(d2)
+	res := decimal.NewFromFloat(value).Mul(decimal.NewFromFloat(math.Pow10(int(scale))))
 	f, _ := res.Float64()
 	if f < NullDecimal32Value || f > maxDecimal32Value {
 		return 0, errors.New("Decimal math overflow")
@@ -367,13 +369,31 @@ func calculateDecimal64(scale int32, value float64) (float64, error) {
 	if value == NullDecimal64Value {
 		return value, nil
 	}
-	d1 := decimal.NewFromFloat(value)
-	d2 := decimal.NewFromFloat(math.Pow10(int(scale)))
-	res := d1.Mul(d2)
+
+	res := decimal.NewFromFloat(value).Mul(decimal.NewFromFloat(math.Pow10(int(scale))))
 	f, _ := res.Float64()
 	if f < NullDecimal64Value || f > maxDecimal64Value {
 		return 0, errors.New("Decimal math overflow")
 	}
 
 	return f, nil
+}
+
+func calculateDecimal128(scale int32, value string) (*big.Int, error) {
+	if value == NullDecimal128Value || value == "" {
+		bi := big.NewInt(0)
+		err := bi.UnmarshalText(nullDecimal128ByteValue)
+		return bi, err
+	}
+
+	res, err := decimal.NewFromString(value + fmt.Sprintf("e+%d", scale))
+	if err != nil {
+		return nil, errors.New("Invalid Decimal128 value")
+	}
+
+	if res.Cmp(minDecimal128Value) == -1 || res.Cmp(maxDecimal128Value) == 1 {
+		return nil, errors.New("Decimal math overflow")
+	}
+
+	return res.BigInt(), nil
 }

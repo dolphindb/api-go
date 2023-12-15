@@ -11,10 +11,12 @@ import (
 )
 
 func TestDropTableException(t *testing.T) {
+	t.Parallel()
 	Convey("Test_existsTable_and_dropTable_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_existsTable_dropDatabase", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -34,6 +36,7 @@ func TestDropTableException(t *testing.T) {
 			}
 		})
 		Convey("Test_dropTable_wrong_Table_exception", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, "mt1")
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -42,6 +45,7 @@ func TestDropTableException(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_dropTable_wrong_dbpath_exception", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, "dfs://test1", TbName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -50,6 +54,7 @@ func TestDropTableException(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_dropTable_only_DBHandle_dbPath_exception", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, TbName1)
 			So(err, ShouldBeNil)
 			if re1 == true {
@@ -79,10 +84,12 @@ func TestDropTableException(t *testing.T) {
 }
 
 func TestExistsTableAndDropTable(t *testing.T) {
+	t.Parallel()
 	Convey("Test_existsTable_and_dropTable_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_existsTable_dropDatabase", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -102,6 +109,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			}
 		})
 		Convey("Test_existsTable_dfs_dimension", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, TbName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -127,6 +135,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re6, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_value", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -141,6 +150,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_range", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -155,6 +165,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_hash", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -169,6 +180,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_list", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -183,6 +195,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_compo_range_range", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -197,6 +210,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_compo_range_value", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -211,6 +225,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_compo_range_list", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -225,6 +240,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_dfs_compo_range_hash", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -239,6 +255,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_existsTable_disk_unpartitioned_table", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsTable(ddb, DfsDBPath, DfsTBName1)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)

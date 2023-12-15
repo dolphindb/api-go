@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -84,17 +85,28 @@ type dataTypeList struct {
 	charData   []uint8
 	blobData   [][]byte
 
-	anyData       []DataForm
-	double2Data   []float64
-	long2Data     []uint64
-	decimal32Data []int32
-	decimal64Data []int64
-	durationData  []uint32
+	anyData        []DataForm
+	double2Data    []float64
+	long2Data      []uint64
+	decimal32Data  []int32
+	decimal64Data  []int64
+	decimal128Data decimal128Datas
+	durationData   []uint32
+}
+
+type decimal128Datas struct {
+	scale int32
+	value []*big.Int
 }
 
 type Decimal64s struct {
 	Scale int32
 	Value []float64
+}
+
+type Decimal128s struct {
+	Scale int32
+	Value []string
 }
 
 type Decimal32s struct {
@@ -113,7 +125,7 @@ func NewDataTypeList(datatype DataTypeByte, data []DataType) DataTypeList {
 	}
 
 	switch datatype {
-	case DtVoid, DtBool, DtChar:
+	case DtBool, DtChar:
 		res.charData = make([]uint8, size)
 		for k, v := range data {
 			res.charData[k] = v.raw().(uint8)
@@ -160,20 +172,28 @@ func NewDataTypeList(datatype DataTypeByte, data []DataType) DataTypeList {
 		for k, v := range data {
 			tmp := v.raw().([2]int32)
 			if k == 0 {
-				res.decimal32Data = append(res.decimal32Data, tmp[0], tmp[1])
-			} else {
-				res.decimal32Data = append(res.decimal32Data, tmp[1])
+				res.decimal32Data = append(res.decimal32Data, tmp[0])
 			}
+			res.decimal32Data = append(res.decimal32Data, tmp[1])
 		}
 	case DtDecimal64:
 		res.decimal64Data = make([]int64, 0, size+1)
 		for k, v := range data {
 			tmp := v.raw().([2]int64)
 			if k == 0 {
-				res.decimal64Data = append(res.decimal64Data, tmp[0], tmp[1])
-			} else {
-				res.decimal64Data = append(res.decimal64Data, tmp[1])
+				res.decimal64Data = append(res.decimal64Data, tmp[0])
 			}
+			res.decimal64Data = append(res.decimal64Data, tmp[1])
+		}
+	case DtDecimal128:
+		res.decimal128Data = decimal128Datas{value: make([]*big.Int, 0, len(data))}
+		for k, v := range data {
+			tmp := v.raw().(decimal128Data)
+			if k == 0 {
+				res.decimal128Data.scale = tmp.scale
+			}
+
+			res.decimal128Data.value = append(res.decimal128Data.value, tmp.value)
 		}
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, 0, 2*size)
@@ -216,7 +236,7 @@ func NewEmptyDataTypeList(datatype DataTypeByte, size int) DataTypeList {
 	}
 
 	switch datatype {
-	case DtVoid, DtBool, DtChar:
+	case DtBool, DtChar:
 		res.charData = make([]uint8, size)
 	case DtShort:
 		res.shortData = make([]int16, size)
@@ -236,6 +256,8 @@ func NewEmptyDataTypeList(datatype DataTypeByte, size int) DataTypeList {
 		res.decimal32Data = make([]int32, 1+size)
 	case DtDecimal64:
 		res.decimal64Data = make([]int64, 1+size)
+	case DtDecimal128:
+		res.decimal128Data = decimal128Datas{value: make([]*big.Int, size)}
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, 2*size)
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -307,6 +329,8 @@ func NewDataTypeListFromRawData(datatype DataTypeByte, args interface{}) (DataTy
 		err = res.renderDecimal32(args)
 	case DtDecimal64:
 		err = res.renderDecimal64(args)
+	case DtDecimal128:
+		err = res.renderDecimal128(args)
 	case DtLong:
 		err = res.renderLong(args)
 	case DtMinute:
@@ -374,6 +398,8 @@ func (d *dataTypeList) SetNull(ind int) {
 		d.decimal32Data[ind+1] = NullInt
 	case DtDecimal64:
 		d.decimal64Data[ind+1] = NullLong
+	case DtDecimal128:
+		d.decimal128Data.value[ind] = minBigIntValue
 	case DtAny:
 		d.anyData[ind] = nullDataForm
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -434,6 +460,8 @@ func (d *dataTypeList) ElementValue(ind int) interface{} {
 		res = decimal32(d.decimal32Data[0], d.decimal32Data[ind+1])
 	case DtDecimal64:
 		res = decimal64(d.decimal64Data[0], d.decimal64Data[ind+1])
+	case DtDecimal128:
+		res = decimal128(d.decimal128Data.scale, d.decimal128Data.value[ind])
 	case DtLong:
 		res = d.longData[ind]
 	case DtMinute:
@@ -519,7 +547,7 @@ func (d *dataTypeList) combine(in DataTypeList) (DataTypeList, error) {
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, res.count*2)
 		copy(res.double2Data, d.double2Data)
-		copy(res.double2Data[d.Len():], original.double2Data)
+		copy(res.double2Data[d.Len()*2:], original.double2Data)
 	case DtDate, DtDateHour, DtDateMinute, DtDatetime, DtInt, DtMinute, DtMonth, DtSecond, DtTime:
 		res.intData = make([]int32, res.count)
 		copy(res.intData, d.intData)
@@ -535,7 +563,7 @@ func (d *dataTypeList) combine(in DataTypeList) (DataTypeList, error) {
 	case DtDuration:
 		res.durationData = make([]uint32, res.count*2)
 		copy(res.durationData, d.durationData)
-		copy(res.durationData[d.Len():], original.durationData)
+		copy(res.durationData[d.Len()*2:], original.durationData)
 	case DtNanoTime, DtNanoTimestamp, DtLong, DtTimestamp:
 		res.longData = make([]int64, res.count)
 		copy(res.longData, d.longData)
@@ -547,17 +575,22 @@ func (d *dataTypeList) combine(in DataTypeList) (DataTypeList, error) {
 	case DtUUID, DtInt128, DtIP:
 		res.long2Data = make([]uint64, res.count*2)
 		copy(res.long2Data, d.long2Data)
-		copy(res.long2Data[d.Len():], original.long2Data)
+		copy(res.long2Data[d.Len()*2:], original.long2Data)
 	case DtDecimal32:
 		res.decimal32Data = make([]int32, res.count+1)
 		res.decimal32Data[0] = d.decimal32Data[0]
-		copy(res.decimal32Data[1:], d.decimal32Data)
-		copy(res.decimal32Data[d.Len()+1:], original.decimal32Data)
+		copy(res.decimal32Data[1:], d.decimal32Data[1:])
+		copy(res.decimal32Data[d.Len()+1:], original.decimal32Data[1:])
 	case DtDecimal64:
 		res.decimal64Data = make([]int64, res.count+1)
 		res.decimal64Data[0] = d.decimal64Data[0]
-		copy(res.decimal64Data[1:], d.decimal64Data)
-		copy(res.decimal64Data[d.Len()+1:], original.decimal64Data)
+		copy(res.decimal64Data[1:], d.decimal64Data[1:])
+		copy(res.decimal64Data[d.Len()+1:], original.decimal64Data[1:])
+	case DtDecimal128:
+		res.decimal128Data = decimal128Datas{value: make([]*big.Int, res.count)}
+		res.decimal128Data.scale = d.decimal128Data.scale
+		copy(res.decimal128Data.value, d.decimal128Data.value)
+		copy(res.decimal128Data.value[d.Len():], original.decimal128Data.value)
 	case DtAny:
 		res.anyData = make([]DataForm, res.count)
 		copy(res.anyData, d.anyData)
@@ -609,6 +642,8 @@ func (d *dataTypeList) IsNull(ind int) bool {
 		res = d.decimal32Data[ind+1] == NullInt
 	case DtDecimal64:
 		res = d.decimal64Data[ind+1] == NullLong
+	case DtDecimal128:
+		res = d.decimal128Data.value[ind].Cmp(minBigIntValue) == 0
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
 		res = d.stringData[ind] == NullString
 	}
@@ -659,6 +694,8 @@ func (d *dataTypeList) Value() []interface{} {
 		parseDecimal32s(d.count, d.decimal32Data, res)
 	case DtDecimal64:
 		parseDecimal64s(d.count, d.decimal64Data, res)
+	case DtDecimal128:
+		parseDecimal128s(d.count, d.decimal128Data, res)
 	case DtLong:
 		parseLongs(d.longData, res)
 	case DtMinute:
@@ -725,6 +762,8 @@ func (d *dataTypeList) Set(ind int, t DataType) error {
 	} else if t == nil {
 		d.SetNull(ind)
 		return nil
+	} else if d.t == DtVoid {
+		return nil
 	}
 
 	if !isEqualDataTypeByte(d.t, t.DataType()) {
@@ -754,8 +793,6 @@ func (d *dataTypeList) setWithRawData(ind int, in interface{}) error {
 		default:
 			return errors.New("the type of in must be byte or bool when datatype is DtBool")
 		}
-	case DtVoid:
-		d.charData[ind] = byte(0)
 	case DtChar:
 		d.charData[ind] = in.(uint8)
 	case DtShort:
@@ -780,10 +817,16 @@ func (d *dataTypeList) setWithRawData(ind int, in interface{}) error {
 		d.long2Data[i+1] = tmp[1]
 	case DtDecimal32:
 		tmp := in.([2]int32)
+		d.reviseDecimal32Scale(tmp[0])
 		d.decimal32Data[ind+1] = tmp[1]
 	case DtDecimal64:
 		tmp := in.([2]int64)
+		d.reviseDecimal64Scale(tmp[0])
 		d.decimal64Data[ind+1] = tmp[1]
+	case DtDecimal128:
+		tmp := in.(decimal128Data)
+		d.reviseDecimal128Scale(tmp.scale)
+		d.decimal128Data.value[ind] = tmp.value
 	case DtComplex, DtPoint:
 		tmp := in.([2]float64)
 		i := 2 * ind
@@ -811,8 +854,6 @@ func (d *dataTypeList) SetWithRawData(ind int, arg interface{}) error {
 
 	var err error
 	switch d.t {
-	case DtVoid:
-		d.charData[ind] = byte(0)
 	case DtBool:
 		d.charData[ind], err = renderBool(arg)
 	case DtBlob:
@@ -845,6 +886,8 @@ func (d *dataTypeList) SetWithRawData(ind int, arg interface{}) error {
 		err = d.SetDecimal32(ind, arg)
 	case DtDecimal64:
 		err = d.SetDecimal64(ind, arg)
+	case DtDecimal128:
+		err = d.SetDecimal128(ind, arg)
 	case DtLong:
 		d.longData[ind], err = renderLong(arg)
 	case DtMinute:
@@ -928,8 +971,27 @@ func (d *dataTypeList) SetDecimal32(ind int, in interface{}) error {
 		return err
 	}
 
+	d.reviseDecimal32Scale(tmp[0])
 	d.decimal32Data[ind+1] = tmp[1]
 	return nil
+}
+
+func (d *dataTypeList) reviseDecimal32Scale(scale int32) {
+	if d.decimal32Data[0] == 0 && d.decimal32Data[0] != scale {
+		d.decimal32Data[0] = scale
+	}
+}
+
+func (d *dataTypeList) reviseDecimal64Scale(scale int64) {
+	if d.decimal64Data[0] == 0 && d.decimal64Data[0] != scale {
+		d.decimal64Data[0] = scale
+	}
+}
+
+func (d *dataTypeList) reviseDecimal128Scale(scale int32) {
+	if d.decimal128Data.scale == 0 && d.decimal128Data.scale != scale {
+		d.decimal128Data.scale = scale
+	}
 }
 
 func (d *dataTypeList) SetDecimal64(ind int, in interface{}) error {
@@ -938,7 +1000,19 @@ func (d *dataTypeList) SetDecimal64(ind int, in interface{}) error {
 		return err
 	}
 
+	d.reviseDecimal64Scale(tmp[0])
 	d.decimal64Data[ind+1] = tmp[1]
+	return nil
+}
+
+func (d *dataTypeList) SetDecimal128(ind int, in interface{}) error {
+	tmp, err := renderDecimal128(in)
+	if err != nil {
+		return err
+	}
+
+	d.reviseDecimal128Scale(tmp.scale)
+	d.decimal128Data.value[ind] = tmp.value
 	return nil
 }
 
@@ -956,7 +1030,7 @@ func (d *dataTypeList) SetIP(ind int, in interface{}) error {
 
 func (d *dataTypeList) Append(t DataType) DataTypeList {
 	switch t.DataType() {
-	case DtVoid, DtBool, DtChar:
+	case DtBool, DtChar:
 		d.charData = append(d.charData, t.raw().(uint8))
 	case DtShort:
 		d.shortData = append(d.shortData, t.raw().(int16))
@@ -976,10 +1050,16 @@ func (d *dataTypeList) Append(t DataType) DataTypeList {
 		d.long2Data = append(d.long2Data, tmp[0], tmp[1])
 	case DtDecimal32:
 		tmp := t.raw().([2]int32)
+		d.reviseDecimal32Scale(tmp[0])
 		d.decimal32Data = append(d.decimal32Data, tmp[1])
 	case DtDecimal64:
 		tmp := t.raw().([2]int64)
+		d.reviseDecimal64Scale(tmp[0])
 		d.decimal64Data = append(d.decimal64Data, tmp[1])
+	case DtDecimal128:
+		tmp := t.raw().(decimal128Data)
+		d.renderDecimal128(tmp.scale)
+		d.decimal128Data.value = append(d.decimal128Data.value, tmp.value)
 	case DtComplex, DtPoint:
 		tmp := t.raw().([2]float64)
 		d.double2Data = append(d.double2Data, tmp[0], tmp[1])
@@ -1013,7 +1093,9 @@ func (d *dataTypeList) Get(ind int) DataType {
 	}
 
 	switch d.t {
-	case DtVoid, DtBool, DtChar:
+	case DtVoid:
+		t.data = uint8(0)
+	case DtBool, DtChar:
 		t.data = d.charData[ind]
 	case DtShort:
 		t.data = d.shortData[ind]
@@ -1035,6 +1117,8 @@ func (d *dataTypeList) Get(ind int) DataType {
 		t.data = [2]int32{d.decimal32Data[0], d.decimal32Data[ind+1]}
 	case DtDecimal64:
 		t.data = [2]int64{d.decimal64Data[0], d.decimal64Data[ind+1]}
+	case DtDecimal128:
+		t.data = decimal128Data{scale: d.decimal128Data.scale, value: d.decimal128Data.value[ind]}
 	case DtComplex, DtPoint:
 		i := 2 * ind
 		t.data = [2]float64{d.double2Data[i], d.double2Data[i+1]}
@@ -1058,7 +1142,7 @@ func (d *dataTypeList) GetSubList(indexes []int) DataTypeList {
 	}
 
 	switch d.t {
-	case DtVoid, DtBool, DtChar:
+	case DtBool, DtChar:
 		res.charData = make([]uint8, length)
 		for k, v := range indexes {
 			res.charData[k] = d.charData[v]
@@ -1112,6 +1196,11 @@ func (d *dataTypeList) GetSubList(indexes []int) DataTypeList {
 		for _, v := range indexes {
 			res.decimal64Data = append(res.decimal64Data, d.decimal64Data[v+1])
 		}
+	case DtDecimal128:
+		res.decimal128Data = decimal128Datas{scale: d.decimal128Data.scale, value: make([]*big.Int, 0, length)}
+		for _, v := range indexes {
+			res.decimal128Data.value = append(res.decimal128Data.value, d.decimal128Data.value[v])
+		}
 	case DtComplex, DtPoint:
 		res.double2Data = make([]float64, 0, 2*length)
 		for _, v := range indexes {
@@ -1150,7 +1239,7 @@ func (d *dataTypeList) Sub(start, end int) DataTypeList {
 	}
 
 	switch d.t {
-	case DtVoid, DtBool, DtChar:
+	case DtBool, DtChar:
 		res.charData = d.charData[start:end]
 	case DtShort:
 		res.shortData = d.shortData[start:end]
@@ -1174,6 +1263,9 @@ func (d *dataTypeList) Sub(start, end int) DataTypeList {
 		res.decimal64Data = make([]int64, 0, res.count+1)
 		res.decimal64Data = append(res.decimal64Data, d.decimal64Data[0])
 		res.decimal64Data = append(res.decimal64Data, d.decimal64Data[start+1:end+1]...)
+	case DtDecimal128:
+		res.decimal128Data = decimal128Datas{scale: d.decimal128Data.scale, value: make([]*big.Int, 0, res.count)}
+		res.decimal128Data.value = append(res.decimal128Data.value, d.decimal128Data.value[start:end]...)
 	case DtComplex, DtPoint:
 		res.double2Data = d.double2Data[2*start : 2*end]
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -1212,7 +1304,6 @@ func (d *dataTypeList) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 	case DtShort:
 		err = w.Write(protocol.ByteSliceFromInt16Slice(d.shortData))
 	case DtVoid:
-		err = writeVoids(w, d.count)
 	case DtDouble:
 		err = w.Write(protocol.ByteSliceFromFloat64Slice(d.doubleData))
 	case DtFloat:
@@ -1223,6 +1314,8 @@ func (d *dataTypeList) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
 		err = w.Write(protocol.ByteSliceFromInt32Slice(d.decimal32Data))
 	case DtDecimal64:
 		err = writeDecimal64s(w, bo, d.decimal64Data)
+	case DtDecimal128:
+		err = writeDecimal128s(w, bo, d.decimal128Data)
 	case DtDuration:
 		err = w.Write(protocol.ByteSliceFromUint32Slice(d.durationData))
 	case DtPoint, DtComplex:
@@ -1240,6 +1333,8 @@ func (d *dataTypeList) StringList() []string {
 		return decimal32sString(d.decimal32Data)
 	case DtDecimal64:
 		return decimal64sString(d.decimal64Data)
+	case DtDecimal128:
+		return decimal128sString(d.decimal128Data)
 	}
 
 	tmp := d.Value()
@@ -1319,6 +1414,21 @@ func decimal64sString(d64 []int64) []string {
 
 		f := decimal.NewFromFloat(decimal64Value(sca, val).(float64))
 		res[i-1] = f.StringFixed(int32(sca))
+	}
+
+	return res
+}
+
+func decimal128sString(d128 decimal128Datas) []string {
+	res := make([]string, len(d128.value))
+	for i := 0; i < len(d128.value); i++ {
+		val := d128.value[i]
+		if val.Cmp(minBigIntValue) == 0 {
+			res[i] = ""
+			continue
+		}
+
+		res[i] = decimal128Value(d128.scale, val).(string)
 	}
 
 	return res
@@ -1766,6 +1876,30 @@ func (d *dataTypeList) renderDecimal64(val interface{}) error {
 	return nil
 }
 
+func (d *dataTypeList) renderDecimal128(val interface{}) error {
+	dec, ok := val.(*Decimal128s)
+	if !ok {
+		return errors.New("the type of input must be *Decimal128s when datatype is DtDecimal128")
+	}
+
+	if dec.Scale < 0 || dec.Scale > 38 {
+		return fmt.Errorf("Scale out of bound(valid range: [0, 38], but get: %d)", dec.Scale)
+	}
+
+	length := len(dec.Value)
+	d.count = length
+	d.decimal128Data = decimal128Datas{scale: dec.Scale, value: make([]*big.Int, 0, length)}
+	for _, v := range dec.Value {
+		f, err := calculateDecimal128(dec.Scale, v)
+		if err != nil {
+			return err
+		}
+		d.decimal128Data.value = append(d.decimal128Data.value, f)
+	}
+
+	return nil
+}
+
 func (d *dataTypeList) renderLong(val interface{}) error {
 	is, ok := val.([]int64)
 	if !ok {
@@ -2076,6 +2210,16 @@ func decimal64(scale, value int64) *Decimal64 {
 	return &Decimal64{Scale: int32(scale), Value: float64(value) / math.Pow10(int(scale))}
 }
 
+func decimal128(scale int32, value *big.Int) *Decimal128 {
+	if value.Cmp(minBigIntValue) == 0 {
+		return &Decimal128{Scale: int32(scale), Value: value.String()}
+	}
+
+	divNum, _ := decimal.NewFromString(fmt.Sprintf("1e+%d", scale))
+	return &Decimal128{Scale: int32(scale), Value: decimal.NewFromBigInt(value, 0).
+		DivRound(divNum, scale).StringFixedBank(scale)}
+}
+
 func decimal32(scale, value int32) *Decimal32 {
 	if value == NullInt {
 		return &Decimal32{Scale: int32(scale), Value: float64(value)}
@@ -2094,6 +2238,18 @@ func decimal64Value(scale, value int64) interface{} {
 	}
 }
 
+func decimal128Value(scale int32, value *big.Int) interface{} {
+	switch {
+	case value.Cmp(minBigIntValue) == 0:
+		return NullDecimal128Value
+	case scale == 0:
+		return value.String()
+	default:
+		divNum, _ := decimal.NewFromString(fmt.Sprintf("1e+%d", scale))
+		return decimal.NewFromBigInt(value, 0).DivRound(divNum, scale).StringFixed(scale)
+	}
+}
+
 func decimal32Value(scale, value int32) interface{} {
 	switch {
 	case value == NullInt:
@@ -2109,6 +2265,12 @@ func parseDecimal64s(count int, raw []int64, res []interface{}) {
 	scale := raw[0]
 	for i := 0; i < count; i++ {
 		res[i] = decimal64(scale, raw[i+1])
+	}
+}
+
+func parseDecimal128s(count int, raw decimal128Datas, res []interface{}) {
+	for i := 0; i < count; i++ {
+		res[i] = decimal128(raw.scale, raw.value[i])
 	}
 }
 
@@ -2131,19 +2293,11 @@ func parseInt128s(count int, raw []uint64, res []interface{}) {
 }
 
 func generateInt128String(high, low uint64) string {
-	var tmp string
-	if high == 0 {
-		tmp = "0000000000000000"
-	} else {
-		tmp = fmt.Sprintf("%16x", high)
-	}
-	if low == 0 {
-		tmp += "0000000000000000"
-	} else {
-		tmp += fmt.Sprintf("%16x", low)
+	if high == 0 && low == 0 {
+		return "00000000000000000000000000000000"
 	}
 
-	return tmp
+	return fmt.Sprintf("%016x%016x", high, low)
 }
 
 func parseInt(raw []int32, res []interface{}) {
@@ -2232,6 +2386,17 @@ func (d *Decimal64s) String() string {
 		}
 	}
 
+	return fmt.Sprintf("[%s]", strings.Join(res, ","))
+}
+
+func (d *Decimal128s) String() string {
+	res := make([]string, len(d.Value))
+	for k, v := range d.Value {
+		dec, err := decimal.NewFromString(v)
+		if err == nil {
+			res[k] = dec.StringFixed(d.Scale)
+		}
+	}
 	return fmt.Sprintf("[%s]", strings.Join(res, ","))
 }
 

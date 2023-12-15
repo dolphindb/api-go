@@ -14,6 +14,7 @@ import (
 )
 
 func TestExistsDatabase_ex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_ExistsDatabase_ex", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -25,6 +26,7 @@ func TestExistsDatabase_ex(t *testing.T) {
 }
 
 func TestExistsTable_ex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_TestExistsTable_ex", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -36,6 +38,7 @@ func TestExistsTable_ex(t *testing.T) {
 }
 
 func TestCreateDatabase_ex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_CreateDatabase_ex", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -47,6 +50,7 @@ func TestCreateDatabase_ex(t *testing.T) {
 }
 
 func TestDropDatabase_ex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_DropDataBase_ex", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -58,10 +62,12 @@ func TestDropDatabase_ex(t *testing.T) {
 }
 
 func TestCreateDatabase(t *testing.T) {
+	t.Parallel()
 	Convey("Test_CreateDatabase_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_CreateDatabase_dropDatabase", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -77,6 +83,7 @@ func TestCreateDatabase(t *testing.T) {
 			}
 		})
 		Convey("Test_CreateDatabase_olap_value_partition", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -191,6 +198,7 @@ func TestCreateDatabase(t *testing.T) {
 			So(re6, ShouldBeFalse)
 		})
 		Convey("Test_CreateDatabase_olap_range_partition", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -302,6 +310,7 @@ func TestCreateDatabase(t *testing.T) {
 			So(re6, ShouldBeFalse)
 		})
 		Convey("Test_CreateDatabase_olap_hash_partition", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -408,6 +417,7 @@ func TestCreateDatabase(t *testing.T) {
 			So(re6, ShouldBeFalse)
 		})
 		Convey("Test_CreateDatabase_olap_list_partition", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -514,6 +524,7 @@ func TestCreateDatabase(t *testing.T) {
 			So(re6, ShouldBeFalse)
 		})
 		Convey("Test_CreateDatabase_olap_compo_partition", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -638,10 +649,12 @@ func TestCreateDatabase(t *testing.T) {
 }
 
 func TestDataBaseGetSession(t *testing.T) {
+	t.Parallel()
 	Convey("Test_CreateDatabase_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("TestCreateDatabase_dropDatabase", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -657,6 +670,7 @@ func TestDataBaseGetSession(t *testing.T) {
 			}
 		})
 		Convey("Test_CreateDatabase_olap_value_partition", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)

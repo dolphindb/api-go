@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"time"
 
 	"github.com/dolphindb/api-go/dialer/protocol"
@@ -43,6 +44,11 @@ type dataType struct {
 	bo protocol.ByteOrder
 }
 
+type decimal128Data struct {
+	scale int32
+	value *big.Int
+}
+
 type Decimal64 struct {
 	Scale int32
 	Value float64
@@ -51,6 +57,11 @@ type Decimal64 struct {
 type Decimal32 struct {
 	Scale int32
 	Value float64
+}
+
+type Decimal128 struct {
+	Scale int32
+	Value string
 }
 
 var nullDataForm = &Scalar{
@@ -126,6 +137,8 @@ func (d *dataType) renderData(in interface{}) error {
 		d.data, err = renderDecimal32(in)
 	case DtDecimal64:
 		d.data, err = renderDecimal64(in)
+	case DtDecimal128:
+		d.data, err = renderDecimal128(in)
 	case DtLong:
 		d.data, err = renderLong(in)
 	case DtMinute:
@@ -199,6 +212,8 @@ func (d *dataType) SetNull() {
 		d.data = [2]int32{0, NullInt}
 	case DtDecimal64:
 		d.data = [2]int64{0, NullLong}
+	case DtDecimal128:
+		d.data = decimal128Data{scale: 0, value: minBigIntValue}
 	case DtAny:
 		d.data = nullDataForm
 	case DtString, DtCode, DtFunction, DtHandle, DtSymbol:
@@ -220,6 +235,9 @@ func (d *dataType) IsNull() bool {
 	case DtDecimal64:
 		t := d.data.([2]int64)
 		return t[1] == NullLong
+	case DtDecimal128:
+		t := d.data.(decimal128Data)
+		return t.value.Cmp(minBigIntValue) == 0
 	}
 
 	res := false
@@ -305,6 +323,10 @@ func (d *dataType) String() string {
 		r := res.(*Decimal64)
 		f := decimal.NewFromFloat(r.Value)
 		return f.StringFixed(r.Scale)
+	case DtDecimal128:
+		r := res.(*Decimal128)
+		dec, _ := decimal.NewFromString(r.Value)
+		return dec.StringFixed(r.Scale)
 	case DtFloat, DtDouble:
 		return floatString(res)
 	case DtInt, DtShort, DtLong:
@@ -362,6 +384,9 @@ func value(dt DataTypeByte, raw interface{}, bo protocol.ByteOrder) interface{} 
 	case DtDecimal64:
 		t := raw.([2]int64)
 		res = decimal64(t[0], t[1])
+	case DtDecimal128:
+		t := raw.(decimal128Data)
+		res = decimal128(t.scale, t.value)
 	case DtLong:
 		res = raw.(int64)
 	case DtMinute:
@@ -649,4 +674,18 @@ func (d *Decimal32) String() string {
 	}
 
 	return decimal.NewFromFloat(d.Value).StringFixed(d.Scale)
+}
+
+func (d *Decimal128) String() string {
+	f, err := calculateDecimal128(d.Scale, d.Value)
+	if f.String() == NullDecimal128Value || err != nil {
+		return ""
+	}
+
+	dec, err := decimal.NewFromString(d.Value)
+	if err != nil {
+		return ""
+	}
+
+	return dec.StringFixed(d.Scale)
 }

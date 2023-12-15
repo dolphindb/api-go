@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolphindb/api-go/api"
+	"github.com/dolphindb/api-go/example/util"
+	"github.com/dolphindb/api-go/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -238,4 +241,217 @@ func isExit(exit <-chan bool) bool {
 	default:
 		return false
 	}
+}
+
+
+
+
+func TestPollingClientNormal(t *testing.T) {
+	host := "localhost:8848";
+	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
+
+	util.AssertNil(err)
+    loginReq := &api.LoginRequest{
+        UserID:   "admin",
+        Password: "123456",
+    }
+
+	err = db.Connect()
+	util.AssertNil(err)
+
+    err = db.Login(loginReq)
+	util.AssertNil(err)
+
+	_,err = db.RunScript(scripts)
+	util.AssertNil(err)
+
+	client := NewPollingClient("localhost", 8848)
+
+	req := &SubscribeRequest{
+		Address:    "localhost:8848",
+		TableName:  "outTables",
+		ActionName: "action1",
+		MsgAsTable: false,
+		Offset:     0,
+		Reconnect:  true,
+	}
+
+	poller, err := client.Subscribe(req)
+	util.AssertNil(err)
+
+	time.Sleep(time.Duration(1)*time.Second)
+	msgVec := poller.Poll(1, 6)
+	assert.Equal(t, 6, len(msgVec))
+	for _, v := range msgVec {
+		assert.Equal(t, model.DtBlob, v.GetValueByName("blob").GetDataType())
+		assert.Equal(t, model.DtSymbol, v.GetValueByName("sym").GetDataType())
+		assert.Equal(t, model.DtTimestamp, v.GetValueByName("timestampv").GetDataType())
+	}
+}
+
+func TestPollingClientMsgAsTable(t *testing.T) {
+	host := "localhost:8848";
+	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
+
+	util.AssertNil(err)
+    loginReq := &api.LoginRequest{
+        UserID:   "admin",
+        Password: "123456",
+    }
+
+	err = db.Connect()
+	util.AssertNil(err)
+
+    err = db.Login(loginReq)
+	util.AssertNil(err)
+
+	_,err = db.RunScript(scripts)
+	util.AssertNil(err)
+
+	client := NewPollingClient("localhost", 8848)
+
+	req := &SubscribeRequest{
+		Address:    "localhost:8848",
+		TableName:  "outTables",
+		ActionName: "action1",
+		MsgAsTable: true,
+		Offset:     0,
+		Reconnect:  true,
+	}
+
+	poller, err := client.Subscribe(req)
+	util.AssertNil(err)
+
+	time.Sleep(time.Duration(1)*time.Second)
+	msgVec := poller.Poll(1, 6)
+	tbl := msgVec[0]
+	assert.Equal(t, 6, tbl.Size())
+	symVec := tbl.GetValueByName("sym").(*model.Vector).GetRawValue()
+	for _,v := range symVec {
+		assert.True(t, v=="msg1" || v=="msg2")
+	}
+	assert.Equal(t, model.DfVector, tbl.GetValueByName("blob").GetDataForm())
+}
+func TestPollingClientStreamDeserializer(t *testing.T) {
+	host := "localhost:8848";
+	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
+
+	util.AssertNil(err)
+    loginReq := &api.LoginRequest{
+        UserID:   "admin",
+        Password: "123456",
+    }
+
+	err = db.Connect()
+	util.AssertNil(err)
+
+    err = db.Login(loginReq)
+	util.AssertNil(err)
+
+	_,err = db.RunScript(scripts)
+	util.AssertNil(err)
+
+	client := NewPollingClient("localhost", 8848)
+
+	sdMap := make(map[string][2]string)
+	sdMap["msg1"] = [2]string{"", "pt1"}
+	sdMap["msg2"] = [2]string{"", "pt2"}
+
+	opt := StreamDeserializerOption {
+		TableNames: sdMap,
+		Conn:       db,
+	}
+	sd, err := NewStreamDeserializer(&opt)
+	util.AssertNil(err)
+
+	req := &SubscribeRequest{
+		Address:    "localhost:8848",
+		TableName:  "outTables",
+		ActionName: "action1",
+		Offset:     0,
+		Reconnect:  true,
+		MsgDeserializer:  sd,
+	}
+
+	poller, err := client.Subscribe(req)
+	util.AssertNil(err)
+
+	time.Sleep(time.Duration(1)*time.Second)
+	msgs := poller.Poll(1, 6)
+	assert.Equal(t, len(msgs), 6)
+	msg1StrVec := make([]interface{}, 0)
+	msg1Value := []interface{}{"a", "b", "c"}
+	msg2StrVec := make([]interface{}, 0)
+	msg2Value := []interface{}{"a", "b", "c"}
+	for _, v := range msgs {
+		fmt.Print(v.GetSym(), ": ")
+		for i := 0; i < v.Size(); i++ {
+			fmt.Print(v.GetValue(i).String(), " ")
+		}
+		fmt.Println()
+		if v.GetSym() == "msg1" {
+			msg1StrVec = append(msg1StrVec, v.GetValue(2).(*model.Scalar).DataType.Value())
+		} else if v.GetSym() == "msg2" {
+			msg2StrVec = append(msg2StrVec, v.GetValue(2).(*model.Scalar).DataType.Value())
+		}
+	}
+	assert.Equal(t, msg1Value, msg1StrVec)
+	assert.Equal(t, msg2Value, msg2StrVec)
+
+	msg1StrVec = make([]interface{}, 0)
+	msg2StrVec = make([]interface{}, 0)
+	for _, v := range msgs {
+		if v.GetSym() == "msg1" {
+			msg1StrVec = append(msg1StrVec, v.GetValueByName("sym").(*model.Scalar).DataType.Value())
+		} else if v.GetSym() == "msg2" {
+			msg2StrVec = append(msg2StrVec, v.GetValueByName("sym").(*model.Scalar).DataType.Value())
+		}
+	}
+	assert.Equal(t, msg1Value, msg1StrVec)
+	assert.Equal(t, msg2Value, msg2StrVec)
+}
+
+
+func TestPollingClientStreamDeserializerErr(t *testing.T) {
+	host := "localhost:8848";
+	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
+	util.AssertNil(err)
+
+	err = db.Connect()
+	util.AssertNil(err)
+
+    loginReq := &api.LoginRequest{
+        UserID:   "admin",
+        Password: "123456",
+    }
+    err = db.Login(loginReq)
+	util.AssertNil(err)
+
+	_,err = db.RunScript(scripts)
+	util.AssertNil(err)
+
+	sdMap := make(map[string][2]string)
+	sdMap["msg1"] = [2]string{"", "pt1"}
+	sdMap["msg2"] = [2]string{"", "pt2"}
+
+	opt := StreamDeserializerOption {
+		TableNames: sdMap,
+		Conn:       db,
+	}
+	sd, err := NewStreamDeserializer(&opt)
+	util.AssertNil(err)
+
+	req := &SubscribeRequest{
+		Address:    "localhost:8848",
+		TableName:  "outTables",
+		ActionName: "action1",
+		MsgAsTable: true,
+		Offset:     0,
+		Reconnect:  true,
+		MsgDeserializer:  sd,
+	}
+	client := NewPollingClient("localhost", 8848)
+
+	_, err = client.Subscribe(req)
+	assert.EqualError(t, err, "if MsgAsTable is true, MsgDeserializer must be nil")
 }

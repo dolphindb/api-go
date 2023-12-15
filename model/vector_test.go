@@ -105,4 +105,15 @@ func TestVector(t *testing.T) {
 	unit, byt = packArrayVector(4, 65536)
 	assert.Equal(t, unit, uint16(4))
 	assert.Equal(t, byt, []byte{0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x0})
+
+	vd := NewEmptyDataTypeList(DtVoid, 10)
+	vct := NewVector(vd)
+	assert.Equal(t, int(vct.RowCount), 10)
+	assert.Equal(t, vct.String(), "vector<void>([, , , , , , , , , ])")
+
+	str, err := NewDataType(DtString, "void")
+	assert.Nil(t, err)
+	err = vct.Set(0, str)
+	assert.Nil(t, err)
+	assert.Equal(t, vct.Get(0).String(), "")
 }

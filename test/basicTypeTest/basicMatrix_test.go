@@ -15,6 +15,7 @@ import (
 )
 
 func Test_Matrix_DownLoad_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_int:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -61,6 +62,7 @@ func Test_Matrix_DownLoad_int(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_short:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -105,6 +107,7 @@ func Test_Matrix_DownLoad_short(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -155,6 +158,7 @@ func Test_Matrix_DownLoad_long(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_double:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -199,6 +203,7 @@ func Test_Matrix_DownLoad_double(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_float:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -243,6 +248,7 @@ func Test_Matrix_DownLoad_float(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_symbol(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_symbol:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -308,6 +314,7 @@ func Test_Matrix_DownLoad_symbol(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_date:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -350,6 +357,7 @@ func Test_Matrix_DownLoad_date(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_month:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -414,6 +422,7 @@ func Test_Matrix_DownLoad_month(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_time:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -456,6 +465,7 @@ func Test_Matrix_DownLoad_time(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_minute:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -499,6 +509,7 @@ func Test_Matrix_DownLoad_minute(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_second:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -541,6 +552,7 @@ func Test_Matrix_DownLoad_second(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_datetime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -583,6 +595,7 @@ func Test_Matrix_DownLoad_datetime(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_timestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -625,6 +638,7 @@ func Test_Matrix_DownLoad_timestamp(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_nanotime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -667,6 +681,7 @@ func Test_Matrix_DownLoad_nanotime(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_nanotimestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -709,6 +724,7 @@ func Test_Matrix_DownLoad_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_datehour:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -751,6 +767,7 @@ func Test_Matrix_DownLoad_datehour(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_ony_one_column(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_only_one_column:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -775,6 +792,7 @@ func Test_Matrix_DownLoad_ony_one_column(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_only_one_row(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_only_one_row:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -799,6 +817,7 @@ func Test_Matrix_DownLoad_only_one_row(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_with_int_label(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_with_int_label:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -863,6 +882,7 @@ func Test_Matrix_DownLoad_with_int_label(t *testing.T) {
 	})
 }
 func Test_Matrix_DownLoad_with_time_label(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_with_time_label:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -974,6 +994,7 @@ func Test_Matrix_DownLoad_with_time_label(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_int_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1002,6 +1023,7 @@ func Test_Matrix_UpLoad_DataType_int(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_short_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1030,6 +1052,7 @@ func Test_Matrix_UpLoad_DataType_short(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_char_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1054,6 +1077,7 @@ func Test_Matrix_UpLoad_DataType_char(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_long_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1082,6 +1106,7 @@ func Test_Matrix_UpLoad_DataType_long(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_float_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1110,6 +1135,7 @@ func Test_Matrix_UpLoad_DataType_float(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_double_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1138,6 +1164,7 @@ func Test_Matrix_UpLoad_DataType_double(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_date_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1166,6 +1193,7 @@ func Test_Matrix_UpLoad_DataType_date(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_month_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1194,6 +1222,7 @@ func Test_Matrix_UpLoad_DataType_month(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_time_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1222,6 +1251,7 @@ func Test_Matrix_UpLoad_DataType_time(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_minute_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1250,6 +1280,7 @@ func Test_Matrix_UpLoad_DataType_minute(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_second_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1278,6 +1309,7 @@ func Test_Matrix_UpLoad_DataType_second(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_datetime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1306,6 +1338,7 @@ func Test_Matrix_UpLoad_DataType_datetime(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_timestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1334,6 +1367,7 @@ func Test_Matrix_UpLoad_DataType_timestamp(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_nanotime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1362,6 +1396,7 @@ func Test_Matrix_UpLoad_DataType_nanotime(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_nanotimestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1390,6 +1425,7 @@ func Test_Matrix_UpLoad_DataType_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_datehour_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1418,6 +1454,7 @@ func Test_Matrix_UpLoad_DataType_datehour(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_complex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_complex_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1451,6 +1488,7 @@ func Test_Matrix_UpLoad_DataType_complex(t *testing.T) {
 	})
 }
 func Test_Matrix_UpLoad_DataType_big_array(t *testing.T) {
+	t.Parallel()
 	Convey("Test_matrix_big_array_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)

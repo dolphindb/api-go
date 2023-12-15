@@ -97,7 +97,7 @@ func (dict *Dictionary) Get(key string) (DataType, error) {
 		return nil, fmt.Errorf("invalid key: %s", key)
 	}
 
-	d := dict.Values.Data.Get(ind)
+	d := dict.Values.Get(ind)
 	if d == nil {
 		return nil, fmt.Errorf("invalid key: %s", key)
 	}
@@ -117,13 +117,13 @@ func (dict *Dictionary) Set(key, value DataType) {
 	keys := dict.Keys.Data.StringList()
 	for k, v := range keys {
 		if v == keyStr {
-			_ = dict.Values.Data.Set(k, value)
+			_ = dict.Values.Set(k, value)
 			return
 		}
 	}
 
-	dict.Keys.Data.Append(key)
-	dict.Values.Data.Append(value)
+	dict.Keys.Append(key)
+	dict.Values.Append(value)
 }
 
 // KeyStrings returns the string list of dictionary keys.
@@ -136,8 +136,8 @@ func (dict *Dictionary) String() string {
 		dict.Values == nil || dict.Values.Data == nil {
 		return ""
 	}
-	keyType := GetDataTypeString(dict.Keys.Data.DataType())
-	valType := GetDataTypeString(dict.Values.Data.DataType())
+	keyType := GetDataTypeString(dict.Keys.GetDataType())
+	valType := GetDataTypeString(dict.Values.GetDataType())
 
 	by := strings.Builder{}
 	by.WriteString(fmt.Sprintf("dict<%s, %s>([\n", keyType, valType))

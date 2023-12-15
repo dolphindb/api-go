@@ -3,7 +3,6 @@ package streaming
 import (
 	"testing"
 
-	"github.com/smallnest/chanx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,13 +17,13 @@ func TestUtil(t *testing.T) {
 	}
 
 	haTopicToTrueTopic.Store("topic", "topic")
-	queueMap.Store("topic", chanx.NewUnboundedChan(2))
+	queueMap.Store("topic", NewUnboundedChan(2))
 
 	dispatch(msg)
 	raw, ok := queueMap.Load("topic")
 	assert.Equal(t, ok, true)
 
-	q := raw.(*chanx.UnboundedChan)
+	q := raw.(*UnboundedChan)
 	r := <-q.Out
 	m := r.(IMessage)
 	assert.Equal(t, m.GetOffset(), int64(-1))

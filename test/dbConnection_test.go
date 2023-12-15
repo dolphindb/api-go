@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/dolphindb/api-go/api"
 	"github.com/dolphindb/api-go/dialer"
@@ -13,6 +14,7 @@ import (
 )
 
 func TestNewDolphinDBClient(t *testing.T) {
+	t.Parallel()
 	Convey("func NewDolphinDB exception test", t, func() {
 		Convey("Test NewDolphinDB wrong address exception", func() {
 			_, err := api.NewDolphinDBClient(context.TODO(), "123456", nil)
@@ -81,6 +83,7 @@ func TestNewDolphinDBClient(t *testing.T) {
 }
 
 func TestNewSimpleDolphinDBClient(t *testing.T) {
+	t.Parallel()
 	Convey("func NewSimpleDolphinDB exception test", t, func() {
 		Convey("Test NewSimpleDolphinDB wrong address exception", func() {
 			_, err := api.NewSimpleDolphinDBClient(context.TODO(), "wrongAddress", setup.UserName, setup.Password)
@@ -141,6 +144,7 @@ func TestNewSimpleDolphinDBClient(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
+	t.Parallel()
 	Convey("Test connection Close", t, func() {
 		Convey("Test NewDolphinDB Close", func() {
 			db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
@@ -169,6 +173,7 @@ func TestClose(t *testing.T) {
 }
 
 func TestIsClosed(t *testing.T) {
+	t.Parallel()
 	Convey("Test connection IsClosed", t, func() {
 		Convey("Test NewDolphinDB IsClosed", func() {
 			db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
@@ -197,6 +202,7 @@ func TestIsClosed(t *testing.T) {
 }
 
 func TestRefreshTimeout(t *testing.T) {
+	t.Parallel()
 	Convey("Test RefreshTimeout NewSimpleConn", t, func() {
 		db, err := dialer.NewSimpleConn(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -221,6 +227,7 @@ func TestRefreshTimeout(t *testing.T) {
 	})
 }
 func TestGetSession(t *testing.T) {
+	t.Parallel()
 	Convey("Test connection GetSession", t, func() {
 		Convey("Test NewDolphinDB GetSession", func() {
 			db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
@@ -249,6 +256,7 @@ func TestGetSession(t *testing.T) {
 }
 
 func TestNewConn(t *testing.T) {
+	t.Parallel()
 	Convey("func NewConn exception test", t, func() {
 		Convey("Test NewConn wrong address exception", func() {
 			_, err := dialer.NewConn(context.TODO(), "123456", nil)
@@ -270,6 +278,7 @@ func TestNewConn(t *testing.T) {
 }
 
 func TestNewSimpleConn(t *testing.T) {
+	t.Parallel()
 	Convey("func NewSimpleConn exception test", t, func() {
 		Convey("Test NewSimpleConn wrong address exception", func() {
 			_, err := dialer.NewSimpleConn(context.TODO(), "wrongAddress", setup.UserName, setup.Password)
@@ -326,42 +335,105 @@ func TestNewSimpleConn(t *testing.T) {
 			So(result, ShouldNotBeNil)
 			SessionID := db.GetSession()
 			So(SessionID, ShouldNotBeNil)
+			add := db.GetLocalAddress()
+			So(add, ShouldEqual, setup.LocalIP)
 			err = db.Close()
 			So(err, ShouldBeNil)
-			add := db.GetLocalAddress()
-			So(add, ShouldEqual, setup.IP)
-			db.Close()
 		})
 	})
 }
 
 func TestGetLocalAddress(t *testing.T) {
+	t.Parallel()
 	Convey("Test GetLocalAddress NewSimpleConn", t, func() {
 		db, err := dialer.NewSimpleConn(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
+		So(db.IsConnected(), ShouldBeTrue)
 		re := db.GetLocalAddress()
-		So(re, ShouldEqual, setup.IP)
+		So(re, ShouldEqual, setup.LocalIP)
 		db.Close()
 	})
 	Convey("Test GetLocalAddress NewConn", t, func() {
 		db, err := dialer.NewConn(context.TODO(), setup.Address, nil)
 		So(err, ShouldBeNil)
 		re := db.GetLocalAddress()
-		So(re, ShouldEqual, setup.IP)
+		So(re, ShouldEqual, setup.LocalIP)
 		db.Close()
 	})
 	Convey("Test GetLocalAddress NewSimpleDolphinDBClient", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		re := db.GetLocalAddress()
-		So(re, ShouldEqual, setup.IP)
+		So(re, ShouldEqual, setup.LocalIP)
 		db.Close()
 	})
 	Convey("Test GetLocalAddress NewDolphinDBClient", t, func() {
 		db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
 		So(err, ShouldBeNil)
 		re := db.GetLocalAddress()
-		So(re, ShouldEqual, setup.IP)
+		So(re, ShouldEqual, setup.LocalIP)
 		db.Close()
 	})
+}
+
+func TestConnectionHighAvailability(t *testing.T) {
+	t.Parallel()
+	SkipConvey("TestConnectionHighAvailability", t, func() {
+		opt := &dialer.BehaviorOptions{
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		}
+		connHA, err := api.NewDolphinDBClient(context.TODO(), setup.Address4, opt)
+		AssertNil(err)
+		connCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		AssertNil(err)
+		err = connHA.Connect()
+		AssertNil(err)
+		loginReq := &api.LoginRequest{
+			UserID:   setup.UserName,
+			Password: setup.Password,
+		}
+		err = connHA.Login(loginReq)
+		AssertNil(err)
+		origin_node, _ := connHA.RunScript("getNodeAlias()")
+		fmt.Println("now", origin_node.(*model.Scalar).Value().(string), "is connected, try to stop it")
+		connCtl.RunScript("stopDataNode(`" + origin_node.(*model.Scalar).Value().(string) + ")")
+		time.Sleep(2 * time.Second)
+		fmt.Println("stop success, check if the origin connection click to another node")
+		res, err := connHA.RunScript("getNodeAlias()")
+		AssertNil(err)
+		So(res.String(), ShouldNotEqual, origin_node.(*model.Scalar).Value().(string))
+		fmt.Println("check passed, restart the origin node")
+		_, err = connCtl.RunScript(
+			"nodes = exec name from getClusterPerf() where state!=1 and mode !=1;" +
+				"startDataNode(nodes);")
+		AssertNil(err)
+		time.Sleep(2 * time.Second)
+		connCtl.Close()
+		connHA.Close()
+		So(connHA.IsClosed(), ShouldBeTrue)
+	})
+	Convey("TestConnnectionHighAvailability exception", t, func() {
+		opt := &dialer.BehaviorOptions{
+			EnableHighAvailability: true,
+			// HighAvailabilitySites:  setup.HA_sites,
+		}
+		_, err := api.NewDolphinDBClient(context.TODO(), setup.Address4, opt)
+		So(err.Error(), ShouldContainSubstring, "if EnableHighAvailability is true, HighAvailabilitySites should be specified")
+
+		// opt = &dialer.BehaviorOptions{
+		//         // EnableHighAvailability: true,
+		//         HighAvailabilitySites: setup.HA_sites,
+		// }
+		// _, err = api.NewDolphinDBClient(context.TODO(), setup.Address4, opt)
+		// So(err.Error(), ShouldContainSubstring, "connect to all sites failed")
+
+		// opt = &dialer.BehaviorOptions{
+		//         EnableHighAvailability: false,
+		//         HighAvailabilitySites:  setup.HA_sites,
+		// }
+		// _, err = api.NewDolphinDBClient(context.TODO(), setup.Address4, opt)
+		// So(err.Error(), ShouldContainSubstring, "connect to all sites failed")
+	})
+
 }

@@ -11,10 +11,12 @@ import (
 )
 
 func TestDropPartition_tabletMultiple(t *testing.T) {
+	t.Parallel()
 	Convey("Test_DropPartition_tabletMultiple_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -35,6 +37,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_range_drop_single:", func() {
 			Convey("Test_DropPartition_tabletMultiple_range_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -65,6 +68,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_range_drop_all_tables:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -99,6 +103,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_range_drop_multiple:", func() {
 			Convey("Test_DropPartition_tabletMultiple_range_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -129,6 +134,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_range_drop_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -163,6 +169,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_hash_drop_single:", func() {
 			Convey("Test_DropPartition_tabletMultiple_hash_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -193,6 +200,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_hash_drop_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -227,6 +235,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_hash_drop_multiple:", func() {
 			Convey("Test_DropPartition_tabletMultiple_hash_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -257,6 +266,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_hash_drop_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -291,6 +301,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_value_drop_single:", func() {
 			Convey("Test_DropPartition_tabletMultiple_value_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -321,6 +332,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_value_drop_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -355,6 +367,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_value_drop_multiple:", func() {
 			Convey("Test_DropPartition_tabletMultiple_value_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -385,6 +398,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_value_drop_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -419,6 +433,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_list_drop_single:", func() {
 			Convey("Test_DropPartition_tabletMultiple_list_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -449,6 +464,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_list_drop_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -483,6 +499,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_list_drop_multiple:", func() {
 			Convey("Test_DropPartition_tabletMultiple_list_drop_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -513,6 +530,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_list_drop_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -547,6 +565,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level1_single:", func() {
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level1_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -577,6 +596,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level1_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -611,6 +631,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level1_multiple:", func() {
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level1_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -641,6 +662,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level1_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -675,6 +697,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level2_single:", func() {
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level2_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -705,6 +728,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level2_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -739,6 +763,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 		})
 		Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level2_multiple:", func() {
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level2_only_one_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)
@@ -769,6 +794,7 @@ func TestDropPartition_tabletMultiple(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Test_DropPartition_tabletMultiple_compo_range_range_drop_level2_all_table:", func() {
+				DfsDBPath := "dfs://" + generateRandomString(8)
 				re1, err := ExistsDatabase(ddb, DfsDBPath)
 				So(err, ShouldBeNil)
 				So(re1, ShouldBeFalse)

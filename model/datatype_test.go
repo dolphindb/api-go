@@ -531,3 +531,73 @@ func TestNewDataTypeWithNullValue(t *testing.T) {
 	assert.True(t, dt.IsNull())
 	assert.Equal(t, dt.String(), "")
 }
+
+func TestDecimal128(t *testing.T) {
+	dt, err := NewDataType(DtDecimal128, &Decimal128{Scale: 0, Value: "123.2"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "123")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 0, Value: "-123.2"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "-123")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 0, Value: "0"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "0")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 18, Value: "1.2312"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "1.231200000000000000")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 18, Value: "-1.2312"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "-1.231200000000000000")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 19, Value: "1.2312"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "1.2312000000000000000")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 19, Value: "-1.2312"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "-1.2312000000000000000")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 19, Value: "1.2312000000000000001123456"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "1.2312000000000000001")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 30, Value: "99999999.999999999999999999999999999999"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "99999999.999999999999999999999999999999")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 30, Value: "99999999.000000000000000000000000000009"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "99999999.000000000000000000000000000009")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 30, Value: "-99999999.999999999999999999999999999999"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "-99999999.999999999999999999999999999999")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 30, Value: "-99999999.000000000000000000000000000009"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "-99999999.000000000000000000000000000009")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 37, Value: "9.9999999999999999999999999999999999999"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "9.9999999999999999999999999999999999999")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 37, Value: "9.9999999000000000000000000000000000009"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "9.9999999000000000000000000000000000009")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 37, Value: "-9.9999999999999999999999999999999999999"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "-9.9999999999999999999999999999999999999")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 37, Value: "-9.9999999000000000000000000000000000009"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "-9.9999999000000000000000000000000000009")
+
+	dt, err = NewDataType(DtDecimal128, &Decimal128{Scale: 6, Value: "103"})
+	assert.Nil(t, err)
+	assert.Equal(t, dt.String(), "103.000000")
+}

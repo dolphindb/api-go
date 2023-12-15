@@ -15,12 +15,12 @@ import (
 
 func CreateScript(Num int) string {
 	script := `
-	dbName="dfs://test_dfs_table"
+	dbName="dfs://` + generateRandomString(5) + `"
 	if(existsDatabase(dbName)){
-		dropDatabase(dbName)	
+		dropDatabase(dbName)
 	}
 	n=` + strconv.Itoa(Num) + `
-	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v"], 
+	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v"],
 	[SYMBOL, BOOL, INT, LONG, SHORT, DOUBLE, FLOAT, STRING, CHAR, TIMESTAMP, DATE, DATETIME, MONTH, TIME, MINUTE, SECOND, NANOTIME, NANOTIMESTAMP, DATEHOUR, UUID, IPADDR, INT128])
 	db=database(dbName, VALUE, ["A", "B", "C", "D", "E", "F"])
 	pt=db.createPartitionedTable(t, "pt", "sym")
@@ -52,6 +52,7 @@ func CreateScript(Num int) string {
 }
 
 func TestDfsTable(t *testing.T) {
+	t.Parallel()
 	Convey("test dfsTable download data", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -405,12 +406,12 @@ func TestDfsTable(t *testing.T) {
 
 func CreateDecimalTypeScript(Num int) string {
 	script := `
-	dbName="dfs://test_dfs_table"
+	dbName="dfs://` + generateRandomString(5) + `"
 	if(existsDatabase(dbName)){
-		dropDatabase(dbName)	
+		dropDatabase(dbName)
 	}
 	n=` + strconv.Itoa(Num) + `
-	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v", "decimal32v", "decimal64v"], 
+	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v", "decimal32v", "decimal64v"],
 	[SYMBOL, BOOL, INT, LONG, SHORT, DOUBLE, FLOAT, STRING, CHAR, TIMESTAMP, DATE, DATETIME, MONTH, TIME, MINUTE, SECOND, NANOTIME, NANOTIMESTAMP, DATEHOUR, UUID, IPADDR, INT128, DECIMAL32(3), DECIMAL64(10)])
 	db=database(dbName, VALUE, ["A", "B", "C", "D", "E", "F"])
 	pt=db.createPartitionedTable(t, "pt", "sym")
@@ -444,6 +445,7 @@ func CreateDecimalTypeScript(Num int) string {
 }
 
 func TestDfsTable_decimal(t *testing.T) {
+	t.Parallel()
 	Convey("test dfsTable download data", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -546,12 +548,12 @@ func TestDfsTable_decimal(t *testing.T) {
 
 func CreateDecimalTypeScript_arrayVector(Num int) string {
 	script := `
-	dbName="dfs://test_dfs_table"
+	dbName="dfs://` + generateRandomString(5) + `"
 	if(existsDatabase(dbName)){
-		dropDatabase(dbName)	
+		dropDatabase(dbName)
 	}
 	n=` + strconv.Itoa(Num) + `
-	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v", "decimal32v", "decimal64v"], 
+	t=table(100:0, ["sym", "boolv", "intv", "longv", "shortv", "doublev", "floatv", "str", "charv", "timestampv", "datev", "datetimev", "monthv", "timev", "minutev", "secondv", "nanotimev", "nanotimestamp", "datehourv", "uuidv", "ipaddrv", "int128v", "decimal32v", "decimal64v"],
 	[SYMBOL, BOOL, INT, LONG, SHORT, DOUBLE, FLOAT, STRING, CHAR, TIMESTAMP, DATE, DATETIME, MONTH, TIME, MINUTE, SECOND, NANOTIME, NANOTIMESTAMP, DATEHOUR, UUID, IPADDR, INT128, DECIMAL32(3)[], DECIMAL64(10)[]])
 	db=database(dbName, VALUE, ["A", "B", "C", "D", "E", "F"], , "TSDB")
 	pt=db.createPartitionedTable(t, "pt", "sym", , ["sym", "timestampv"])
@@ -584,6 +586,7 @@ func CreateDecimalTypeScript_arrayVector(Num int) string {
 	return script
 }
 func TestDfsTable_decimal_arrayVector(t *testing.T) {
+	t.Parallel()
 	Convey("test dfsTable download data", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)

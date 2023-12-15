@@ -15,7 +15,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-const (
+var (
 	DBdfsPath     = "dfs://test_multiGoroutineTable"
 	DBDiskPath    = setup.WORK_DIR + "/test_multiGoroutineTable"
 	DfsTableName1 = "pt1"
@@ -42,25 +42,46 @@ func CheckListEqual(re []interface{}, ex []byte) bool {
 	return true
 }
 
-func insertalldatatype(mtt *mtw.MultiGoroutineTable) error {
+type Tuple struct {
+	boolcol       []bool
+	charcol       []byte
+	shortcol      []int16
+	intcol        []int32
+	longcol       []int64
+	datecol       []time.Time
+	monthcol      []time.Time
+	timestampcol  []time.Time
+	floatcol      []float32
+	doublecol     []float64
+	stringcol     []string
+	symcol        []string
+	uuidcol       []string
+	int128col     []string
+	ipaddrcol     []string
+	decimal32col  []*model.Decimal32
+	decimal64col  []*model.Decimal64
+	decimal128col []*model.Decimal128
+}
+
+func insertalldatatype(mtt *mtw.MultiGoroutineTable) Tuple {
 	timeList := []string{"1969/12/31 13:30:10.008", "1970/01/13 10:28:10.485", "2006/06/13 23:29:10.008", "1970/06/13 13:56:14.123", "1846/06/13 10:14:02.456", "2024/06/13 12:34:14.008"}
-	colBool := []byte{1, 0, 1, 0, 0, 0}
+	colBool := []bool{true, false, true, false, false, false}
 	colchar := []byte{2, 3, 4, 6, 5, 8}
 	colshort := []int16{2, 3, 8, 10, 11, 15}
 	colInt := []int32{2, 3, 8, 10, 11, 15}
 	collong := []int64{2, 3, 8, 10, 11, 15}
-	coldate := []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(1969, time.Month(12), 31, 1, 1, 0, 0, time.UTC),
-		time.Date(1970, time.Month(1), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(1971, time.Month(3), 12, 1, 1, 0, 0, time.UTC),
-		time.Date(1969, time.Month(11), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(2024, time.Month(3), 1, 1, 1, 0, 0, time.UTC)}
-	colmonthv := []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(1969, time.Month(12), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(1970, time.Month(1), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(1971, time.Month(3), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(1969, time.Month(11), 1, 1, 1, 0, 0, time.UTC),
-		time.Date(2024, time.Month(3), 1, 1, 1, 0, 0, time.UTC)}
+	coldate := []time.Time{time.Date(2022, time.Month(1), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1969, time.Month(12), 31, 0, 0, 0, 0, time.UTC),
+		time.Date(1970, time.Month(1), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1971, time.Month(3), 12, 0, 0, 0, 0, time.UTC),
+		time.Date(1969, time.Month(11), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, time.Month(3), 1, 0, 0, 0, 0, time.UTC)}
+	colmonthv := []time.Time{time.Date(2022, time.Month(1), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1969, time.Month(12), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1970, time.Month(1), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1971, time.Month(3), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1969, time.Month(11), 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, time.Month(3), 1, 0, 0, 0, 0, time.UTC)}
 	coltimestamp := CreateTimeList(6, "15:04:05.041", timeList)
 	colfloat := []float32{2.3, 4.6, 5.5, 4.9, 55.6, 22.3}
 	coldouble := []float64{2.3, 4.6, 5.5, 4.9, 55.6, 22.3}
@@ -69,14 +90,36 @@ func insertalldatatype(mtt *mtw.MultiGoroutineTable) error {
 	coluuid := []string{"88b4ac61-1a43-94ca-1352-4da53cda28bd", "9e495846-1e79-2ca1-bb9b-cf62c3556976", "88b4ac61-1a43-94ca-1352-4da53cda28bd", "9e495846-1e79-2ca1-bb9b-cf62c3556976", "88b4ac61-1a43-94ca-1352-4da53cda28bd", "9e495846-1e79-2ca1-bb9b-cf62c3556976"}
 	colInt128 := []string{"af5cad08c356296a0544b6bf11556484", "af5cad08c356296a0544b6bf11556484", "af5cad08c356296a0544b6bf11556484", "af5cad08c356296a0544b6bf11556484", "af5cad08c356296a0544b6bf11556484", "af5cad08c356296a0544b6bf11556484"}
 	colipaddr := []string{"3d5b:14af:b811:c475:5c90:f554:45aa:98a6", "3d5b:14af:b811:c475:5c90:f554:45aa:98a6", "3d5b:14af:b811:c475:5c90:f554:45aa:98a6", "3d5b:14af:b811:c475:5c90:f554:45aa:98a6", "3d5b:14af:b811:c475:5c90:f554:45aa:98a6", "3d5b:14af:b811:c475:5c90:f554:45aa:98a6"}
+	coldecimal32 := []*model.Decimal32{
+		{Scale: 6, Value: 10},
+		{Scale: 6, Value: model.NullDecimal32Value},
+		{Scale: 6, Value: 0},
+		{Scale: 6, Value: -1.123},
+		{Scale: 6, Value: 3.1234567},
+		{Scale: 6, Value: model.NullDecimal32Value}}
+	coldecimal64 := []*model.Decimal64{
+		{Scale: 12, Value: 10},
+		{Scale: 12, Value: model.NullDecimal64Value},
+		{Scale: 12, Value: 0},
+		{Scale: 12, Value: -1.123},
+		{Scale: 12, Value: 3.1234567111111},
+		{Scale: 12, Value: model.NullDecimal64Value}}
+	coldecimal128 := []*model.Decimal128{
+		{Scale: 24, Value: "10"},
+		{Scale: 24, Value: model.NullDecimal128Value},
+		{Scale: 24, Value: "0"},
+		{Scale: 24, Value: "-1.123"},
+		{Scale: 24, Value: "3.1234567111111111111111111"},
+		{Scale: 24, Value: model.NullDecimal128Value}}
+
 	for i := 0; i < 6; i++ {
 		err := mtt.Insert(colBool[i], colchar[i], colshort[i], colInt[i], collong[i],
-			coldate[i], colmonthv[i], coltimestamp[i], colfloat[i], coldouble[i], colstring[i], colsym[i], coluuid[i], colInt128[i], colipaddr[i])
+			coldate[i], colmonthv[i], coltimestamp[i], colfloat[i], coldouble[i], colstring[i], colsym[i], coluuid[i], colInt128[i], colipaddr[i], coldecimal32[i], coldecimal64[i], coldecimal128[i])
 		if err != nil {
-			return err
+			panic(err)
 		}
 	}
-	return nil
+	return Tuple{colBool, colchar, colshort, colInt, collong, coldate, colmonthv, coltimestamp, colfloat, coldouble, colstring, colsym, coluuid, colInt128, colipaddr, coldecimal32, coldecimal64, coldecimal128}
 }
 
 func threadinsertData(mtt *mtw.MultiGoroutineTable, n int) {
@@ -856,8 +899,8 @@ func TestMultiGoroutineTable_all_data_type(t *testing.T) {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		scriptalldatatype := `
-		t = table(1000:0, ["boolv", "charv", "shortv", "intv", "longv", "datev", "monthv", "timestampv", "floatv", "doublev", "stringv", "sym", "uuidv", "int128v", "ipv"],
-		[BOOL, CHAR, SHORT, INT, LONG, DATE, MONTH, TIMESTAMP, FLOAT, DOUBLE, STRING, SYMBOL, UUID, INT128, IPADDR]);
+		t = table(1000:0, ["boolv", "charv", "shortv", "intv", "longv", "datev", "monthv", "timestampv", "floatv", "doublev", "stringv", "sym", "uuidv", "int128v", "ipv", "decimal32v", "decimal64v", "decimal128v"],
+		[BOOL, CHAR, SHORT, INT, LONG, DATE, MONTH, TIMESTAMP, FLOAT, DOUBLE, STRING, SYMBOL, UUID, INT128, IPADDR, DECIMAL32(6), DECIMAL64(12), DECIMAL128(24)]);
 		share t as all_data_type`
 		_, err = ddb.RunScript(scriptalldatatype)
 		So(err, ShouldBeNil)
@@ -874,20 +917,76 @@ func TestMultiGoroutineTable_all_data_type(t *testing.T) {
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
-		err = insertalldatatype(mtt)
-		So(err, ShouldBeNil)
+		tup := insertalldatatype(mtt)
 		mtt.WaitForGoroutineCompletion()
 		ErrMsg := mtt.GetStatus().ErrMsg
 		So(ErrMsg, ShouldEqual, "")
-		re, err := ddb.RunScript("select * from all_data_type")
+		re, err := ddb.RunScript("select * from all_data_type order by intv")
 		So(err, ShouldBeNil)
 		reTable := re.(*model.Table)
 		reColNameList := reTable.GetColumnNames()
-		exColNameList := []string{"boolv", "charv", "shortv", "intv", "longv", "datev", "monthv", "timestampv", "floatv", "doublev", "stringv", "sym", "uuidv", "int128v", "ipv"}
+		exColNameList := []string{"boolv", "charv", "shortv", "intv", "longv", "datev", "monthv", "timestampv", "floatv", "doublev", "stringv", "sym", "uuidv", "int128v", "ipv", "decimal32v", "decimal64v", "decimal128v"}
 		So(reColNameList, ShouldResemble, exColNameList)
 		reboolv := reTable.GetColumnByName("boolv").Data.Value()
-		exboolv := []byte{1, 0, 1, 0, 0, 0}
-		CheckListEqual(reboolv, exboolv)
+		recharv := reTable.GetColumnByName("charv").Data.Value()
+		reshortv := reTable.GetColumnByName("shortv").Data.Value()
+		reintv := reTable.GetColumnByName("intv").Data.Value()
+		relongv := reTable.GetColumnByName("longv").Data.Value()
+		redatev := reTable.GetColumnByName("datev").Data.Value()
+		remonthv := reTable.GetColumnByName("monthv").Data.Value()
+		retimestampv := reTable.GetColumnByName("timestampv").Data.Value()
+		refloatv := reTable.GetColumnByName("floatv").Data.Value()
+		redoublev := reTable.GetColumnByName("doublev").Data.Value()
+		restringv := reTable.GetColumnByName("stringv").Data.Value()
+		resymv := reTable.GetColumnByName("sym").Data.Value()
+		reuuidv := reTable.GetColumnByName("uuidv").Data.Value()
+		reint128v := reTable.GetColumnByName("int128v").Data.Value()
+		reipv := reTable.GetColumnByName("ipv").Data.Value()
+		redecimal32v := reTable.GetColumnByName("decimal32v").Data.Value()
+		redecimal64v := reTable.GetColumnByName("decimal64v").Data.Value()
+		redecimal128v := reTable.GetColumnByName("decimal128v").Data.Value()
+		for i := 0; i < reTable.Rows(); i++ {
+			So(reboolv[i], ShouldEqual, tup.boolcol[i])
+			So(recharv[i], ShouldEqual, tup.charcol[i])
+			So(reshortv[i], ShouldEqual, tup.shortcol[i])
+			So(reintv[i], ShouldEqual, tup.intcol[i])
+			So(relongv[i], ShouldEqual, tup.longcol[i])
+			So(redatev[i], ShouldEqual, tup.datecol[i])
+			So(remonthv[i], ShouldEqual, tup.monthcol[i])
+			So(retimestampv[i], ShouldEqual, tup.timestampcol[i])
+			So(refloatv[i], ShouldEqual, tup.floatcol[i])
+			So(redoublev[i], ShouldEqual, tup.doublecol[i])
+			So(restringv[i], ShouldEqual, tup.stringcol[i])
+			So(resymv[i], ShouldEqual, tup.symcol[i])
+			So(reuuidv[i], ShouldEqual, tup.uuidcol[i])
+			So(reint128v[i], ShouldEqual, tup.int128col[i])
+			So(reipv[i], ShouldEqual, tup.ipaddrcol[i])
+			coldecimal32 := []*model.Decimal32{
+				{Scale: 6, Value: 10},
+				{Scale: 6, Value: model.NullDecimal32Value},
+				{Scale: 6, Value: 0},
+				{Scale: 6, Value: -1.123},
+				{Scale: 6, Value: 3.123456},
+				{Scale: 6, Value: model.NullDecimal32Value}}
+			coldecimal64 := []*model.Decimal64{
+				{Scale: 12, Value: 10},
+				{Scale: 12, Value: model.NullDecimal64Value},
+				{Scale: 12, Value: 0},
+				{Scale: 12, Value: -1.123},
+				{Scale: 12, Value: 3.123456711111},
+				{Scale: 12, Value: model.NullDecimal64Value}}
+			coldecimal128 := []*model.Decimal128{
+				{Scale: 24, Value: "10.000000000000000000000000"},
+				{Scale: 24, Value: model.NullDecimal128Value},
+				{Scale: 24, Value: "0.000000000000000000000000"},
+				{Scale: 24, Value: "-1.123000000000000000000000"},
+				{Scale: 24, Value: "3.123456711111111111111111"},
+				{Scale: 24, Value: model.NullDecimal128Value}}
+			So(redecimal32v[i], ShouldResemble, coldecimal32[i])
+			So(redecimal64v[i], ShouldResemble, coldecimal64[i])
+			So(redecimal128v[i], ShouldResemble, coldecimal128[i])
+		}
+
 		_, err = ddb.RunScript("undef(`all_data_type, SHARED)")
 		So(err, ShouldBeNil)
 		err = ddb.Close()

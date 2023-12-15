@@ -7,7 +7,9 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 
+	"github.com/dolphindb/api-go/dialer"
 	"github.com/dolphindb/api-go/dialer/protocol"
 	"github.com/dolphindb/api-go/model"
 )
@@ -20,43 +22,70 @@ type messageParser struct {
 	topic            string
 	topicNameToIndex map[string]map[string]int
 }
+func closeUnboundedChan(q *UnboundedChan) {
+	close(q.In)
+	// y := 0
+	// for {
+	// 	select {
+	// 	case <-q.Out:
+	// 		y++
+	// 		// fmt.Println("drain", y)
+	// 	default:
+	// 		return
+	// 	}
+	// }
+}
 
 func (m *messageParser) run() {
-	if err := m.parse(); err != nil {
-		if IsClosed(m.topic) {
-			return
-		}
+	err := m.parse();
 
+	// TODO concern more than one topic
+	if IsClosed(m.topic) {
+		raw, ok := queueMap.Load(m.topic)
+		if ok && raw != nil {
+			// HACK close queue at message parser & reconnect place, if not close here, then close at reconnect place
+			queueMap.Delete(m.topic)
+			haTopicToTrueTopic.Delete(m.topic)
+			trueTopicToSites.Delete(m.topic)
+			q := raw.(*UnboundedChan)
+			closeUnboundedChan(q)
+		}
+	}
+
+	// TODO if m.topic is not ready, but connection is over, how to make sure it know if it should reconnect or not
+	if err != nil && !IsClosed(m.topic) {
 		setReconnectItem(m.topic, 1)
 	}
 }
 
 func (m *messageParser) parseHeader(r protocol.Reader, bo protocol.ByteOrder) (uint64, error) {
-	byts, err := r.ReadCertainBytes(16)
+	bytes, err := r.ReadCertainBytes(16)
 	if err != nil {
 		fmt.Printf("Failed to read msgID from conn: %s\n", err.Error())
 		return 0, err
 	}
 
-	msgID := bo.Uint64(byts[8:])
-	byts, err = r.ReadBytes(protocol.StringSep)
+	msgID := bo.Uint64(bytes[8:])
+	bytes, err = r.ReadBytes(protocol.StringSep)
 	if err != nil {
 		fmt.Printf("Failed to read topic from conn: %s\n", err.Error())
 		return 0, err
 	}
 
-	m.topic = string(byts)
+	m.topic = string(bytes)
 
 	return msgID, nil
 }
 
 func (m *messageParser) parse() error {
-	r := protocol.NewReader(m.Conn)
+	r := m.Conn.(dialer.Conn).GetReader()
+	// r := protocol.NewReader(m.Conn)
+	m.Conn.SetDeadline(time.Time{})
 	for !m.IsClosed() {
 		b, err := r.ReadByte()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return nil
+				return err
 			}
 
 			fmt.Printf("Failed to read ByteOrder byte from conn: %s\n", err.Error())
@@ -159,7 +188,7 @@ func (m *messageParser) generateMessage(offset int64, vct *model.Vector) *Messag
 		offset:      offset,
 		topic:       m.topic,
 		msg:         vct,
-		nameToIndex: m.topicNameToIndex[topics[0]],
+		nameToIndex: m.topicNameToIndex[topics[0]], // TODO why use first one ?
 	}
 }
 

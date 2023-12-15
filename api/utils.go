@@ -8,11 +8,13 @@ import (
 )
 
 func generateDBName() string {
-	return fmt.Sprintf("db_%s", uuid.NewV4().String()[:8])
+	u1 := uuid.Must(uuid.NewV4())
+	return fmt.Sprintf("db_%s", u1.String()[:8])
 }
 
 func generateTableName() string {
-	return fmt.Sprintf("tb_%s", uuid.NewV4().String()[:8])
+	u1 := uuid.Must(uuid.NewV4())
+	return fmt.Sprintf("tb_%s", u1.String()[:8])
 }
 
 func generateCreateDatabaseParam(d *DatabaseRequest) string {

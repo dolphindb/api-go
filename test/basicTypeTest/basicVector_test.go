@@ -2,6 +2,8 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 )
 
 func Test_Vector_Download_Datatype_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_string:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -81,6 +84,7 @@ func Test_Vector_Download_Datatype_string(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_any(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_any:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -101,6 +105,7 @@ func Test_Vector_Download_Datatype_any(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_char:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -160,6 +165,7 @@ func Test_Vector_Download_Datatype_char(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_bool:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -221,6 +227,7 @@ func Test_Vector_Download_Datatype_bool(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_symbol(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_symbol:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -281,6 +288,7 @@ func Test_Vector_Download_Datatype_symbol(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_int:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -343,6 +351,7 @@ func Test_Vector_Download_Datatype_int(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_short:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -415,6 +424,7 @@ func Test_Vector_Download_Datatype_short(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -479,6 +489,7 @@ func Test_Vector_Download_Datatype_long(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_double:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -539,6 +550,7 @@ func Test_Vector_Download_Datatype_double(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_float:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -599,6 +611,7 @@ func Test_Vector_Download_Datatype_float(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_date:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -656,6 +669,7 @@ func Test_Vector_Download_Datatype_date(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_month:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -713,6 +727,7 @@ func Test_Vector_Download_Datatype_month(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_time:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -770,6 +785,7 @@ func Test_Vector_Download_Datatype_time(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_minute:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -827,6 +843,7 @@ func Test_Vector_Download_Datatype_minute(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_second:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -884,6 +901,7 @@ func Test_Vector_Download_Datatype_second(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_datetime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -941,6 +959,7 @@ func Test_Vector_Download_Datatype_datetime(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_timestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -998,6 +1017,7 @@ func Test_Vector_Download_Datatype_timestamp(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_nanotime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1055,6 +1075,7 @@ func Test_Vector_Download_Datatype_nanotime(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_nanotimestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1112,6 +1133,7 @@ func Test_Vector_Download_Datatype_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_datehour:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1169,6 +1191,7 @@ func Test_Vector_Download_Datatype_datehour(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_decimal32:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1232,6 +1255,7 @@ func Test_Vector_Download_Datatype_decimal32(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_decimal64:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1294,7 +1318,72 @@ func Test_Vector_Download_Datatype_decimal64(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+func Test_Vector_Download_Datatype_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_vector_decimal128:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_vector_decimal128_not_null:", func() {
+			s, err := db.RunScript("decimal128([`0, '-1.123123123123123123123123123123123123123', '987654321.123456789'], 26)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "0.00000000000000000000000000")
+			So(result.Get(1).String(), ShouldEqual, "-1.12312312312312312312312312")
+			So(result.Get(2).String(), ShouldEqual, "987654321.12345678900000000000000000")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal128).Scale, ShouldEqual, 26)
+			So(re[1].(*model.Decimal128).Scale, ShouldEqual, 26)
+			So(re[2].(*model.Decimal128).Scale, ShouldEqual, 26)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, model.DtDecimal128)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128")
+		})
+		Convey("Test_vector_decimal128_has_null:", func() {
+			s, err := db.RunScript(`decimal128(["-1.2", "", NULL], 2)`)
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "-1.20")
+			So(result.Get(1).IsNull(), ShouldBeTrue)
+			So(result.Get(2).IsNull(), ShouldBeTrue)
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal128).Scale, ShouldEqual, 2)
+			So(re[1].(*model.Decimal128).Scale, ShouldEqual, 2)
+			So(re[2].(*model.Decimal128).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, model.DtDecimal128)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128")
+		})
+		Convey("Test_vector_decimal128_all_null:", func() {
+			s, err := db.RunScript("[decimal128(NULL, 2)]")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			So(result.Get(0).String(), ShouldEqual, "")
+
+			re := result.Data.Value()
+			So(re[0].(*model.Decimal128).Scale, ShouldEqual, 2)
+
+			reType := result.GetDataType()
+			reForm := result.GetDataForm()
+			So(reForm, ShouldEqual, model.DfVector)
+			So(reType, ShouldEqual, model.DtDecimal128)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
 func Test_Vector_Download_Datatype_uuid(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_uuid:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1364,6 +1453,7 @@ func Test_Vector_Download_Datatype_uuid(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_ipaddr(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_ipaddr:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1442,6 +1532,7 @@ func Test_Vector_Download_Datatype_ipaddr(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_int128(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_int128:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1504,6 +1595,7 @@ func Test_Vector_Download_Datatype_int128(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_complex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_complex:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1530,7 +1622,7 @@ func Test_Vector_Download_Datatype_complex(t *testing.T) {
 			So(err, ShouldBeNil)
 			result := s.(*model.Vector)
 			re := result.Data.Value()
-			zx := [3]string{"-2.00000+5.00000i", "0.00000+0.00000i", "-1048576.00000+-1048578.00000i"}
+			zx := [3]string{"-2.00000+5.00000i", "", "-1048576.00000+-1048578.00000i"}
 			var k int
 			for i := 0; i < len(re); i++ {
 				if re[i] == zx[i] {
@@ -1547,6 +1639,7 @@ func Test_Vector_Download_Datatype_complex(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_point(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_point:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1573,7 +1666,7 @@ func Test_Vector_Download_Datatype_point(t *testing.T) {
 			So(err, ShouldBeNil)
 			result := s.(*model.Vector)
 			re := result.Data.Value()
-			zx := [3]string{"(-2.00000, 5.00000)", "(0.00000, 0.00000)", "(-1048576.00000, -1048578.00000)"}
+			zx := [3]string{"(-2.00000, 5.00000)", "(,)", "(-1048576.00000, -1048578.00000)"}
 			var k int
 			for i := 0; i < len(re); i++ {
 				if re[i] == zx[i] {
@@ -1591,6 +1684,7 @@ func Test_Vector_Download_Datatype_point(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_duration(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_duration:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1610,6 +1704,7 @@ func Test_Vector_Download_Datatype_duration(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_vector_big_than_1024(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_big_than_1024:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1630,6 +1725,7 @@ func Test_Vector_Download_Datatype_vector_big_than_1024(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_vector_big_than_1048576(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_big_than_1048576:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1653,6 +1749,7 @@ func Test_Vector_Download_Datatype_vector_big_than_1048576(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_array_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1671,6 +1768,7 @@ func Test_Vector_Download_Datatype_array_vector(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_array_vector_empty(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_array_vector_empty:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1685,6 +1783,7 @@ func Test_Vector_Download_Datatype_array_vector_empty(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_array_vector_big_than_1024(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_array_vector_big_than_1024:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1702,6 +1801,7 @@ func Test_Vector_Download_Datatype_array_vector_big_than_1024(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_array_vector_big_than_1048576(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_array_vector_big_than_1048576:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1719,6 +1819,7 @@ func Test_Vector_Download_Datatype_array_vector_big_than_1048576(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_bigArray(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_bigArray:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1737,6 +1838,7 @@ func Test_Vector_Download_Datatype_bigArray(t *testing.T) {
 	})
 }
 func Test_Vector_Download_Datatype_subArray(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_subArray:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1756,6 +1858,7 @@ func Test_Vector_Download_Datatype_subArray(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_int_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1782,6 +1885,7 @@ func Test_Vector_UpLoad_Datatype_int(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_short_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1808,6 +1912,7 @@ func Test_Vector_UpLoad_Datatype_short(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_char_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1830,6 +1935,7 @@ func Test_Vector_UpLoad_Datatype_char(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1856,6 +1962,7 @@ func Test_Vector_UpLoad_Datatype_long(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_float_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1882,6 +1989,7 @@ func Test_Vector_UpLoad_Datatype_float(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_double_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1908,6 +2016,7 @@ func Test_Vector_UpLoad_Datatype_double(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_date_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1934,6 +2043,7 @@ func Test_Vector_UpLoad_Datatype_date(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_month_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1960,6 +2070,7 @@ func Test_Vector_UpLoad_Datatype_month(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_time_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1986,6 +2097,7 @@ func Test_Vector_UpLoad_Datatype_time(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_minute_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2012,6 +2124,7 @@ func Test_Vector_UpLoad_Datatype_minute(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_second_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2038,6 +2151,7 @@ func Test_Vector_UpLoad_Datatype_second(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_datetime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2064,6 +2178,7 @@ func Test_Vector_UpLoad_Datatype_datetime(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_timestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2090,6 +2205,7 @@ func Test_Vector_UpLoad_Datatype_timestamp(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_nanotime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2116,6 +2232,7 @@ func Test_Vector_UpLoad_Datatype_nanotime(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_nanotimestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2142,6 +2259,7 @@ func Test_Vector_UpLoad_Datatype_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_datehour_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2169,6 +2287,7 @@ func Test_Vector_UpLoad_Datatype_datehour(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_Datatype_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_decimal32_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2184,6 +2303,7 @@ func Test_Vector_UpLoad_Datatype_decimal32(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_decimal64_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2198,7 +2318,25 @@ func Test_Vector_UpLoad_Datatype_decimal64(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Vector_UpLoad_Datatype_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_vector_decimal128_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_vector_decimal128:", func() {
+			dls, _ := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 0, Value: []string{"0", "-1.123123123123123123123123123123123123123", "987654321.123456789", model.NullDecimal128Value, ""}})
+			s := model.NewVector(dls)
+			_, err := db.Upload(map[string]model.DataForm{"s": s})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("ex=decimal128([`0, '-1', `987654321, NULL, string(NULL)], 0);eqObj(s, ex)")
+			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
 func Test_Vector_UpLoad_Datatype_point(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_point_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2225,6 +2363,7 @@ func Test_Vector_UpLoad_Datatype_point(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_complex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_complex_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2251,6 +2390,7 @@ func Test_Vector_UpLoad_Datatype_complex(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_string_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2277,6 +2417,7 @@ func Test_Vector_UpLoad_Datatype_string(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_any(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_any_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2294,6 +2435,7 @@ func Test_Vector_UpLoad_Datatype_any(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_bool_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2320,6 +2462,7 @@ func Test_Vector_UpLoad_Datatype_bool(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_blob(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_blob_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2342,6 +2485,7 @@ func Test_Vector_UpLoad_Datatype_blob(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_uuid(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_uuid_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2368,6 +2512,7 @@ func Test_Vector_UpLoad_Datatype_uuid(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_ipaddr(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_ipaddr_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2394,6 +2539,7 @@ func Test_Vector_UpLoad_Datatype_ipaddr(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_Datatype_int28(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_int128_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2418,6 +2564,7 @@ func Test_Vector_UpLoad_Datatype_int28(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_int_array_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_int_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2443,6 +2590,7 @@ func Test_Vector_UpLoad_int_array_vector(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_bool_array_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_bool_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2469,6 +2617,7 @@ func Test_Vector_UpLoad_bool_array_vector(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_big_array_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_int_big_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2491,6 +2640,12 @@ func Test_Vector_UpLoad_big_array_vector(t *testing.T) {
 		So(err, ShouldBeNil)
 		ty, _ := db.RunScript("typestr(s)")
 		re := res.(*model.Vector)
+		re.GetVectorValue(0)
+		re.GetVectorValue(1)
+		re.GetVectorValue(2)
+		So(re.GetVectorValue(0).Rows(), ShouldEqual, 1048579)
+		So(re.GetVectorValue(1).Rows(), ShouldEqual, 4)
+		So(re.GetVectorValue(2).Rows(), ShouldEqual, 4)
 		So(re.ColumnCount, ShouldEqual, 1048587)
 		So(re.Get(5).Value(), ShouldEqual, 5*12)
 		So(re.Get(995).Value(), ShouldEqual, 995*12)
@@ -2503,6 +2658,7 @@ func Test_Vector_UpLoad_big_array_vector(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2557,6 +2713,7 @@ func Test_arrayvector_Download_Datatype_int(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2612,6 +2769,7 @@ func Test_arrayvector_Download_Datatype_long(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2667,6 +2825,7 @@ func Test_arrayvector_Download_Datatype_short(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2722,6 +2881,7 @@ func Test_arrayvector_Download_Datatype_double(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2777,6 +2937,7 @@ func Test_arrayvector_Download_Datatype_float(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2832,6 +2993,7 @@ func Test_arrayvector_Download_Datatype_bool(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2887,6 +3049,7 @@ func Test_arrayvector_Download_Datatype_char(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2943,6 +3106,7 @@ func Test_arrayvector_Download_Datatype_date(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2999,6 +3163,7 @@ func Test_arrayvector_Download_Datatype_month(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3056,6 +3221,7 @@ func Test_arrayvector_Download_Datatype_time(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3113,6 +3279,7 @@ func Test_arrayvector_Download_Datatype_minute(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3170,6 +3337,7 @@ func Test_arrayvector_Download_Datatype_second(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3226,6 +3394,7 @@ func Test_arrayvector_Download_Datatype_datetime(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3282,6 +3451,7 @@ func Test_arrayvector_Download_Datatype_timestamp(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3338,6 +3508,7 @@ func Test_arrayvector_Download_Datatype_nanotime(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3394,6 +3565,7 @@ func Test_arrayvector_Download_Datatype_nanotimestamp(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3459,6 +3631,7 @@ func Test_arrayvector_Download_Datatype_decimal32(t *testing.T) {
 }
 
 func Test_arrayvector_Download_Datatype_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_arrayvector_single_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3523,7 +3696,67 @@ func Test_arrayvector_Download_Datatype_decimal64(t *testing.T) {
 	})
 }
 
+func Test_arrayvector_Download_Datatype_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_arrayvector_single_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_arrayVector:", func() {
+			s, err := db.RunScript("re = bigarray(DECIMAL128(2)[], 0, 30).append!([[4, 92233720368547758, NULL, 100000000000000, NULL, -92233720368547758, -100000000000000, 3], [], [00i], [92233720368547758, 2, 100000000000000, -92233720368547758]]);re")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			So(re.Get(0).String(), ShouldEqual, "4.00")
+			So(re.Get(1).String(), ShouldEqual, "92233720368547758.00")
+			So(re.Get(2).String(), ShouldEqual, "")
+			So(re.Get(3).String(), ShouldEqual, "100000000000000.00")
+			So(re.Get(4).String(), ShouldEqual, "")
+			So(re.Get(5).String(), ShouldEqual, "-92233720368547758.00")
+			So(re.Get(6).String(), ShouldEqual, "-100000000000000.00")
+			So(re.Get(7).String(), ShouldEqual, "3.00")
+			re = result.GetVectorValue(1)
+			So(re.Rows(), ShouldEqual, 1)
+			So(re.Get(0).Value().(*model.Decimal128).String(), ShouldEqual, "")
+			re = result.GetVectorValue(2)
+			So(re.Rows(), ShouldEqual, 1)
+			So(re.Get(0).Value().(*model.Decimal128).String(), ShouldEqual, "")
+			re = result.GetVectorValue(3)
+			So(re.Get(0).Value().(*model.Decimal128).String(), ShouldEqual, "92233720368547758.00")
+			So(re.Get(1).Value().(*model.Decimal128).String(), ShouldEqual, "2.00")
+			So(re.Get(2).Value().(*model.Decimal128).String(), ShouldEqual, "100000000000000.00")
+			So(re.Get(3).Value().(*model.Decimal128).String(), ShouldEqual, "-92233720368547758.00")
+
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 103)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, model.DfVector)
+			formString := result.GetDataFormString()
+			So(formString, ShouldEqual, "vector")
+		})
+		Convey("Test_arrayVector_all_null:", func() {
+			s, err := db.RunScript("arr=array(DECIMAL128(3)[], 0, 10).append!([take(double(), 3)]);arr")
+			So(err, ShouldBeNil)
+			result := s.(*model.Vector)
+			re := result.GetVectorValue(0)
+			assert.Equal(t, re.String(), "vector<decimal128>([, , ])")
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 103)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128Array")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, 1)
+			So(re.Get(0).IsNull(), ShouldEqual, true)
+			So(re.Get(1).IsNull(), ShouldEqual, true)
+			So(re.Get(2).IsNull(), ShouldEqual, true)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Vector_UpLoad_array_vector_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3561,6 +3794,7 @@ func Test_Vector_UpLoad_array_vector_short(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3598,6 +3832,7 @@ func Test_Vector_UpLoad_array_vector_long(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3635,6 +3870,7 @@ func Test_Vector_UpLoad_array_vector_char(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3672,6 +3908,7 @@ func Test_Vector_UpLoad_array_vector_bool(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3709,6 +3946,7 @@ func Test_Vector_UpLoad_array_vector_float(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3746,6 +3984,7 @@ func Test_Vector_UpLoad_array_vector_double(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3783,6 +4022,7 @@ func Test_Vector_UpLoad_array_vector_date(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3820,6 +4060,7 @@ func Test_Vector_UpLoad_array_vector_month(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3857,6 +4098,7 @@ func Test_Vector_UpLoad_array_vector_datetime(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3894,6 +4136,7 @@ func Test_Vector_UpLoad_array_vector_timestamp(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3931,6 +4174,7 @@ func Test_Vector_UpLoad_array_vector_nanotimestamp(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -3968,6 +4212,7 @@ func Test_Vector_UpLoad_array_vector_time(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4005,6 +4250,7 @@ func Test_Vector_UpLoad_array_vector_second(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4042,6 +4288,7 @@ func Test_Vector_UpLoad_array_vector_minute(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4079,6 +4326,7 @@ func Test_Vector_UpLoad_array_vector_nanotime(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4116,6 +4364,7 @@ func Test_Vector_UpLoad_array_vector_datehour(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4155,6 +4404,7 @@ func Test_Vector_UpLoad_array_vector_decimal32(t *testing.T) {
 	})
 }
 func Test_Vector_UpLoad_array_vector_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4195,6 +4445,7 @@ func Test_Vector_UpLoad_array_vector_decimal64(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_decimal32_scale_min_in_first_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4235,6 +4486,7 @@ func Test_Vector_UpLoad_array_vector_decimal32_scale_min_in_first_vector(t *test
 }
 
 func Test_Vector_UpLoad_array_vector_decimal32_scale_zero_in_first_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4275,6 +4527,7 @@ func Test_Vector_UpLoad_array_vector_decimal32_scale_zero_in_first_vector(t *tes
 }
 
 func Test_Vector_UpLoad_vector_decimal32_scale_negative(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4286,6 +4539,7 @@ func Test_Vector_UpLoad_vector_decimal32_scale_negative(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_vector_decimal64_scale_negative(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4297,6 +4551,7 @@ func Test_Vector_UpLoad_vector_decimal64_scale_negative(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_vector_decimal64_scale_12(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4316,6 +4571,7 @@ func Test_Vector_UpLoad_vector_decimal64_scale_12(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_vector_decimal32_scale_10(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4327,6 +4583,7 @@ func Test_Vector_UpLoad_vector_decimal32_scale_10(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_vector_decimal64_scale_19(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4338,6 +4595,7 @@ func Test_Vector_UpLoad_vector_decimal64_scale_19(t *testing.T) {
 }
 
 func Test_Vector_UpLoad_array_vector_decimal32_scale_9_in_first_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4349,6 +4607,7 @@ func Test_Vector_UpLoad_array_vector_decimal32_scale_9_in_first_vector(t *testin
 }
 
 func Test_Vector_UpLoad_array_vector_decimal64_scale_17_in_first_vector(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4359,7 +4618,54 @@ func Test_Vector_UpLoad_array_vector_decimal64_scale_17_in_first_vector(t *testi
 	})
 }
 
+func Test_Vector_UpLoad_array_vector_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 30, Value: []string{"-1.123123123123123123123123123123123123123", "0", "", model.NullDecimal128Value}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 20, Value: []string{"-1.123123123123123123123123123123123123123", "0", "", model.NullDecimal128Value}})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 0, Value: []string{model.NullDecimal128Value, model.NullDecimal128Value, model.NullDecimal128Value, model.NullDecimal128Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)}) // 默认按第一个vector中的decimal数据scale作为整个arrayVector的scale
+		s := model.NewVectorWithArrayVector(NewData)
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		_, err = db.RunScript(`ex = array(DECIMAL128(30)[],0,3).append!([decimal128(["-1.123123123123123123123123123123123123123", "0", "", NULL],30), decimal128(["-1.123123123123123123123123123123123123123", "0", "", NULL],20), take(decimal128(NULL, 0), 4)]);print(ex);print(s);` +
+			`assert 1, eqObj(ex, s)`)
+		So(err, ShouldBeNil)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_vector_decimal128_scale_negative(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: -2, Value: []string{model.NullDecimal128Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 38], but get: -2)")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_UpLoad_vector_decimal128_scale_gt_38(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 40, Value: []string{model.NullDecimal128Value}})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 38], but get: 40)")
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_GetRawValue_Vector_Download_Datatype_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_int:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4427,6 +4733,7 @@ func Test_GetRawValue_Vector_Download_Datatype_int(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4497,6 +4804,7 @@ func Test_GetRawValue_Vector_Download_Datatype_long(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4567,6 +4875,7 @@ func Test_GetRawValue_Vector_Download_Datatype_short(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4601,6 +4910,7 @@ func Test_GetRawValue_Vector_Download_Datatype_char(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4633,6 +4943,7 @@ func Test_GetRawValue_Vector_Download_Datatype_bool(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4703,6 +5014,7 @@ func Test_GetRawValue_Vector_Download_Datatype_double(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4773,6 +5085,7 @@ func Test_GetRawValue_Vector_Download_Datatype_float(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_Date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4843,6 +5156,7 @@ func Test_GetRawValue_Vector_Download_Datatype_Date(t *testing.T) {
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_DateTime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_vector_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4913,6 +5227,7 @@ func Test_GetRawValue_Vector_Download_Datatype_DateTime(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4955,6 +5270,7 @@ func Test_GetRawValue_UpLoad_array_vector_double(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -4967,9 +5283,9 @@ func Test_GetRawValue_UpLoad_array_vector_float(t *testing.T) {
 		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
 		s := model.NewVectorWithArrayVector(NewData)
 		re := model.NewVector(vec1)
-		So(re.GetRawValue()[0], ShouldEqual, 2.365878945)
+		So(re.GetRawValue()[0], ShouldAlmostEqual, 2.365878945, 0.000001)
 		So(re.GetRawValue()[1], ShouldEqual, model.NullFloat)
-		So(re.GetRawValue()[2], ShouldEqual, -5.69154974)
+		So(re.GetRawValue()[2], ShouldAlmostEqual, -5.69154974, 0.000001)
 		_, err = db.Upload(map[string]model.DataForm{"s": s})
 		So(err, ShouldBeNil)
 		res, err := db.RunScript("s")
@@ -4997,6 +5313,7 @@ func Test_GetRawValue_UpLoad_array_vector_float(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5039,6 +5356,7 @@ func Test_GetRawValue_UpLoad_array_vector_int(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5081,6 +5399,7 @@ func Test_GetRawValue_UpLoad_array_vector_short(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5123,6 +5442,7 @@ func Test_GetRawValue_UpLoad_array_vector_long(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5165,6 +5485,7 @@ func Test_GetRawValue_UpLoad_array_vector_char(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5207,6 +5528,7 @@ func Test_GetRawValue_UpLoad_array_vector_bool(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5249,6 +5571,7 @@ func Test_GetRawValue_UpLoad_array_vector_date(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5291,6 +5614,7 @@ func Test_GetRawValue_UpLoad_array_vector_datetime(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5333,6 +5657,7 @@ func Test_GetRawValue_UpLoad_array_vector_datehour(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5375,6 +5700,7 @@ func Test_GetRawValue_UpLoad_array_vector_timestamp(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5417,6 +5743,7 @@ func Test_GetRawValue_UpLoad_array_vector_nanotimestamp(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5459,6 +5786,7 @@ func Test_GetRawValue_UpLoad_array_vector_nanotime(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5501,6 +5829,7 @@ func Test_GetRawValue_UpLoad_array_vector_time(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5543,6 +5872,7 @@ func Test_GetRawValue_UpLoad_array_vector_second(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5585,6 +5915,7 @@ func Test_GetRawValue_UpLoad_array_vector_minute(t *testing.T) {
 }
 
 func Test_GetRawValue_UpLoad_array_vector_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5628,6 +5959,7 @@ func Test_GetRawValue_UpLoad_array_vector_decimal32(t *testing.T) {
 	})
 }
 func Test_GetRawValue_UpLoad_array_vector_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_Vector_array_vector:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -5670,5 +6002,215 @@ func Test_GetRawValue_UpLoad_array_vector_decimal64(t *testing.T) {
 		So(result3.GetRawValue()[1].(*model.Decimal64).Value, ShouldEqual, model.NullDecimal64Value)
 		So(result3.GetRawValue()[2].(*model.Decimal64).Value, ShouldEqual, model.NullDecimal64Value)
 		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_GetRawValue_UpLoad_array_vector_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Vector_array_vector:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		vec1, err := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 3, Value: []string{"2.365878945", model.NullDecimal128Value, "-5.69154974"}})
+		So(err, ShouldBeNil)
+		vec2, err := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 6, Value: []string{"2.365878945", model.NullDecimal128Value, "-5.69154974"}})
+		So(err, ShouldBeNil)
+		vec3, err := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 2, Value: []string{model.NullDecimal128Value, model.NullDecimal128Value, model.NullDecimal128Value}})
+		So(err, ShouldBeNil)
+		NewData := model.NewArrayVector([]*model.Vector{model.NewVector(vec1), model.NewVector(vec2), model.NewVector(vec3)})
+		s := model.NewVectorWithArrayVector(NewData)
+		re := model.NewVector(vec1)
+		m1, _ := model.NewDataType(model.DtDecimal128, &model.Decimal128{Scale: 3, Value: "2.365"})
+		m2, _ := model.NewDataType(model.DtDecimal128, &model.Decimal128{Scale: 3, Value: "-5.691"})
+		So(re.GetRawValue()[0], ShouldResemble, model.NewScalar(m1).Value())
+		So(re.GetRawValue()[1].(*model.Decimal128).Value, ShouldEqual, model.NullDecimal128Value)
+		So(re.GetRawValue()[2], ShouldResemble, model.NewScalar(m2).Value())
+		_, err = db.Upload(map[string]model.DataForm{"s": s})
+		So(err, ShouldBeNil)
+		res, err := db.RunScript("s")
+		So(res.GetDataType(), ShouldEqual, 103)
+		So(err, ShouldBeNil)
+		typestr, _ := db.RunScript("typestr(s)")
+		So(typestr.String(), ShouldEqual, "string(FAST DECIMAL128[] VECTOR)")
+		re = res.(*model.Vector)
+		m := re.String()
+		So(m, ShouldEqual, "vector<decimal128Array>([[2.365, , -5.691], [2.365, , -5.691], [, , ]])")
+		result1 := re.GetVectorValue(0)
+		for i := 0; i < vec1.Len(); i++ {
+			So(result1.GetRawValue()[i], ShouldResemble, vec1.Value()[i])
+		}
+		result2 := re.GetVectorValue(1)
+		vec2M, _ := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{Scale: 3, Value: []string{"2.365878945", model.NullDecimal128Value, "-5.69154974"}})
+
+		for i := 0; i < vec2.Len(); i++ {
+			So(result2.GetRawValue()[i], ShouldResemble, vec2M.Value()[i])
+		}
+		result3 := re.GetVectorValue(2)
+		So(result3.GetRawValue()[0].(*model.Decimal128).Value, ShouldEqual, model.NullDecimal128Value)
+		So(result3.GetRawValue()[1].(*model.Decimal128).Value, ShouldEqual, model.NullDecimal128Value)
+		So(result3.GetRawValue()[2].(*model.Decimal128).Value, ShouldEqual, model.NullDecimal128Value)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_huge_val(t *testing.T) {
+	t.Parallel()
+	Convey("Test_vector_big_string_symbol_blob:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_vector_big_string:", func() {
+			res, _ := db.RunScript("a = array(STRING,10).append!(string(concat(take(\"1\", 256 * 1024))));a")
+
+			result := res.(*model.Vector)
+			So(result.RowCount, ShouldEqual, 11)
+			val11 := result.Get(10)
+			So(val11.String(), ShouldEqual, strings.Repeat("1", 256*1024))
+			for i := 0; i < 11; i++ {
+				if i != 10 {
+					kval := result.Get(i)
+					So(kval.Value(), ShouldEqual, "")
+				}
+			}
+			_, err := db.Upload(map[string]model.DataForm{"b": result})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+		Convey("Test_vector_big_blob:", func() {
+			res, _ := db.RunScript("a = array(BLOB,10).append!(blob(concat(take(\"123&#@!^%;d《》中文\",100000))));a")
+
+			result := res.(*model.Vector)
+			So(result.RowCount, ShouldEqual, 11)
+			val11 := result.Get(10)
+			So(val11.String(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			for i := 0; i < 11; i++ {
+				if i != 10 {
+					kval := result.Get(i)
+					So(kval.Value(), ShouldEqual, []uint8(nil))
+				}
+			}
+			db.Upload(map[string]model.DataForm{"b": result})
+			ans, _ := db.RunScript("eqObj(a,b)")
+			So(ans.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		Convey("Test_vector_big_symbol:", func() {
+			res, err := db.RunScript("a = array(SYMBOL,10).append!(symbol([concat(take(\"123&#@!^%;d《》中文\",100000))])[0]);a")
+			So(err, ShouldBeNil)
+			result := res.(*model.Vector)
+			So(result.RowCount, ShouldEqual, 11)
+			val11 := result.Get(10)
+			So(val11.String(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			for i := 0; i < 11; i++ {
+				if i != 10 {
+					kval := result.Get(i)
+					So(kval.Value(), ShouldEqual, "")
+				}
+			}
+			var str string
+			for i := 0; i < 300000; i++ {
+				str += "a"
+			}
+			rawdata, _ := model.NewDataTypeListFromRawData(model.DtSymbol, []string{str, str + "123"})
+			s := model.NewVector(rawdata)
+			_, err = db.Upload(map[string]model.DataForm{"s": s})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Vector_gt65535(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Vector_gt65535:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		tests := []struct {
+			typestr string
+			ex_type model.DataTypeByte
+			s       string
+			ex_val  string
+		}{
+			{"bool", model.DtBool, "default", "true"},
+			{"char", model.DtChar, "default", "1"},
+			{"short", model.DtShort, "default", "1"},
+			{"int", model.DtInt, "default", "1"},
+			{"long", model.DtLong, "default", "1"},
+			{"float", model.DtFloat, "default", "1"},
+			{"double", model.DtDouble, "default", "1"},
+			{"date", model.DtDate, "default", "1970.01.02"},
+			{"month", model.DtMonth, "default", "0000.02M"},
+			{"time", model.DtTime, "default", "00:00:00.001"},
+			{"minute", model.DtMinute, "default", "00:01m"},
+			{"second", model.DtSecond, "default", "00:00:01"},
+			{"datetime", model.DtDatetime, "default", "1970.01.01T00:00:01"},
+			{"timestamp", model.DtTimestamp, "default", "1970.01.01T00:00:00.001"},
+			{"nanotime", model.DtNanoTime, "default", "00:00:00.000000001"},
+			{"nanotimestamp", model.DtNanoTimestamp, "default", "1970.01.01T00:00:00.000000001"},
+			{"uuid", model.DtUUID, "", "5d212a78-cc48-e3b1-4235-b4d91473ee87"},
+			{"ipaddr", model.DtIP, "", "1.1.1.1"},
+			{"int128", model.DtInt128, "", "e1671797c52e15f763380b45e841ec32"},
+			{"symbol", model.DtSymbol + 128, "", "abc"}, // symbol_extend
+			{"string", model.DtString, "", "abc"},
+			{"blob", model.DtBlob, "", "abc"},
+			{"decimal32(6)", model.DtDecimal32, "default", "1.000000"},
+			{"decimal64(16)", model.DtDecimal64, "default", "1.0000000000000000"},
+			{"decimal128(26)", model.DtDecimal128, "default", "1.00000000000000000000000000"},
+		}
+		for _, test := range tests {
+			test := test
+			Convey(fmt.Sprintf("test download vector with type %s", test.typestr), func() {
+				if test.s == "default" {
+					test.s = fmt.Sprintf("array(%s, 70000,, 1)", strings.ToUpper(test.typestr))
+				} else {
+					if test.typestr == "string" || test.typestr == "symbol" {
+						test.s = fmt.Sprintf("array(%s, 70000,, 'abc')", strings.ToUpper(test.typestr))
+					} else if test.typestr == "blob" {
+						test.s = "take(blob(['abc']), 70000)"
+					} else if test.typestr == "uuid" {
+						test.s = "take(uuid(['5d212a78-cc48-e3b1-4235-b4d91473ee87']), 70000)"
+					} else if test.typestr == "ipaddr" {
+						test.s = "take(ipaddr(['1.1.1.1']), 70000)"
+					} else if test.typestr == "int128" {
+						test.s = "take(int128(['e1671797c52e15f763380b45e841ec32']), 70000)"
+					}
+				}
+				res, err := db.RunScript(test.s)
+				So(err, ShouldBeNil)
+				vec := res.(*model.Vector)
+				So(err, ShouldBeNil)
+				So(vec.GetDataType(), ShouldEqual, test.ex_type)
+				So(vec.Data.Len(), ShouldEqual, 70000)
+				for i := 0; i < 70000; i++ {
+					assert.Equal(t, vec.Get(i).String(), test.ex_val)
+				}
+
+			})
+			Convey(fmt.Sprintf("test upload vector with type %s", test.typestr), func() {
+				if test.s == "default" {
+					test.s = fmt.Sprintf("ex = array(%s, 70000,, 1);ex", strings.ToUpper(test.typestr))
+				} else {
+					if test.typestr == "string" || test.typestr == "symbol" {
+						test.s = fmt.Sprintf("ex = array(%s, 70000,, 'abc');ex", strings.ToUpper(test.typestr))
+					} else if test.typestr == "blob" {
+						test.s = "ex=take(blob(['abc']), 70000);ex"
+					} else if test.typestr == "uuid" {
+						test.s = "ex=take(uuid(['5d212a78-cc48-e3b1-4235-b4d91473ee87']), 70000);ex"
+					} else if test.typestr == "ipaddr" {
+						test.s = "ex=take(ipaddr(['1.1.1.1']), 70000);ex"
+					} else if test.typestr == "int128" {
+						test.s = "ex=take(int128(['e1671797c52e15f763380b45e841ec32']), 70000);ex"
+					}
+				}
+				res, err := db.RunScript(test.s)
+				So(err, ShouldBeNil)
+				vec := res.(*model.Vector)
+				So(err, ShouldBeNil)
+				_, err = db.Upload(map[string]model.DataForm{"vec": vec})
+				So(err, ShouldBeNil)
+				res, err = db.RunScript("eqObj(ex, vec)")
+				So(err, ShouldBeNil)
+				assert.True(t, res.(*model.Scalar).Value().(bool))
+
+			})
+
+		}
 	})
 }

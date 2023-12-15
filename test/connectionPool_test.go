@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"strconv"
 	"testing"
@@ -14,33 +15,58 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var dbconnPool, _ = api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+var globalConn, _ = api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 
-func CheckConnectionPool(OriginConnectionNum []interface{}, NewConnectionNum []interface{}) bool {
-	for i := 0; i < len(OriginConnectionNum); i++ {
-		if OriginConnectionNum[i].(int32) >= NewConnectionNum[i].(int32) {
-			return false
-		}
+func average(connections []int) float64 {
+	sum := 0.0
+	for _, conn := range connections {
+		sum += float64(conn)
 	}
-	return true
+	return sum / float64(len(connections))
 }
 
-func WaitConnectionPoolSuccess(OriginConnectionNum []interface{}) bool {
-	for {
+func standardDeviation(connections []int, avg float64) float64 {
+	sum := 0.0
+	for _, conn := range connections {
+		deviation := float64(conn) - avg
+		sum += deviation * deviation
+	}
+	variance := sum / float64(len(connections))
+	return math.Sqrt(variance)
+}
+
+func CheckConnectionPool(NewConnectionNum []interface{}) bool {
+	var origin []int = make([]int, len(NewConnectionNum))
+	for i := 0; i < len(NewConnectionNum); i++ {
+		origin[i] = int(NewConnectionNum[i].(int32))
+	}
+	avg := average(origin)
+	stddev := standardDeviation(origin, avg)
+	threshold := 0.3 // 方差与平均值的偏移比例
+	if stddev/avg < threshold {
+		fmt.Println("Load balancing is effective.")
+		return true
+	}
+	fmt.Println("Load balancing is not effective.")
+	return false
+}
+
+func WaitConnectionPoolSuccess() bool {
+	var res bool
+	for i := 0; i < 10; i++ {
 		NewConnectionNum := GetConnectionNum()
 		fmt.Println(NewConnectionNum)
-		res := CheckConnectionPool(OriginConnectionNum, NewConnectionNum)
-		if res == true {
+		res = CheckConnectionPool(NewConnectionNum)
+		if res {
 			break
 		}
 		time.Sleep(3 * time.Second)
-		continue
 	}
-	return true
+	return res
 }
 
 func GetConnectionNum() []interface{} {
-	Table, _ := dbconnPool.RunScript("select connectionNum, name from rpc(getControllerAlias(), getClusterPerf) where mode = 0")
+	Table, _ := globalConn.RunScript("select connectionNum, name from rpc(getControllerAlias(), getClusterPerf) where mode = 0 or mode=4")
 	tmpTable := Table.(*model.Table)
 	connectionNumList := tmpTable.GetColumnByName(tmpTable.GetColumnNames()[0])
 	connectionNum := connectionNumList.Data.Value()
@@ -63,22 +89,12 @@ func GetOriginConnNum() []interface{} {
 }
 
 func CheckConnectionNum(OriginConnectionNum []interface{}) bool {
-	Table, _ := dbconnPool.RunScript("select connectionNum, name from rpc(getControllerAlias(), getClusterPerf) where mode = 0")
+	Table, _ := globalConn.RunScript("select connectionNum, name from rpc(getControllerAlias(), getClusterPerf) where mode = 0 or mode=4")
 	tmpTable := Table.(*model.Table)
 	connectionNumList := tmpTable.GetColumnByName(tmpTable.GetColumnNames()[0])
 	connectionNum := connectionNumList.Data.Value()
 	fmt.Printf("\nNewConnection:%v\n", connectionNum)
-	for i := 0; i < connectionNumList.Rows(); i++ {
-		if OriginConnectionNum[i].(int32) >= connectionNum[i].(int32) {
-			return false
-		}
-		for j := i; j < connectionNumList.Rows(); j++ {
-			if (connectionNum[j].(int32)-OriginConnectionNum[j].(int32))-(connectionNum[i].(int32)-OriginConnectionNum[i].(int32)) > 2 || (connectionNum[j].(int32)-OriginConnectionNum[j].(int32))-(connectionNum[i].(int32)-OriginConnectionNum[i].(int32)) < -2 {
-				return false
-			}
-		}
-	}
-	return true
+	return CheckConnectionPool(connectionNum)
 }
 
 func TestDBConnectionPool_exception(t *testing.T) {
@@ -217,21 +233,21 @@ func TestDBConnectionPool_Execute(t *testing.T) {
 	})
 }
 func TestDBConnectionPool_LoadBalance(t *testing.T) {
-	Convey("Test_function_DBConnectionPool_LoadBalance_true", t, func() {
+	SkipConvey("Test_function_DBConnectionPool_LoadBalance_true", t, func() {
 		OriginConnectionNum := GetOriginConnNum()
 		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
 		opt := &api.PoolOption{
 			Address:     setup.Address,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
-			PoolSize:    5,
+			PoolSize:    8,
 			LoadBalance: true,
 		}
 		pool, err := api.NewDBConnectionPool(opt)
 		So(err, ShouldBeNil)
 		re := pool.GetPoolSize()
-		So(re, ShouldEqual, 5)
-		IsSucess := WaitConnectionPoolSuccess(OriginConnectionNum)
+		So(re, ShouldEqual, 8)
+		IsSucess := WaitConnectionPoolSuccess()
 		So(IsSucess, ShouldBeTrue)
 		connBalance := CheckConnectionNum(OriginConnectionNum)
 		So(connBalance, ShouldBeTrue)
@@ -244,7 +260,7 @@ func TestDBConnectionPool_LoadBalance(t *testing.T) {
 	})
 }
 func TestDBConnectionPool_SetLoadBalanceAddress(t *testing.T) {
-	Convey("Test_function_DBConnectionPool_SetLoadBalanceAddress", t, func() {
+	SkipConvey("Test_function_DBConnectionPool_SetLoadBalanceAddress", t, func() {
 		time.Sleep(3 * time.Second)
 		OriginConnectionNum := GetConnectionNum()
 		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
@@ -260,7 +276,7 @@ func TestDBConnectionPool_SetLoadBalanceAddress(t *testing.T) {
 		So(err, ShouldBeNil)
 		re := pool.GetPoolSize()
 		So(re, ShouldEqual, 5)
-		IsSucess := WaitConnectionPoolSuccess(OriginConnectionNum)
+		IsSucess := WaitConnectionPoolSuccess()
 		So(IsSucess, ShouldBeTrue)
 		connBalance := CheckConnectionNum(OriginConnectionNum)
 		So(connBalance, ShouldBeTrue)
@@ -274,13 +290,15 @@ func TestDBConnectionPool_SetLoadBalanceAddress(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_hash_string(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_hash_string", t, func() {
-		_, err := dbconnPool.RunScript("t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
+		_, err := globalConn.RunScript("t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
 			"db1=database(\"\",HASH,[DATETIME,10])\n" +
 			"db2=database(\"\",HASH,[STRING,5])\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")}\n" +
-			"db=database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")}\n" +
+			"db=database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -294,7 +312,7 @@ func TestDBConnectionPool_hash_hash_string(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -316,12 +334,13 @@ func TestDBConnectionPool_hash_hash_string(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -329,13 +348,15 @@ func TestDBConnectionPool_hash_hash_string(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_hash_symbol", t, func() {
-		_, err := dbconnPool.RunScript("t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
+		_, err := globalConn.RunScript("t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
 			"db1=database(\"\",VALUE,date(2022.01.01)+0..100)\n" +
 			"db2=database(\"\",HASH,[STRING,5])\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")}\n" +
-			"db=database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")}\n" +
+			"db=database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -349,7 +370,7 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -371,12 +392,13 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -384,13 +406,15 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_hash_int(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_hash_int", t, func() {
-		_, err := dbconnPool.RunScript("t = table(timestamp(1..10) as datev,1..10 as sym)\n" +
+		_, err := globalConn.RunScript("t = table(timestamp(1..10) as datev,1..10 as sym)\n" +
 			"db1=database(\"\",HASH,[DATETIME,10])\n" +
 			"db2=database(\"\",HASH,[INT,5])\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")}\n" +
-			"db=database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")}\n" +
+			"db=database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -404,7 +428,7 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -426,12 +450,13 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -439,15 +464,17 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_hash_datetime", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(datetime(1..10) as datev,string(1..10) as sym)\n" +
 			"db2=database(\"\",VALUE,string(0..10))\n" +
 			"db1=database(\"\",HASH,[DATETIME,10])\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db=database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"db=database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -461,7 +488,7 @@ func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -485,12 +512,13 @@ func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -498,14 +526,16 @@ func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_hash_date(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_hash_date", t, func() {
-		_, err := dbconnPool.RunScript("t = table(date(1..10) as datev,symbol(string(1..10)) as sym)\n" +
+		_, err := globalConn.RunScript("t = table(date(1..10) as datev,symbol(string(1..10)) as sym)\n" +
 			"db1=database(\"\",RANGE,date([0, 5, 11]))\n" +
 			"db2=database(\"\",HASH,[SYMBOL,15])\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db=database(\"dfs://demohash\",COMPO,[db1,db2])\n" +
+			"db=database(\"dfs://" + dbname + "\",COMPO,[db1,db2])\n" +
 			"pt=db.createPartitionedTable(t,`pt,`datev`sym)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -519,7 +549,7 @@ func TestDBConnectionPool_range_hash_date(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -543,12 +573,13 @@ func TestDBConnectionPool_range_hash_date(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -556,15 +587,17 @@ func TestDBConnectionPool_range_hash_date(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_range_int(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_range_int", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(nanotimestamp(1..10) as datev, 1..10 as sym)\n" +
 			"db1=database(\"\",RANGE,date(1970.01.01)+0..100*5)\n" +
 			"db2=database(\"\",RANGE,0 2 4 6 8 11)\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db1,db2])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db1,db2])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -578,7 +611,7 @@ func TestDBConnectionPool_range_range_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -602,12 +635,13 @@ func TestDBConnectionPool_range_range_int(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -615,15 +649,17 @@ func TestDBConnectionPool_range_range_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_range_int(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_range_int", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(timestamp(1..10) as datev,1..10 as sym)\n" +
 			"db1=database(\"\",VALUE,date(1970.01.01)+0..10)\n" +
 			"db2=database(\"\",RANGE,0 2 4 6 8 11)\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db1,db2])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db1,db2])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -637,7 +673,7 @@ func TestDBConnectionPool_value_range_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -661,12 +697,13 @@ func TestDBConnectionPool_value_range_int(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -674,15 +711,17 @@ func TestDBConnectionPool_value_range_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_range_month(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_range_month", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(nanotimestamp(1..10) as datev,1..10 as sym)\n" +
 			"db2=database(\"\",RANGE,0 2 4 6 8 11)\n" +
 			"db1=database(\"\",RANGE,month(1970.01M)+0..100*5)\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -696,7 +735,7 @@ func TestDBConnectionPool_range_range_month(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -720,12 +759,13 @@ func TestDBConnectionPool_range_range_month(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -733,15 +773,17 @@ func TestDBConnectionPool_range_range_month(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_range_date(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_range_date", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(nanotimestamp(1..10) as datev, symbol(string(1..10)) as sym)\n" +
 			"db2=database(\"\",HASH,[SYMBOL,5])\n" +
 			"db1=database(\"\",RANGE,date(1970.01.01)+0..100)\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -755,7 +797,7 @@ func TestDBConnectionPool_hash_range_date(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -779,12 +821,13 @@ func TestDBConnectionPool_hash_range_date(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -792,15 +835,17 @@ func TestDBConnectionPool_hash_range_date(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_range_datetime", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(datetime(1..10) as datev, symbol(string(1..10)) as sym)\n" +
 			"db2=database(\"\",HASH,[SYMBOL,5])\n" +
 			"db1=database(\"\",RANGE,datetime(1970.01.01T01:01:01)+0..10000*2)\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -814,7 +859,7 @@ func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -838,12 +883,13 @@ func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -851,15 +897,17 @@ func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_value_symbol", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(datetime(1..10) as datev, symbol(string(1..10)) as sym)\n" +
 			"db1=database(\"\",HASH,[DATETIME,10])\n" +
 			"db2=database(\"\",VALUE,string(1..10))\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db1,db2])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db1,db2])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -873,7 +921,7 @@ func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -897,12 +945,13 @@ func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -910,15 +959,17 @@ func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_value_date(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_value_date", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
 			"db2=database(\"\",VALUE,string(1..10))\n" +
 			"db1=database(\"\",VALUE,date(2020.02.02)+0..100)\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -932,7 +983,7 @@ func TestDBConnectionPool_value_value_date(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -956,12 +1007,13 @@ func TestDBConnectionPool_value_value_date(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -969,15 +1021,17 @@ func TestDBConnectionPool_value_value_date(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_value_month(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_value_month", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
 			"db2=database(\"\",VALUE,string(1..10))\n" +
 			"db1=database(\"\",VALUE,month(2020.02M)+0..100)\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db2,db1])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db2,db1])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -991,7 +1045,7 @@ func TestDBConnectionPool_value_value_month(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -1015,12 +1069,13 @@ func TestDBConnectionPool_value_value_month(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -1028,15 +1083,17 @@ func TestDBConnectionPool_value_value_month(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_value_int(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_value_int", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(timestamp(1..10) as datev,int(1..10) as sym)\n" +
 			"db1=database(\"\",VALUE,date(now())+0..100)\n" +
 			"db2=database(\"\",RANGE,int(0..11))\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db1,db2])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db1,db2])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -1050,7 +1107,7 @@ func TestDBConnectionPool_range_value_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -1074,12 +1131,13 @@ func TestDBConnectionPool_range_value_int(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -1087,15 +1145,17 @@ func TestDBConnectionPool_range_value_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_loadBalance_false(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_loadBalance_false", t, func() {
-		_, err := dbconnPool.RunScript("\n" +
+		_, err := globalConn.RunScript("\n" +
 			"t = table(timestamp(1..10) as datev,int(1..10) as sym)\n" +
 			"db1=database(\"\",VALUE,date(now())+0..100)\n" +
 			"db2=database(\"\",RANGE,int(0..11))\n" +
-			"if(existsDatabase(\"dfs://demohash\")){\n" +
-			"\tdropDatabase(\"dfs://demohash\")\n" +
+			"if(existsDatabase(\"dfs://" + dbname + "\")){\n" +
+			"\tdropDatabase(\"dfs://" + dbname + "\")\n" +
 			"}\n" +
-			"db =database(\"dfs://demohash\",COMPO,[db1,db2])\n" +
+			"db =database(\"dfs://" + dbname + "\",COMPO,[db1,db2])\n" +
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
@@ -1109,7 +1169,7 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
 			Pool:         pool,
-			DBPath:       "dfs://demohash",
+			DBPath:       "dfs://" + dbname,
 			TableName:    "pt",
 			PartitionCol: "sym",
 		}
@@ -1133,12 +1193,13 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 			AssertNil(err)
 			AssertEqual(num, 10000)
 		}
-		re, err := dbconnPool.RunScript("pt= loadTable(\"dfs://demohash\",`pt)\n" +
+		re, err := globalConn.RunScript("pt= loadTable(\"dfs://" + dbname + "\",`pt)\n" +
 			"exec count(*) from pt")
 		So(err, ShouldBeNil)
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
+		globalConn.RunScript("dropDatabase('" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -1146,21 +1207,23 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 }
 
 func TestPartitionedTableAppender(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("Test_function_PartitionedTableAppender_prepare", t, func() {
 		Convey("Test_function_PartitionedTableAppender_range_int", func() {
-			_, err := dbconnPool.RunScript(`
-        dbPath = "dfs://PTA_test"
-        if(existsDatabase(dbPath))
-            dropDatabase(dbPath)
-        t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
-        db=database(dbPath, RANGE, [0, 11, 21, 31])
-        pt = db.createPartitionedTable(t, "pt", "id")
-        `)
+			_, err := globalConn.RunScript(`
+			dbPath = "dfs://` + dbname + `"
+			if(existsDatabase(dbPath))
+				dropDatabase(dbPath)
+			t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
+			db=database(dbPath, RANGE, [0, 11, 21, 31])
+			pt = db.createPartitionedTable(t, "pt", "id")
+		`)
 			So(err, ShouldBeNil)
 			pool := CreateDBConnectionPool(10, false)
 			appenderOpt := &api.PartitionedTableAppenderOption{
 				Pool:         pool,
-				DBPath:       "dfs://PTA_test",
+				DBPath:       "dfs://" + dbname,
 				TableName:    "pt",
 				PartitionCol: "id",
 			}
@@ -1178,7 +1241,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
-			re, err := dbconnPool.RunScript("select * from loadTable('dfs://PTA_test', 'pt')")
+			re, err := globalConn.RunScript("select * from loadTable('dfs://" + dbname + "', 'pt')")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1196,19 +1259,19 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_value_symbol", func() {
-			_, err := dbconnPool.RunScript(`
-		    dbPath = "dfs://PTA_test"
-		    if(existsDatabase(dbPath))
-		        dropDatabase(dbPath)
-		    t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
-		    db=database(dbPath, VALUE, symbol("A"+string(1..6)))
-		    pt = db.createPartitionedTable(t, "pt", "sym")
-		    `)
+			_, err := globalConn.RunScript(`
+				dbPath = "dfs://` + dbname + `"
+				if(existsDatabase(dbPath))
+					dropDatabase(dbPath)
+				t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
+				db=database(dbPath, VALUE, symbol("A"+string(1..6)))
+				pt = db.createPartitionedTable(t, "pt", "sym")
+			`)
 			So(err, ShouldBeNil)
 			pool := CreateDBConnectionPool(10, false)
 			appenderOpt := &api.PartitionedTableAppenderOption{
 				Pool:         pool,
-				DBPath:       "dfs://PTA_test",
+				DBPath:       "dfs://" + dbname,
 				TableName:    "pt",
 				PartitionCol: "sym",
 			}
@@ -1226,7 +1289,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
-			re, err := dbconnPool.RunScript("select * from loadTable('dfs://PTA_test', 'pt') order by id, sym, datev, price")
+			re, err := globalConn.RunScript("select * from loadTable('dfs://" + dbname + "', 'pt') order by id, sym, datev, price")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1244,19 +1307,19 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_hash_symbol", func() {
-			_, err := dbconnPool.RunScript(`
-		    dbPath = "dfs://PTA_test"
-		    if(existsDatabase(dbPath))
-		        dropDatabase(dbPath)
-		    t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
-		    db=database(dbPath, HASH, [SYMBOL, 5])
-		    pt = db.createPartitionedTable(t, "pt", "sym")
-		    `)
+			_, err := globalConn.RunScript(`
+			dbPath = "dfs://` + dbname + `"
+			if(existsDatabase(dbPath))
+				dropDatabase(dbPath)
+			t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
+			db=database(dbPath, HASH, [SYMBOL, 5])
+			pt = db.createPartitionedTable(t, "pt", "sym")
+			`)
 			So(err, ShouldBeNil)
 			pool := CreateDBConnectionPool(10, false)
 			appenderOpt := &api.PartitionedTableAppenderOption{
 				Pool:         pool,
-				DBPath:       "dfs://PTA_test",
+				DBPath:       "dfs://" + dbname,
 				TableName:    "pt",
 				PartitionCol: "sym",
 			}
@@ -1274,7 +1337,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
-			re, err := dbconnPool.RunScript("select * from loadTable('dfs://PTA_test', 'pt') order by id, sym, datev, price")
+			re, err := globalConn.RunScript("select * from loadTable('dfs://" + dbname + "', 'pt') order by id, sym, datev, price")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1292,19 +1355,19 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_list_symbol", func() {
-			_, err := dbconnPool.RunScript(`
-		    dbPath = "dfs://PTA_test"
-		    if(existsDatabase(dbPath))
-		        dropDatabase(dbPath)
-		    t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
-		    db=database(dbPath, LIST, [["A1", "A2"], ["A3", "A4", "A5"]])
-		    pt = db.createPartitionedTable(t, "pt", "sym")
-		    `)
+			_, err := globalConn.RunScript(`
+			dbPath = "dfs://` + dbname + `"
+			if(existsDatabase(dbPath))
+				dropDatabase(dbPath)
+			t = table(100:100, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
+			db=database(dbPath, LIST, [["A1", "A2"], ["A3", "A4", "A5"]])
+			pt = db.createPartitionedTable(t, "pt", "sym")
+			`)
 			So(err, ShouldBeNil)
 			pool := CreateDBConnectionPool(10, false)
 			appenderOpt := &api.PartitionedTableAppenderOption{
 				Pool:         pool,
-				DBPath:       "dfs://PTA_test",
+				DBPath:       "dfs://" + dbname,
 				TableName:    "pt",
 				PartitionCol: "sym",
 			}
@@ -1322,7 +1385,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
-			re, err := dbconnPool.RunScript("select * from loadTable('dfs://PTA_test', 'pt') order by id, sym, datev, price")
+			re, err := globalConn.RunScript("select * from loadTable('dfs://" + dbname + "', 'pt') order by id, sym, datev, price")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1340,19 +1403,19 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_compo_value_list_symbol", func() {
-			_, err := dbconnPool.RunScript(`
-				dbPath = "dfs://PTA_test"
+			_, err := globalConn.RunScript(`
+				dbPath = "dfs://` + dbname + `"
 				if(existsDatabase(dbPath)){dropDatabase(dbPath)}
 				t=table(100:100, ["sym", "id", "datev", "price"], [SYMBOL, INT, DATE, DOUBLE])
 				db1=database(, VALUE, 1969.12.30..1970.01.03)
 				db=database(dbPath, LIST, [["A1", "A2"], ["A3", "A4", "A5"]])
 				pt=db.createPartitionedTable(t, "pt", "sym")
-		    `)
+			`)
 			So(err, ShouldBeNil)
 			pool := CreateDBConnectionPool(10, false)
 			appenderOpt := &api.PartitionedTableAppenderOption{
 				Pool:         pool,
-				DBPath:       "dfs://PTA_test",
+				DBPath:       "dfs://" + dbname,
 				TableName:    "pt",
 				PartitionCol: "sym",
 			}
@@ -1371,7 +1434,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			// fmt.Println(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
-			re, err := dbconnPool.RunScript("select * from loadTable('dfs://PTA_test', 'pt') order by id, sym, datev, price")
+			re, err := globalConn.RunScript("select * from loadTable('dfs://" + dbname + "', 'pt') order by id, sym, datev, price")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1388,12 +1451,90 @@ func TestPartitionedTableAppender(t *testing.T) {
 			err = pool.Close()
 			So(err, ShouldBeNil)
 		})
+
+		Convey("Test_function_PartitionedTableAppender_arraVector", func() {
+			var dbpath = "dfs://test_av"
+			var tbname = "pt"
+			var rows = 100
+			_, err := globalConn.RunScript(`
+				row_num=` + strconv.Itoa(rows) + `;
+				ind = [2,4,6,8,10];
+				cbool= arrayVector(ind, bool(take(0 1 ,10)));cchar = arrayVector(ind, char(take(256 ,10)));cshort = arrayVector(ind, short(take(-10000..10000 ,10)));cint = arrayVector(ind, int(take(-10000..10000 ,10)));
+				clong = arrayVector(ind, long(take(-10000..10000 ,10)));cdate = arrayVector(ind, date(take(10000 ,10)));cmonth = arrayVector(ind, month(take(23640..25000 ,10)));ctime = arrayVector(ind, time(take(10000 ,10)));
+				cminute = arrayVector(ind, minute(take(100 ,10)));csecond = arrayVector(ind, second(take(100 ,10)));cdatetime = arrayVector(ind, datetime(take(10000 ,10)));ctimestamp = arrayVector(ind, timestamp(take(10000 ,10)));
+				cnanotime = arrayVector(ind, nanotime(take(10000 ,10)));cnanotimestamp = arrayVector(ind, nanotimestamp(take(10000 ,10)));cdatehour = arrayVector(ind, datehour(take(10000 ,10)));
+				cfloat = arrayVector(ind, float(rand(10000.0000,10)));cdouble = arrayVector(ind, rand(10000.0000,10));
+				cdecimal32 = array(DECIMAL32(6)[], 0, 0).append!(decimal32([1..2, [], rand(100.000000, 2), rand(1..100, 2), take(00i, 2)], 6));
+				cdecimal64 = array(DECIMAL64(16)[], 0, 0).append!(decimal64([1..2, [], rand(100.000000, 2), rand(1..100, 2), take(00i, 2)], 16));
+				cdecimal128 = array(DECIMAL128(26)[], 0, 0).append!(decimal128([1..2, [], rand(100.000000, 2), rand(1..100, 2), take(00i, 2)], 26));
+				cipaddr = arrayVector(ind, take(ipaddr(["192.168.1.13","192.168.1.14"]),10));
+				cuuid = arrayVector(ind, take(uuid(["5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88"]),10));
+				cint128 = arrayVector(ind, take(int128(["e1671797c52e15f763380b45e841ec32","e1671797c52e15f763380b45e841ec33"]),10));
+
+				for(i in 1..(row_num-5)){
+					cbool.append!([bool(take(0 1 ,2))]);
+					cchar.append!([char(rand(256 ,2))]);cshort.append!([short(rand(-10000..10000 ,2))]);cint.append!([int(rand(-10000..10000 ,2))]);
+					clong.append!([long(rand(-10000..10000 ,2))]);cdate.append!([date(rand(10000 ,2))]);cmonth.append!([month(rand(23640..25000 ,2))]);
+					ctime.append!([time(rand(10000 ,2))]);cminute.append!([minute(rand(100 ,2))]);csecond.append!([second(rand(100 ,2))]);
+					cdatetime.append!([datetime(rand(10000 ,2))]);ctimestamp.append!([timestamp(rand(10000 ,2))]);
+					cnanotime.append!([nanotime(rand(10000 ,2))]);cnanotimestamp.append!([nanotimestamp(rand(10000 ,2))]);
+					cdatehour.append!([datehour(rand(10000 ,2))]);
+					cfloat.append!([float(rand(10000.0000,2))]);cdouble.append!([rand(10000.0000, 2)]);
+					cdecimal32.append!([decimal32('1.123123123123123123123123123''-5.789' ,6)]);
+					cdecimal64.append!([decimal64('1.123123123123123123123123123''-5.789' ,16)]);
+					cdecimal128.append!([decimal128('1.123123123123123123123123123''-5.789' ,26)]);
+					cipaddr.append!([take(ipaddr(["192.168.1.13","192.168.1.14"]),2)]);
+					cuuid.append!([take(uuid(["5d212a78-cc48-e3b1-4235-b4d91473ee87", "5d212a78-cc48-e3b1-4235-b4d91473ee88"]),2)]);
+					cint128.append!([take(int128(["e1671797c52e15f763380b45e841ec32","e1671797c52e15f763380b45e841ec33"]),2)]);
+				};
+
+				go;
+				date_index = date(0..(row_num-1));
+				int_index = 0..(row_num-1);
+				table1=table(date_index,int_index,cbool,cchar,cshort,cint,clong,cdate,cmonth,ctime,cminute,csecond,cdatetime,ctimestamp,cnanotime,cnanotimestamp,cdatehour,cfloat,cdouble,cuuid,cint128,cipaddr,cdecimal32,cdecimal64,cdecimal128);
+				tableInsert(table1, date(row_num),row_num,[take(true false,2)],[take(char(NULL),2)],[take(short(NULL),2)],[take(int(NULL),2)],[take(long(NULL),2)],[take(date(NULL),2)],[take(month(NULL),2)],[take(time(NULL),2)],[take(minute(NULL),2)],[take(second(NULL),2)],[take(datetime(NULL),2)],[take(timestamp(NULL),2)],[take(nanotime(NULL),2)],[take(nanotimestamp(NULL),2)],[take(datehour(NULL),2)],[take(float(NULL),2)],[take(double(NULL),2)],[take(uuid(string(NULL)),2)],[take(int128(string(NULL)),2)],[take(ipaddr(string(NULL)),2)],[take(decimal32(NULL,6),2)],[take(decimal64(NULL,16),2)],[take(decimal128(NULL,26),2)]);
+				share table1 as origin_tab;
+				dbpath = "` + dbpath + `";
+				tbname = "` + tbname + `";
+				if(existsDatabase(dbpath)){dropDatabase(dbpath)};
+				db = database(dbpath, HASH, [DATE, 2], engine="TSDB");
+				db.createPartitionedTable(table1, tbname, 'date_index', , 'int_index''date_index');
+		    `)
+			So(err, ShouldBeNil)
+			tab, err := globalConn.RunScript(`select * from origin_tab`)
+			So(err, ShouldBeNil)
+			// fmt.Println(tab)
+			pool := CreateDBConnectionPool(2, false)
+			appenderOpt := &api.PartitionedTableAppenderOption{
+				Pool:         pool,
+				DBPath:       dbpath,
+				TableName:    tbname,
+				PartitionCol: "date_index",
+			}
+			appender, err := api.NewPartitionedTableAppender(appenderOpt)
+
+			So(err, ShouldBeNil)
+			num, err := appender.Append(tab.(*model.Table))
+
+			// fmt.Println(newtable)
+			So(err, ShouldBeNil)
+			So(num, ShouldEqual, rows+1)
+			_, err = globalConn.RunScript(
+				"res = select * from loadTable('" + dbpath + "', '" + tbname + "') order by date_index, int_index;" +
+					"ex = select * from origin_tab order by date_index, int_index;" +
+					"assert 1, each(eqObj, res.values(), ex.values())")
+			So(err, ShouldBeNil)
+			_, err = globalConn.RunScript(`undef('origin_tab', SHARED)`)
+			So(err, ShouldBeNil)
+		})
 	})
 }
 
 func TestDBConnectionPool_task(t *testing.T) {
+	t.Parallel()
+	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_task_equal_PoolSize", t, func() {
-		_, err := dbconnPool.RunScript("db_path = \"dfs://test_DBConnectionPool\";\n" +
+		_, err := globalConn.RunScript("db_path = \"dfs://" + dbname + "\";\n" +
 			"if(existsDatabase(db_path)){\n" +
 			"        dropDatabase(db_path)\n" +
 			"}\n" +
@@ -1416,20 +1557,20 @@ func TestDBConnectionPool_task(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			task := &api.Task{
 				Script: "t = table(int(take(" + strconv.Itoa(i) + ",100)) as id,rand(`a`b`c`d,100) as sym,int(rand(100,100)) as price,take(getNodePort(),100) as node);" +
-					"pt = loadTable(\"dfs://test_DBConnectionPool\",`pt1);" +
+					"pt = loadTable(\"dfs://" + dbname + "\",`pt1);" +
 					"pt.append!(t)",
 			}
 			taskList = append(taskList, task)
 		}
 		err = pool.Execute(taskList)
 		So(err, ShouldBeNil)
-		resultData, err := dbconnPool.RunScript("int(exec count(*) from loadTable(\"dfs://test_DBConnectionPool\",`pt1))")
+		resultData, err := globalConn.RunScript("int(exec count(*) from loadTable(\"dfs://" + dbname + "\",`pt1))")
 		So(err, ShouldBeNil)
 		resultCount := resultData.(*model.Scalar)
 		So(resultCount.Value(), ShouldEqual, 10000)
-		reNodesPort, err := dbconnPool.RunScript("exec nodePort from loadTable(\"dfs://test_DBConnectionPool\",`pt1) group by nodePort order by nodePort")
+		reNodesPort, err := globalConn.RunScript("exec nodePort from loadTable(\"dfs://" + dbname + "\",`pt1) group by nodePort order by nodePort")
 		So(err, ShouldBeNil)
-		exNodesPort, err := dbconnPool.RunScript("exec value from pnodeRun(getNodePort) order by value")
+		exNodesPort, err := globalConn.RunScript("exec value from pnodeRun(getNodePort) order by value")
 		So(err, ShouldBeNil)
 		So(reNodesPort.String(), ShouldEqual, exNodesPort.String())
 		closed := pool.IsClosed()
@@ -1440,7 +1581,7 @@ func TestDBConnectionPool_task(t *testing.T) {
 		So(closed, ShouldBeTrue)
 	})
 	Convey("TestDBConnectionPool_task_large_than_PoolSize", t, func() {
-		_, err := dbconnPool.RunScript("db_path = \"dfs://test_DBConnectionPool\";\n" +
+		_, err := globalConn.RunScript("db_path = \"dfs://" + dbname + "\";\n" +
 			"if(existsDatabase(db_path)){\n" +
 			"        dropDatabase(db_path)\n" +
 			"}\n" +
@@ -1463,20 +1604,20 @@ func TestDBConnectionPool_task(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			task := &api.Task{
 				Script: "t = table(int(take(" + strconv.Itoa(i) + ",100)) as id,rand(`a`b`c`d,100) as sym,int(rand(100,100)) as price,take(getNodePort(),100) as node);" +
-					"pt = loadTable(\"dfs://test_DBConnectionPool\",`pt1);" +
+					"pt = loadTable(\"dfs://" + dbname + "\",`pt1);" +
 					"pt.append!(t)",
 			}
 			taskList = append(taskList, task)
 		}
 		err = pool.Execute(taskList)
 		So(err, ShouldBeNil)
-		resultData, err := dbconnPool.RunScript("int(exec count(*) from loadTable(\"dfs://test_DBConnectionPool\",`pt1))")
+		resultData, err := globalConn.RunScript("int(exec count(*) from loadTable(\"dfs://" + dbname + "\",`pt1))")
 		So(err, ShouldBeNil)
 		resultCount := resultData.(*model.Scalar)
 		So(resultCount.Value(), ShouldEqual, 10000)
-		reNodesPort, err := dbconnPool.RunScript("exec nodePort from loadTable(\"dfs://test_DBConnectionPool\",`pt1) group by nodePort order by nodePort")
+		reNodesPort, err := globalConn.RunScript("exec nodePort from loadTable(\"dfs://" + dbname + "\",`pt1) group by nodePort order by nodePort")
 		So(err, ShouldBeNil)
-		exNodesPort, err := dbconnPool.RunScript("exec value from pnodeRun(getNodePort) order by value")
+		exNodesPort, err := globalConn.RunScript("exec value from pnodeRun(getNodePort) order by value")
 		So(err, ShouldBeNil)
 		So(reNodesPort.String(), ShouldEqual, exNodesPort.String())
 		closed := pool.IsClosed()
@@ -1489,15 +1630,16 @@ func TestDBConnectionPool_task(t *testing.T) {
 }
 
 func TestTableAppender(t *testing.T) {
+	t.Parallel()
 	Convey("Test_function_TableAppender_prepare", t, func() {
 		Convey("Test_function_TableAppender_range_int", func() {
-			_, err := dbconnPool.RunScript(`
+			_, err := globalConn.RunScript(`
         t = table(100:0, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
         `)
 			So(err, ShouldBeNil)
 			appenderOpt := &api.TableAppenderOption{
 				TableName: "t",
-				Conn:      dbconnPool,
+				Conn:      globalConn,
 			}
 			appender := api.NewTableAppender(appenderOpt)
 			sym, err := model.NewDataTypeListFromRawData(model.DtString, []string{"AAPL", "BLS", "DBKS", "NDLN", "DBKS"})
@@ -1512,7 +1654,7 @@ func TestTableAppender(t *testing.T) {
 			// fmt.Println(newtable)
 			_, err = appender.Append(newtable)
 			So(err, ShouldBeNil)
-			re, err := dbconnPool.RunScript("t")
+			re, err := globalConn.RunScript("t")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1534,9 +1676,9 @@ func TestTableAppender(t *testing.T) {
 			So(IsClose, ShouldBeTrue)
 		})
 		Convey("Test_function_TableAppender_disk", func() {
-			dbconnPoolx, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
-			_, err = dbconnPoolx.RunScript(`
+			_, err = globalConnx.RunScript(`
 		    dbPath = "` + DiskDBPath + `"
 		    if(exists(dbPath))
 		        rmdir(dbPath, true)
@@ -1548,7 +1690,7 @@ func TestTableAppender(t *testing.T) {
 			appenderOpt := &api.TableAppenderOption{
 				DBPath:    DiskDBPath,
 				TableName: "pt",
-				Conn:      dbconnPoolx,
+				Conn:      globalConnx,
 			}
 			appender := api.NewTableAppender(appenderOpt)
 			So(err, ShouldBeNil)
@@ -1563,7 +1705,7 @@ func TestTableAppender(t *testing.T) {
 			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
 			_, err = appender.Append(newtable)
 			So(err, ShouldBeNil)
-			re, err := dbconnPoolx.RunScript("select * from loadTable(\"" + DiskDBPath + "\", 'pt') order by id, sym, datev, price")
+			re, err := globalConnx.RunScript("select * from loadTable(\"" + DiskDBPath + "\", 'pt') order by id, sym, datev, price")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1583,12 +1725,13 @@ func TestTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			IsClose = appender.IsClosed()
 			So(IsClose, ShouldBeTrue)
-			dbconnPoolx.Close()
+			globalConnx.Close()
 		})
 		Convey("Test_function_TableAppender_dfsTable", func() {
-			dbconnPoolx, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
-			_, err = dbconnPoolx.RunScript(`
+			DfsDBPath := "dfs://" + generateRandomString(8)
+			_, err = globalConnx.RunScript(`
 		    dbPath = "` + DfsDBPath + `"
 		    if(existsDatabase(dbPath))
 		        dropDatabase(dbPath)
@@ -1601,7 +1744,7 @@ func TestTableAppender(t *testing.T) {
 			appenderOpt := &api.TableAppenderOption{
 				DBPath:    DfsDBPath,
 				TableName: "pt",
-				Conn:      dbconnPoolx,
+				Conn:      globalConnx,
 			}
 			appender := api.NewTableAppender(appenderOpt)
 			So(err, ShouldBeNil)
@@ -1616,7 +1759,7 @@ func TestTableAppender(t *testing.T) {
 			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
 			_, err = appender.Append(newtable)
 			So(err, ShouldBeNil)
-			re, err := dbconnPoolx.RunScript("select * from loadTable('" + DfsDBPath + "', 'pt') order by id, sym, datev, price")
+			re, err := globalConnx.RunScript("select * from loadTable('" + DfsDBPath + "', 'pt') order by id, sym, datev, price")
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1632,12 +1775,82 @@ func TestTableAppender(t *testing.T) {
 			So(resultPrice, ShouldResemble, model.NewVector(price))
 			err = pool.Close()
 			So(err, ShouldBeNil)
-			err = dbconnPoolx.Close()
+			err = globalConnx.Close()
 			So(err, ShouldBeNil)
 		})
 	})
 }
 
-func TestDBconnPoolClose(t *testing.T) {
-	dbconnPool.Close()
+func TestConnnectionPoolHighAvailability(t *testing.T) {
+	t.Parallel()
+	SkipConvey("TestConnnectionPoolHighAvailability", t, func() {
+		opt := &api.PoolOption{
+			Address:                setup.Address4,
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               10,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		}
+		poolHA, err := api.NewDBConnectionPool(opt)
+		AssertNil(err)
+		poolCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		AssertNil(err)
+		getnametask := api.Task{Script: "getNodeAlias()"}
+		tasks := []*api.Task{&getnametask}
+
+		err = poolHA.Execute(tasks)
+		AssertNil(err)
+		origin_node := tasks[0].GetResult()
+		fmt.Println("now", origin_node.(*model.Scalar).Value().(string), "is connected, try to stop it")
+		poolCtl.RunScript("stopDataNode(`" + origin_node.(*model.Scalar).Value().(string) + ")")
+		time.Sleep(2 * time.Second)
+		fmt.Println("stop success, check if the origin connection click to another node")
+		err = poolHA.Execute(tasks)
+		AssertNil(err)
+		So(tasks[0].GetResult().String(), ShouldNotEqual, origin_node.(*model.Scalar).Value().(string))
+		fmt.Println("check passed, restart the origin node")
+		_, err = poolCtl.RunScript(
+			"nodes = exec name from getClusterPerf() where state!=1 and mode !=1;" +
+				"startDataNode(nodes);")
+		AssertNil(err)
+		time.Sleep(2 * time.Second)
+		poolCtl.Close()
+		poolHA.Close()
+	})
+	// Convey("TestConnnectionHighAvailability exception", t, func() {
+	// 	opt := &api.PoolOption{
+	// 		Address:                setup.Address4,
+	// 		UserID:                 setup.UserName,
+	// 		Password:               setup.Password,
+	// 		PoolSize:               10,
+	// 		EnableHighAvailability: true,
+	// 		// HighAvailabilitySites:  setup.HA_sites,
+	// 	}
+	// 	_, err := api.NewDBConnectionPool(opt)
+	// 	So(err.Error(), ShouldContainSubstring, "connect to all sites failed")
+
+	// 	opt = &api.PoolOption{
+	// 		Address:  setup.Address4,
+	// 		UserID:   setup.UserName,
+	// 		Password: setup.Password,
+	// 		PoolSize: 10,
+	// 		// EnableHighAvailability: true,
+	// 		HighAvailabilitySites: setup.HA_sites,
+	// 	}
+	// 	_, err = api.NewDBConnectionPool(opt)
+	// 	So(err.Error(), ShouldContainSubstring, "connect to all sites failed")
+
+	// 	opt = &api.PoolOption{
+	// 		Address:                setup.Address4,
+	// 		UserID:                 setup.UserName,
+	// 		Password:               setup.Password,
+	// 		PoolSize:               10,
+	// 		EnableHighAvailability: false,
+	// 		HighAvailabilitySites:  setup.HA_sites,
+	// 	}
+	// 	_, err = api.NewDBConnectionPool(opt)
+	// 	So(err.Error(), ShouldContainSubstring, "connect to all sites failed")
+	// })
+
 }

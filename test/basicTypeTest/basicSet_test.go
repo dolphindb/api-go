@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 )
 
 func Test_Set_DownLoad_DataType_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_int:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -93,6 +95,7 @@ func Test_Set_DownLoad_DataType_int(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_string:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -157,6 +160,7 @@ func Test_Set_DownLoad_DataType_string(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_char:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -215,6 +219,7 @@ func Test_Set_DownLoad_DataType_char(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_short:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -278,6 +283,7 @@ func Test_Set_DownLoad_DataType_short(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -341,6 +347,7 @@ func Test_Set_DownLoad_DataType_long(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_double:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -404,6 +411,7 @@ func Test_Set_DownLoad_DataType_double(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_float:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -467,6 +475,7 @@ func Test_Set_DownLoad_DataType_float(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_date:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -530,6 +539,7 @@ func Test_Set_DownLoad_DataType_date(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_date:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -594,6 +604,7 @@ func Test_Set_DownLoad_DataType_month(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_time:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -658,6 +669,7 @@ func Test_Set_DownLoad_DataType_time(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_minute:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -722,6 +734,7 @@ func Test_Set_DownLoad_DataType_minute(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_second:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -786,6 +799,7 @@ func Test_Set_DownLoad_DataType_second(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_datetime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -850,6 +864,7 @@ func Test_Set_DownLoad_DataType_datetime(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_timestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -914,6 +929,7 @@ func Test_Set_DownLoad_DataType_timestamp(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_nanotime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -978,6 +994,7 @@ func Test_Set_DownLoad_DataType_nanotime(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_nanotimestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1042,6 +1059,7 @@ func Test_Set_DownLoad_DataType_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_datehour:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1106,6 +1124,7 @@ func Test_Set_DownLoad_DataType_datehour(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_uuid(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_uuid:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1169,6 +1188,7 @@ func Test_Set_DownLoad_DataType_uuid(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_ipaddr(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_ipaddr:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1232,6 +1252,7 @@ func Test_Set_DownLoad_DataType_ipaddr(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_int128(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_int128:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1295,6 +1316,7 @@ func Test_Set_DownLoad_DataType_int128(t *testing.T) {
 	})
 }
 func Test_Set_DownLoad_DataType_set_be_cleared(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_be_cleaned:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1311,6 +1333,7 @@ func Test_Set_DownLoad_DataType_set_be_cleared(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_int_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1333,6 +1356,7 @@ func Test_Set_UpLoad_DataType_int(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_short_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1355,6 +1379,7 @@ func Test_Set_UpLoad_DataType_short(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_char_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1375,6 +1400,7 @@ func Test_Set_UpLoad_DataType_char(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_long_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1397,6 +1423,7 @@ func Test_Set_UpLoad_DataType_long(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_float_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1419,6 +1446,7 @@ func Test_Set_UpLoad_DataType_float(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_double_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1441,6 +1469,7 @@ func Test_Set_UpLoad_DataType_double(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_date_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1463,6 +1492,7 @@ func Test_Set_UpLoad_DataType_date(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_month_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1485,6 +1515,7 @@ func Test_Set_UpLoad_DataType_month(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_time_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1507,6 +1538,7 @@ func Test_Set_UpLoad_DataType_time(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_minute_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1529,6 +1561,7 @@ func Test_Set_UpLoad_DataType_minute(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_second_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1551,6 +1584,7 @@ func Test_Set_UpLoad_DataType_second(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_datetime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1573,6 +1607,7 @@ func Test_Set_UpLoad_DataType_datetime(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_timestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1595,6 +1630,7 @@ func Test_Set_UpLoad_DataType_timestamp(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_nanotime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1617,6 +1653,7 @@ func Test_Set_UpLoad_DataType_nanotime(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_nanotimestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1639,6 +1676,7 @@ func Test_Set_UpLoad_DataType_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_datehour_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1661,6 +1699,7 @@ func Test_Set_UpLoad_DataType_datehour(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_point(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_point_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1683,6 +1722,7 @@ func Test_Set_UpLoad_DataType_point(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_complex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_complex_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1705,6 +1745,7 @@ func Test_Set_UpLoad_DataType_complex(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_string_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1727,6 +1768,7 @@ func Test_Set_UpLoad_DataType_string(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_blob(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_blob_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1749,6 +1791,7 @@ func Test_Set_UpLoad_DataType_blob(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_uuid(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_uuid_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1771,6 +1814,7 @@ func Test_Set_UpLoad_DataType_uuid(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_ipaddr(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_ipaddr_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1793,6 +1837,7 @@ func Test_Set_UpLoad_DataType_ipaddr(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_int128(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_int128_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1815,6 +1860,7 @@ func Test_Set_UpLoad_DataType_int128(t *testing.T) {
 	})
 }
 func Test_Set_UpLoad_DataType_big_array(t *testing.T) {
+	t.Parallel()
 	Convey("Test_set_big_array_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1836,6 +1882,57 @@ func Test_Set_UpLoad_DataType_big_array(t *testing.T) {
 		So(re.Vector.RowCount, ShouldEqual, 3000001)
 		So(ty.String(), ShouldEqual, "string(INT SET)")
 		So(res.GetDataType(), ShouldEqual, model.DtInt)
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Set_huge_val(t *testing.T) {
+	t.Parallel()
+	Convey("Test_set_big_string_symbol_blob:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_set_big_string:", func() {
+			res, _ := db.RunScript("a = array(STRING,10).append!(string(concat(take(\"123&#@!^%;d《》中文\",100000))));set(a)")
+
+			result := res.(*model.Set)
+
+			So(result.Vector.RowCount, ShouldEqual, 2)
+			// fmt.Println(result.Vector.String())
+			So(result.Vector.Get(0).Value(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			So(result.Vector.Get(1).Value(), ShouldEqual, "")
+			_, err := db.Upload(map[string]model.DataForm{"asd": result})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+		Convey("Test_set_big_blob:", func() {
+			res, _ := db.RunScript("a = array(BLOB,10).append!(blob(concat(take(\"123&#@!^%;d《》中文\",100000))));set(a)")
+
+			result := res.(*model.Set)
+
+			So(result.Vector.RowCount, ShouldEqual, 2)
+			// fmt.Println(result.Vector.String())
+			So(result.Vector.Get(0).String(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			So(result.Vector.Get(1).Value(), ShouldResemble, []uint8(nil))
+			db.Upload(map[string]model.DataForm{"adg": result})
+			_, err := db.RunScript("assert 1, blob(concat(take(\"123&#@!^%;d《》中文\",100000))) in adg;assert 2, NULL in adg")
+			So(err, ShouldBeNil)
+		})
+		Convey("Test_set_big_symbol:", func() {
+			res, err := db.RunScript("a = array(SYMBOL,10).append!(symbol([concat(take(\"123&#@!^%;d《》中文\",100000))])[0]);set(a)")
+			So(err, ShouldBeNil)
+			result := res.(*model.Set)
+			So(result.Vector.Get(0).String(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			So(result.Vector.Get(1).String(), ShouldEqual, "")
+			var str string
+			for i := 0; i < 300000; i++ {
+				str += "a"
+			}
+			rawdata, _ := model.NewDataTypeListFromRawData(model.DtSymbol, []string{str, str + "123"})
+			s := model.NewVector(rawdata)
+			p := model.NewSet(s)
+			_, err = db.Upload(map[string]model.DataForm{"p": p})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+
 		So(db.Close(), ShouldBeNil)
 	})
 }

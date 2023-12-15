@@ -9,7 +9,7 @@ type AbstractClient interface {
 	activeCloseConnection(si *site) error
 	doReconnect(si *site) bool
 	getSubscriber() *subscriber
-	getTCPConn() *net.TCPConn
+	getConn() (net.Conn, bool)
 
 	subscribe(req *SubscribeRequest) error
 	// UnSubscribe helps you to unsubscribe the specific action of the table according to the req

@@ -3,6 +3,8 @@ package model
 import (
 	"math"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -185,10 +187,21 @@ var (
 	NullDouble = -math.MaxFloat64
 	// Null value for DtDecimal32.
 	NullDecimal32Value = float64(NullInt)
+	maxDecimal32Value  = float64(math.MaxInt32)
 	// Null value for DtDecimal64.
 	NullDecimal64Value = float64(NullLong)
-	maxDecimal32Value  = float64(math.MaxInt32)
 	maxDecimal64Value  = float64(math.MaxInt64)
+	// Null value for DtDecimal128.
+	NullDecimal128Value      = "-170141183460469231731687303715884105728"
+	maxDecimal128StringValue = "170141183460469231731687303715884105728"
+
+	nullDecimal128ByteValue = []byte(NullDecimal128Value)
+
+	minDecimal128Value, _ = decimal.NewFromString(NullDecimal128Value)
+	maxDecimal128Value, _ = decimal.NewFromString(maxDecimal128StringValue)
+
+	minBigIntValue = minDecimal128Value.BigInt()
+	maxBigIntValue = maxDecimal128Value.BigInt()
 	// Null value for DtInt.
 	NullInt = int32(math.MinInt32)
 	// Null value for DtComplex.

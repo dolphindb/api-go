@@ -211,7 +211,7 @@ func TestDataTypeList(t *testing.T) {
 	assert.Nil(t, err)
 
 	w.Flush()
-	assert.Equal(t, by.Bytes(), []byte{0x0})
+	assert.Equal(t, by.Bytes(), []byte{})
 
 	dtl, err = NewDataTypeListFromRawData(DtComplex, [][2]float64{{1, 1}})
 	assert.Nil(t, err)
@@ -562,8 +562,29 @@ func TestDataTypeList(t *testing.T) {
 	assert.True(t, dtl.IsNull(0))
 
 	_, err = NewDataTypeListFromRawData(DtLong, []int32{1, 2})
-	assert.NotNil(t, err)
+
 	assert.Equal(t, err.Error(), "the type of input must be []int64 when datatype is DtLong")
+
+	dt, err = NewDataType(DtDecimal64, &Decimal64{Scale: 2, Value: 123.45})
+	assert.Nil(t, err)
+	dtl = NewEmptyDataTypeList(DtDecimal64, 1)
+	err = dtl.Set(0, dt)
+	assert.Equal(t, dtl.StringList(), []string{"123.45"})
+
+	dtl = NewEmptyDataTypeList(DtDecimal64, 0)
+	dtl = dtl.Append(dt)
+	assert.Equal(t, dtl.StringList(), []string{"123.45"})
+
+	dt, err = NewDataType(DtDecimal32, &Decimal32{Scale: 2, Value: 123.45})
+	assert.Nil(t, err)
+	dtl = NewEmptyDataTypeList(DtDecimal32, 1)
+	err = dtl.Set(0, dt)
+	assert.Nil(t, err)
+	assert.Equal(t, dtl.StringList(), []string{"123.45"})
+
+	dtl = NewEmptyDataTypeList(DtDecimal32, 0)
+	dtl = dtl.Append(dt)
+	assert.Equal(t, dtl.StringList(), []string{"123.45"})
 }
 
 func TestNewDataTypeListWithRawWithNullValue(t *testing.T) {

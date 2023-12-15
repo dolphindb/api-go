@@ -16,6 +16,9 @@ func TestAccount(t *testing.T) {
 	db, err := NewDolphinDBClient(context.TODO(), testAddress, nil)
 	assert.Nil(t, err)
 
+	err = db.Connect()
+	assert.Nil(t, err)
+
 	loginReq := new(LoginRequest).
 		SetPassword("password").
 		SetUserID("user")
@@ -121,7 +124,7 @@ func handleData(conn net.Conn) {
 	}
 }
 
-var successLength = []int{33, 48, 95, 67, 52, 57, 54, 63, 15, 40, 42, 45, 44, 78, 89, 90, 79, 87, 64, 53, 34, 41, 49, 60, 150, 30, 59}
+var successLength = []int{33, 48, 95, 67, 52, 57, 54, 63, 25, 40, 42, 45, 44, 78, 89, 90, 79, 87, 64, 53, 34, 41, 49, 60, 150, 30, 59}
 
 func isSuccessRequest(l int) bool {
 	for _, v := range successLength {

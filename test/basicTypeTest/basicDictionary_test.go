@@ -2,6 +2,8 @@ package test
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 )
 
 func Test_Dictionary_DownLoad_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_int:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -68,6 +71,7 @@ func Test_Dictionary_DownLoad_int(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_short:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -113,6 +117,7 @@ func Test_Dictionary_DownLoad_short(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_char:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -159,6 +164,7 @@ func Test_Dictionary_DownLoad_char(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_symbol(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_symbol:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -190,7 +196,7 @@ func Test_Dictionary_DownLoad_symbol(t *testing.T) {
 			key := [5]string{"A", "B", "C", "D", "E"}
 			for i := 0; i < 5; i++ {
 				get, _ := result.Get(key[i])
-				So(get.IsNull(), ShouldEqual, false)
+				So(get.IsNull(), ShouldBeTrue)
 				So(re[i], ShouldBeIn, key)
 			}
 			reType := result.GetDataType()
@@ -202,6 +208,7 @@ func Test_Dictionary_DownLoad_symbol(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_string:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -248,6 +255,7 @@ func Test_Dictionary_DownLoad_string(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -293,6 +301,7 @@ func Test_Dictionary_DownLoad_long(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_double:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -338,6 +347,7 @@ func Test_Dictionary_DownLoad_double(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_float:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -383,6 +393,7 @@ func Test_Dictionary_DownLoad_float(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_date:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -428,6 +439,7 @@ func Test_Dictionary_DownLoad_date(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_month:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -473,6 +485,7 @@ func Test_Dictionary_DownLoad_month(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_date_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_time:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -518,6 +531,7 @@ func Test_Dictionary_DownLoad_date_time(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_minute:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -563,6 +577,7 @@ func Test_Dictionary_DownLoad_minute(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_second:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -608,6 +623,7 @@ func Test_Dictionary_DownLoad_second(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_datetime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -653,6 +669,7 @@ func Test_Dictionary_DownLoad_datetime(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_timestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -698,6 +715,7 @@ func Test_Dictionary_DownLoad_timestamp(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_nanotime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -743,6 +761,7 @@ func Test_Dictionary_DownLoad_nanotime(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_nanotimestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -788,6 +807,7 @@ func Test_Dictionary_DownLoad_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Dictionary_DownLoad_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_datehour:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -834,6 +854,7 @@ func Test_Dictionary_DownLoad_datehour(t *testing.T) {
 }
 
 func Test_Dictionary_DownLoad_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_decimal32:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -845,7 +866,7 @@ func Test_Dictionary_DownLoad_decimal32(t *testing.T) {
 			val := &model.Decimal32s{2, []float64{0.99, 0.99, 0.99}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
-				zx := get.Value().(*model.Scalar).Value().(*model.Decimal32)
+				zx := get.Value().(*model.Decimal32)
 				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
 				So(zx.Scale, ShouldEqual, val.Scale)
 				So(zx.Value, ShouldEqual, val.Value[i])
@@ -859,8 +880,8 @@ func Test_Dictionary_DownLoad_decimal32(t *testing.T) {
 			val := &model.Decimal32s{5, []float64{model.NullDecimal32Value, model.NullDecimal32Value, model.NullDecimal32Value}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
-				So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
-				zx := get.Value().(*model.Scalar).Value().(*model.Decimal32)
+				So(get.IsNull(), ShouldBeTrue)
+				zx := get.Value().(*model.Decimal32)
 				// fmt.Println(zx.Scale, zx.Value, val.Value)
 				So(zx.Scale, ShouldEqual, val.Scale)
 			}
@@ -870,6 +891,7 @@ func Test_Dictionary_DownLoad_decimal32(t *testing.T) {
 }
 
 func Test_Dictionary_DownLoad_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_decimal64:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -881,7 +903,7 @@ func Test_Dictionary_DownLoad_decimal64(t *testing.T) {
 			val := &model.Decimal64s{11, []float64{0.99999456485, 0.99999456485, 0.99999456485}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
-				zx := get.Value().(*model.Scalar).Value().(*model.Decimal64)
+				zx := get.Value().(*model.Decimal64)
 				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
 				So(zx.Scale, ShouldEqual, val.Scale)
 				So(zx.Value, ShouldEqual, val.Value[i])
@@ -895,8 +917,8 @@ func Test_Dictionary_DownLoad_decimal64(t *testing.T) {
 			val := &model.Decimal64s{5, []float64{model.NullDecimal64Value, model.NullDecimal64Value, model.NullDecimal64Value}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
-				So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
-				zx := get.Value().(*model.Scalar).Value().(*model.Decimal64)
+				So(get.IsNull(), ShouldBeTrue)
+				zx := get.Value().(*model.Decimal64)
 				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
 				So(zx.Scale, ShouldEqual, val.Scale)
 			}
@@ -905,7 +927,58 @@ func Test_Dictionary_DownLoad_decimal64(t *testing.T) {
 	})
 }
 
+func Test_Dictionary_DownLoad_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_dictionary_decimal128:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_dictionary_decimal128_not_null:", func() {
+			var scale = 26
+			var value1 = "0"
+			var value2 = "1.123123123123123123123123123123123123123"
+			d1, err := db.RunScript("x=`a`b`c`d`e;y=take(`" + value1 + ",5)$DECIMAL128(" + strconv.Itoa(scale) + ");z=dict(x,y);z")
+			So(err, ShouldBeNil)
+			d2, err := db.RunScript("x=`a`b`c`d`e;y=take(`" + value2 + ",5)$DECIMAL128(" + strconv.Itoa(scale) + ");z=dict(x,y);z")
+			So(err, ShouldBeNil)
+			result1 := d1.(*model.Dictionary)
+			result2 := d2.(*model.Dictionary)
+			key := []string{"a", "b", "c", "d"}
+			val1 := &model.Decimal128s{int32(scale), []string{"0.00000000000000000000000000", "0.00000000000000000000000000", "0.00000000000000000000000000", "0.00000000000000000000000000", "0.00000000000000000000000000"}}
+			val2 := &model.Decimal128s{int32(scale), []string{"1.12312312312312312312312312", "1.12312312312312312312312312", "1.12312312312312312312312312", "1.12312312312312312312312312", "1.12312312312312312312312312"}}
+			for i := 0; i < 3; i++ {
+				get, _ := result1.Get(key[i])
+				zx := get.Value().(*model.Decimal128)
+				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
+				So(zx.Scale, ShouldEqual, val1.Scale)
+				So(zx.Value, ShouldEqual, val1.Value[i])
+
+				get, _ = result2.Get(key[i])
+				zx = get.Value().(*model.Decimal128)
+				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
+				So(zx.Scale, ShouldEqual, val2.Scale)
+				So(zx.Value, ShouldEqual, val2.Value[i])
+			}
+		})
+		Convey("Test_dictionary_decimal128_null_values:", func() {
+			s, err := db.RunScript("x=`a`b`c`d`e;y=take(decimal128(NULL,5),5);z=dict(x,y);z")
+			So(err, ShouldBeNil)
+			result := s.(*model.Dictionary)
+			key := []string{"a", "b", "c", "d"}
+			val := &model.Decimal128s{5, []string{model.NullDecimal128Value, model.NullDecimal128Value, model.NullDecimal128Value}}
+			for i := 0; i < 3; i++ {
+				get, _ := result.Get(key[i])
+				So(get.IsNull(), ShouldBeTrue)
+				zx := get.Value().(*model.Decimal128)
+				// fmt.Println(zx.Scale, zx.Value, val.Value)
+				So(zx.Scale, ShouldEqual, val.Scale)
+			}
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Dictionary_UpLoad_int_and_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_int->long_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -937,6 +1010,7 @@ func Test_Dictionary_UpLoad_int_and_long(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_short_and_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_short->char_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -971,6 +1045,7 @@ func Test_Dictionary_UpLoad_short_and_char(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_long_and_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_long->float_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1002,6 +1077,7 @@ func Test_Dictionary_UpLoad_long_and_float(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_double_and_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_double->date_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1033,6 +1109,7 @@ func Test_Dictionary_UpLoad_double_and_date(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_month_and_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_month->time_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1064,6 +1141,7 @@ func Test_Dictionary_UpLoad_month_and_time(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_minute_and_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_minute->second_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1095,6 +1173,7 @@ func Test_Dictionary_UpLoad_minute_and_second(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_datetime_and_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_datetime->timestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1126,6 +1205,7 @@ func Test_Dictionary_UpLoad_datetime_and_timestamp(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_nanotime_and_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_nanotime->nanotimestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1157,6 +1237,7 @@ func Test_Dictionary_UpLoad_nanotime_and_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_string_and_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_string->datehour_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1188,6 +1269,7 @@ func Test_Dictionary_UpLoad_string_and_datehour(t *testing.T) {
 	})
 }
 func Test_Dictionary_UpLoad_string_and_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_string->decimal32_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1206,30 +1288,31 @@ func Test_Dictionary_UpLoad_string_and_decimal32(t *testing.T) {
 			val := &model.Decimal32s{2, []float64{1.33, -2.30, model.NullDecimal32Value}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
-				zx := get.Value().(*model.Scalar).Value().(*model.Decimal32)
+				zx := get.Value().(*model.Decimal32)
 				if i < 2 {
 					So(zx.Scale, ShouldEqual, val.Scale)
 					So(zx.Value, ShouldEqual, val.Value[i])
 				} else {
-					So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
+					So(get.IsNull(), ShouldBeTrue)
 				}
 				switch {
 				case i == 0:
-					So(get.String(), ShouldEqual, "decimal32(1.33)")
+					So(get.String(), ShouldEqual, "1.33")
 				case i == 1:
-					So(get.String(), ShouldEqual, "decimal32(-2.30)")
+					So(get.String(), ShouldEqual, "-2.30")
 				case i == 2:
-					So(get.String(), ShouldEqual, "decimal32()")
+					So(get.String(), ShouldEqual, "")
 				}
 
 			}
-			So(ty.String(), ShouldEqual, "string(STRING->ANY DICTIONARY)")
+			So(ty.String(), ShouldEqual, "string(STRING->DECIMAL32 DICTIONARY)")
 		})
 		So(db.Close(), ShouldBeNil)
 	})
 }
 
 func Test_Dictionary_UpLoad_string_and_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_string->decimal64_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1248,29 +1331,55 @@ func Test_Dictionary_UpLoad_string_and_decimal64(t *testing.T) {
 			val := &model.Decimal64s{11, []float64{1.33545, -2.35421235617, model.NullDecimal64Value}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
-				zx := get.Value().(*model.Scalar).Value().(*model.Decimal64)
+				zx := get.Value().(*model.Decimal64)
 				if i < 2 {
 					So(zx.Scale, ShouldEqual, val.Scale)
 					So(zx.Value, ShouldEqual, val.Value[i])
 				} else {
-					So(get.Value().(*model.Scalar).IsNull(), ShouldBeTrue)
+					So(get.IsNull(), ShouldBeTrue)
 				}
 				switch {
 				case i == 0:
-					So(get.String(), ShouldEqual, "decimal64(1.33545000000)")
+					So(get.String(), ShouldEqual, "1.33545000000")
 				case i == 1:
-					So(get.String(), ShouldEqual, "decimal64(-2.35421235617)")
+					So(get.String(), ShouldEqual, "-2.35421235617")
 				case i == 2:
-					So(get.String(), ShouldEqual, "decimal64()")
+					So(get.String(), ShouldEqual, "")
 				}
 			}
-			So(ty.String(), ShouldEqual, "string(STRING->ANY DICTIONARY)")
+			So(ty.String(), ShouldEqual, "string(STRING->DECIMAL64 DICTIONARY)")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Dictionary_UpLoad_string_and_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_dictionary_string->decimal128_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_dictionary_string->decimal128:", func() {
+			keys, err := model.NewDataTypeListFromRawData(model.DtString, []string{"v1", "v2", "v3"})
+			So(err, ShouldBeNil)
+			values, err := model.NewDataTypeListFromRawData(model.DtDecimal128, &model.Decimal128s{26, []string{"0", "-1.123123123123123123123123123123123123123", model.NullDecimal128Value}})
+			So(err, ShouldBeNil)
+			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
+			_, err = db.Upload(map[string]model.DataForm{"s": dict})
+			So(err, ShouldBeNil)
+			_, err = db.RunScript(
+				"ex = dict(`v1`v2`v3, decimal128(['0','-1.123123123123123123123123123123123123123',NULL],26));" +
+					"assert 1, eqObj(sort(ex.keys()), sort(s.keys()));")
+			So(err, ShouldBeNil)
+			_, err = db.RunScript(`for(i in 0:ex.values().size()){assert ex.values()[i] in s.values()}`)
+			So(err, ShouldBeNil)
+
 		})
 		So(db.Close(), ShouldBeNil)
 	})
 }
 
 func Test_Dictionary_UpLoad_big_array_int_and_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_dictionary_big_array_int_and_string:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1300,6 +1409,79 @@ func Test_Dictionary_UpLoad_big_array_int_and_string(t *testing.T) {
 			ty, _ := db.RunScript("typestr(s)")
 			So(ty.String(), ShouldEqual, "string(INT->STRING DICTIONARY)")
 		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Dictionary_huge_val(t *testing.T) {
+	t.Parallel()
+	Convey("Test_dictionary_big_string_symbol_blob:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_dictionary_big_string:", func() {
+			res, _ := db.RunScript("a = array(STRING,10).append!(string(concat(take(\"123&#@!^%;d《》中文\",100000))));d = dict(\"k\"+string(1..11),a);d")
+
+			result := res.(*model.Dictionary)
+			So(result.Keys.RowCount, ShouldEqual, 11)
+			So(result.Values.RowCount, ShouldEqual, 11)
+			k11, _ := result.Get("k11")
+			// fmt.Println(k11.String())
+			So(k11.String(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			for i := 0; i < 11; i++ {
+				if i != 10 {
+					kval, _ := result.Get("k" + strconv.Itoa(i+1))
+					So(kval.Value(), ShouldEqual, "")
+				}
+			}
+			So(result.Keys.String(), ShouldEqual, "vector<string>([k10, k9, k8, k7, k11, k6, k5, k4, k3, k2, k1])")
+			_, err := db.Upload(map[string]model.DataForm{"b": result})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+		Convey("Test_dictionary_big_blob:", func() {
+			res, _ := db.RunScript("a = array(BLOB,10).append!(blob(concat(take(\"123&#@!^%;d《》中文\",100000))));d = dict(\"k\"+string(1..11),a);d")
+
+			result := res.(*model.Dictionary)
+			So(result.Keys.RowCount, ShouldEqual, 11)
+			So(result.Values.RowCount, ShouldEqual, 11)
+			// type, _ := reresult.Values
+			k11, _ := result.Get("k11")
+			So(result.Values.GetDataTypeString(), ShouldEqual, "blob")
+			So(k11.String(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			for i := 0; i < 11; i++ {
+				if i != 10 {
+					kval, _ := result.Get("k" + strconv.Itoa(i+1))
+					So(kval.Value(), ShouldEqual, []uint8(nil))
+				}
+			}
+			So(result.Keys.String(), ShouldEqual, "vector<string>([k10, k9, k8, k7, k11, k6, k5, k4, k3, k2, k1])")
+			_, err := db.Upload(map[string]model.DataForm{"b": result})
+			So(err, ShouldBeNil)
+			ans, _ := db.RunScript("each(eqObj, d.values(),b.values())")
+			So(ans.(*model.Vector).Data.Value(), ShouldResemble, []interface{}{true, true, true, true, true, true, true, true, true, true, true})
+			ans, _ = db.RunScript("each(eqObj, d.keys(),b.keys())")
+			So(ans.(*model.Vector).Data.Value(), ShouldResemble, []interface{}{true, true, true, true, true, true, true, true, true, true, true})
+		})
+		Convey("Test_dictionary_big_symbol:", func() {
+			res, err := db.RunScript("a = array(SYMBOL,10).append!(symbol([concat(take(\"123&#@!^%;d《》中文\",100000))])[0]);d = dict(\"k\"+string(1..11),a);d")
+			So(err, ShouldBeNil)
+			result := res.(*model.Dictionary)
+			So(result.Keys.Data.Len(), ShouldEqual, 11)
+			val11, _ := result.Get("k11")
+			So(val11.String(), ShouldEqual, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			for i := 0; i < 10; i++ {
+				kval, _ := result.Get("k" + strconv.Itoa(i+1))
+				So(kval.Value(), ShouldEqual, "")
+			}
+			var str string
+			for i := 0; i < 300000; i++ {
+				str += "a"
+			}
+			stringval, _ := model.NewDataType(model.DtSymbol, str)
+			s := model.NewScalar(stringval)
+			_, err = db.Upload(map[string]model.DataForm{"s": s})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+
 		So(db.Close(), ShouldBeNil)
 	})
 }

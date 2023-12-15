@@ -11,8 +11,6 @@ import (
 
 	"github.com/dolphindb/api-go/dialer"
 	"github.com/dolphindb/api-go/model"
-
-	"github.com/smallnest/chanx"
 )
 
 type subscriber struct {
@@ -20,7 +18,7 @@ type subscriber struct {
 	listeningPort int32
 	once          *sync.Once
 
-	connList *chanx.UnboundedChan
+	connList *UnboundedChan
 }
 
 // SubscribeRequest is used for subscribing.
@@ -31,15 +29,17 @@ type SubscribeRequest struct {
 	TableName string
 	// Name of the subscription task
 	ActionName string
-	// The amount of data processed at one time
-	BatchSize *int
+	// If treat data as table
+	MsgAsTable bool
 	// Offset of subscription
 	Offset int64
 	// When AllowExists=true, if the topic already exists before subscribing,
 	// the server will not throw an exception.
 	AllowExists bool
-	// timeout. unit: millisecond
-	Throttle *int
+	// The amount of data processed at one time
+	BatchSize *int
+	// timeout. unit: second
+	Throttle *float32
 	// whether to allow reconnection
 	Reconnect bool
 
@@ -47,8 +47,13 @@ type SubscribeRequest struct {
 	// SetStreamTableFilterColumn specifies the filtering column of a stream table.
 	// Only the messages with filtering column values in filter are subscribed.
 	Filter *model.Vector
-	// handle subscription information
+
+	// handle subscription information, batchSize must be -1
 	Handler MessageHandler
+	// batch handle subscription information, batchSize must >= 1
+	BatchHandler MessageBatchHandler
+	// StreamDeserializer to decode heterogenous streaming
+	MsgDeserializer *StreamDeserializer
 }
 
 type site struct {
@@ -71,8 +76,8 @@ func (s *SubscribeRequest) SetBatchSize(bs int) *SubscribeRequest {
 	return s
 }
 
-// SetThrottle sets the throttle.
-func (s *SubscribeRequest) SetThrottle(th int) *SubscribeRequest {
+// SetThrottleFloat sets the throttle.
+func (s *SubscribeRequest) SetThrottle(th float32) *SubscribeRequest {
 	s.Throttle = &th
 
 	return s
@@ -82,12 +87,12 @@ func newSubscriber(subscribeHost string, subscribePort int) *subscriber {
 	return &subscriber{
 		listeningHost: subscribeHost,
 		listeningPort: int32(subscribePort),
-		connList:      chanx.NewUnboundedChan(1),
+		connList:      NewUnboundedChan(1),
 		once:          &sync.Once{},
 	}
 }
 
-func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*chanx.UnboundedChan, error) {
+func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*UnboundedChan, error) {
 	var conn dialer.Conn
 	var err error
 	if s.listeningPort == 0 {
@@ -102,9 +107,7 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*chanx.UnboundedC
 	}
 
 	defer func() {
-		if s.listeningPort == 0 {
-			s.connList.In <- conn
-		} else {
+		if s.listeningPort > 0 {
 			conn.Close()
 		}
 	}()
@@ -119,12 +122,83 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*chanx.UnboundedC
 		s.listeningHost = conn.GetLocalAddress()
 	}
 
+	q, retErr := addQueue(topic)
+
 	err = s.publishTable(topic, req, conn)
 	if err != nil {
+		if address, ok := getLeader(err.Error()); ok {
+			fmt.Println(" loop subscribe internal ")
+			req.Address = address
+			return s.subscribeInternal(req)
+		}
+		queueMap.Delete(topic)
+
 		return nil, err
 	}
 
-	return addQueue(topic)
+	s.connList.In <- conn
+
+	return q, retErr
+}
+
+
+
+func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
+	var conn dialer.Conn
+	var err error
+	if s.listeningPort == 0 {
+		conn, err = newReverseStreamConnectedConn(req.Address)
+	} else {
+		conn, err = newConnectedConn(req.Address)
+	}
+
+	if err != nil {
+		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		return err
+	}
+
+	defer func() {
+		if s.listeningPort > 0 {
+			conn.Close()
+		}
+	}()
+
+	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
+	if err != nil {
+		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		return err
+	}
+
+	if s.listeningHost == "" || strings.ToLower(s.listeningHost) == localhost {
+		s.listeningHost = conn.GetLocalAddress()
+	}
+
+	err = s.publishTable(topic, req, conn)
+	if err != nil {
+		if address, ok := getLeader(err.Error()); ok {
+			fmt.Println(" loop resubscribe internal ")
+			req.Address = address
+			return s.reSubscribeInternal(req)
+		}
+
+		return err
+	}
+
+	if !s.connList.IsClosed() {
+		s.connList.In <- conn
+	}
+
+	return nil
+}
+
+func getLeader(err string) (string, bool) {
+	if !strings.Contains(err, "<NotLeader>") {
+		return "", false
+	}
+
+	site := strings.Split(err, "<NotLeader>")[1]
+	strs := strings.Split(site, ":")
+	return fmt.Sprintf("%s:%s", strs[0], strs[1]), true
 }
 
 func (s *subscriber) checkServerVersion(address string) error {
@@ -141,7 +215,7 @@ func (s *subscriber) checkServerVersion(address string) error {
 	}
 
 	ver := df.(*model.Scalar).DataType.String()
-	if strings.HasPrefix(ver, "2") && ver >= "2.00.9" {
+	if strings.HasPrefix(ver, "3") || (strings.HasPrefix(ver, "2") && isLater(ver, "2.00.9")) {
 		if s.listeningPort != 0 {
 			fmt.Println("Warn: The server only supports subscription through reverse connection (connection initiated by the subscriber). The specified port will not take effect.")
 		}
@@ -153,9 +227,30 @@ func (s *subscriber) checkServerVersion(address string) error {
 	return nil
 }
 
-func (s *subscriber) getTCPConn() *net.TCPConn {
-	tc := <-s.connList.Out
-	return tc.(dialer.Conn).GetTCPConn()
+func isLater(ori, raw string) bool {
+	oris := strings.Split(ori, ".")
+	raws := strings.Split(raw, ".")
+	for k, v := range oris {
+		r := raws[k]
+		if len(v) > len(r) || v > r {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *subscriber) getConn() (net.Conn, bool) {
+	select {
+		case tc, ok := <-s.connList.Out:
+			if ok {
+				return tc.(dialer.Conn), true
+			} else {
+				return nil, false
+			}
+		default:
+			return nil, false
+	}
 }
 
 func (s *subscriber) publishTable(topic string, req *SubscribeRequest, conn dialer.Conn) error {
@@ -364,11 +459,6 @@ func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 
 	defer conn.Close()
 
-	err = s.stopPublishTable(req, conn)
-	if err != nil {
-		return err
-	}
-
 	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
@@ -378,12 +468,16 @@ func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 	fmt.Println("Successfully unsubscribe from the table ", topic)
 
 	s.cleanTopic(topic)
+	err = s.stopPublishTable(req, conn)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (s *subscriber) cleanTopic(topic string) {
-	queueMap.Delete(topic)
+	// queueMap.Delete(topic)
 
 	raw, ok := trueTopicToSites.Load(topic)
 	if !ok {
@@ -423,7 +517,7 @@ func tryReconnect(topic string, ac AbstractClient) {
 		return
 	}
 
-	queueMap.Delete(topicRaw)
+	// queueMap.Delete(topicRaw)
 
 	sites, isSuccess := loadSites(topicRaw)
 	if !isSuccess {
@@ -433,6 +527,7 @@ func tryReconnect(topic string, ac AbstractClient) {
 	site := getActiveSite(sites)
 	if site != nil {
 		if ac.doReconnect(site) {
+			reconnectTable.Delete(site)
 			waitReconnectTopic.Delete(topicRaw)
 			return
 		}

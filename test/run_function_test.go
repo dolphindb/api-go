@@ -1,7 +1,11 @@
 package test
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/dolphindb/api-go/api"
@@ -21,6 +25,7 @@ func checkVectorisNull(arr *model.Vector) bool {
 }
 
 func TestRunScript(t *testing.T) {
+	t.Parallel()
 	Convey("test_RunScript_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -103,4 +108,73 @@ func TestRunScript(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPrint(t *testing.T) {
+	t.Parallel()
+	Convey("test_print_msg_on_console", t, func() {
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = ddb.RunScript(`a=int(1);
+								b=bool(1);
+								c=char(1);
+								d=NULL;
+								ee=short(1);
+								f=long(1);
+								g=date(1);
+								h=month(1);
+								i=time(1);
+								j=minute(1);
+								k=second(1);
+								l=datetime(1);
+								m=timestamp(1);
+								n=nanotime(1);
+								o=nanotimestamp(1);
+								p=float(1);
+								q=double(1);
+								r="1";
+								s=uuid("5d212a78-cc48-e3b1-4235-b4d91473ee87");
+								ttt=blob(string[1]);
+								u=table(1 2 3 as col1, ["a", "b", "c"] as col2);
+								v=arrayVector(1 2 3 , 9 9 9)`)
+		So(err, ShouldBeNil)
+
+		fw, _ := os.Create("./tmp")
+		old := os.Stdout
+		os.Stdout = fw
+		ddb.RunScript("print(a,b,c,d,ee,f,g,h,i,j,k,l,m,n,o,p,q,r,s,ttt,u,v)")
+		fw.Close()
+
+		os.Stdout = old
+		fr, err := os.OpenFile("./tmp", os.O_RDONLY, 0644)
+		So(err, ShouldBeNil)
+		if err != nil {
+			panic(err)
+		}
+
+		reader := bufio.NewReader(fr)
+		ex := []string{"1\n", "1\n", "1\n", "1\n", "1\n", "1970.01.02\n", "0000.02M\n", "00:00:00.001\n", "00:01m\n", "00:00:01\n", "1970.01.01T00:00:01\n",
+			"1970.01.01T00:00:00.001\n", "00:00:00.000000001\n", "1970.01.01T00:00:00.000000001\n", "1\n", "1\n", "1\n", "5d212a78-cc48-e3b1-4235-b4d91473ee87\n",
+			"[\"1\"]\n", "col1 col2\n", "---- ----\n", "1    a   \n", "2    b   \n", "3    c   \n", "\n", "[[9],[9],[9]]\n", ""}
+		ind := 0
+		for {
+			ex_line := ex[ind]
+			line, err := reader.ReadString('\n')
+			if err != nil && err.Error() != "EOF" {
+				fmt.Println("读取文件错误:", err)
+				return
+			}
+			// fmt.Println(line)
+			So(line, ShouldEqual, ex_line)
+			if err == io.EOF {
+				break
+			}
+			ind++
+		}
+
+		So(ddb.Close(), ShouldBeNil)
+		So(fr.Close(), ShouldBeNil)
+		So(os.Remove("./tmp"), ShouldBeNil)
+	})
+
 }

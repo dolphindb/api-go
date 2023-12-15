@@ -11,10 +11,12 @@ import (
 )
 
 func TestLoadTableBySQL(t *testing.T) {
+	t.Parallel()
 	Convey("Test LoadTableBySQL prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -34,6 +36,7 @@ func TestLoadTableBySQL(t *testing.T) {
 			}
 		})
 		Convey("Test_LoadTableBySQL_dfs_dimension:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -42,6 +45,7 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_LoadTableBySQL_dfs_range:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			CreateDfsRangedb(DfsDBPath, TbName1, TbName2)
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
@@ -57,6 +61,7 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_hash:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -75,6 +80,7 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_value:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -93,6 +99,7 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_list:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
@@ -111,6 +118,7 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_compo:", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			re1, err := ExistsDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)

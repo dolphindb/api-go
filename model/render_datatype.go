@@ -184,6 +184,24 @@ func renderDecimal64(val interface{}) ([2]int64, error) {
 	return [2]int64{int64(d.Scale), int64(f)}, nil
 }
 
+func renderDecimal128(val interface{}) (decimal128Data, error) {
+	d, ok := val.(*Decimal128)
+	if !ok {
+		return decimal128Data{}, errors.New("the type of in must be *Decimal128 when datatype is DtDecimal128")
+	}
+
+	if d.Scale < 0 || d.Scale > 38 {
+		return decimal128Data{}, fmt.Errorf("Scale out of bound(valid range: [0, 38], but get: %d)", d.Scale)
+	}
+
+	f, err := calculateDecimal128(d.Scale, d.Value)
+	if err != nil {
+		return decimal128Data{}, err
+	}
+
+	return decimal128Data{scale: d.Scale, value: f}, nil
+}
+
 func renderLong(val interface{}) (int64, error) {
 	i, ok := val.(int64)
 	if !ok {

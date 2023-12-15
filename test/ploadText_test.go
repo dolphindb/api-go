@@ -12,6 +12,7 @@ import (
 )
 
 func TestPloadTest(t *testing.T) {
+	t.Parallel()
 	Convey("test_PloadTest_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)

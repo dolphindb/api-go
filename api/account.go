@@ -17,7 +17,8 @@ type AccountAPI interface {
 // See DolphinDB function `login`: https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/CommandsReferences/l/login.html?highlight=login
 func (c *dolphindb) Login(l *LoginRequest) error {
 	_, err := c.RunScript(fmt.Sprintf("login('%s','%s')", l.UserID, l.Password))
-
+	c.SetPassword(l.Password)
+	c.SetUserID(l.UserID)
 	return err
 }
 

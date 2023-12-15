@@ -1,26 +1,33 @@
 package setup
 
-const (
-	UserName        = "admin"
-	Password        = "123456"
-	Address         = "127.0.0.1:8532"
-	IP              = "127.0.0.1"
-	Reverse_subPort = 0
-	Port            = 8532
-	SubPort         = 8014
-	WORK_DIR        = "/home/sjw/jwshu/WORK_DIR"
-	DATA_DIR        = "/hdd/dolphindb/server/setup/data"
-	Address2        = "127.0.0.1:8533"
-	Address3        = "127.0.0.1:8534"
-	Address4        = "127.0.0.1:8535"
+import (
+	"math/rand"
+	"strconv"
 )
 
-// const (
-// 	UserName = "admin"
-// 	Password = "123456"
-// 	Address  = "127.0.0.1:8848"
-// 	IP       = "127.0.0.1"
-// 	Port     = "8848"
-// 	WORK_DIR = "/home/sjw/jwshu/WORK_DIR"
-// 	DATA_DIR = "/hdd/dolphindb/server/setup/data"
-// )
+func getPort(ports []int) (int, []int) {
+	randomIndex := rand.Intn(len(ports))
+	return ports[randomIndex], append(ports[:randomIndex], ports[randomIndex+1:]...)
+}
+
+var ports = []int{20902, 20903, 20904, 20905}
+var IP = "127.0.0.1"
+var Port, remainPorts = getPort(ports)
+var CtlPort = 20900
+
+var (
+	UserName        = "admin"
+	Password        = "123456"
+	Address         = IP + ":" + strconv.Itoa(Port)
+	Address2        = IP + ":" + strconv.Itoa(remainPorts[0])
+	Address3        = IP + ":" + strconv.Itoa(remainPorts[1])
+	Address4        = IP + ":" + strconv.Itoa(remainPorts[2])
+	CtlAdress       = IP + ":" + strconv.Itoa(CtlPort)
+	LocalIP         = "127.0.0.1"
+	SubPort         = 13456
+	Reverse_subPort = 0
+	WORK_DIR        = "/home/codes/api-go/data"
+	DATA_DIR        = "/home/codes/api-go/data"
+)
+
+var HA_sites = []string{Address, Address2, Address3, Address4}

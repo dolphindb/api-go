@@ -19,6 +19,7 @@ type responseHeader struct {
 func (c *conn) parseResponse(reader protocol.Reader) (*responseHeader, model.DataForm, error) {
 	h, err := c.parseResponseHeader(reader)
 	if err != nil {
+		c.isConnected = false
 		return nil, nil, err
 	}
 
@@ -28,13 +29,31 @@ func (c *conn) parseResponse(reader protocol.Reader) (*responseHeader, model.Dat
 	}
 
 	di, err := c.parseResponseContent(reader, h.objectCount, h.byteOrder)
-	return h, di, err
+	if err != nil {
+		c.isConnected = false
+		return nil, nil, err
+	}
+	return h, di, nil
 }
 
 func (c *conn) parseResponseHeader(reader protocol.Reader) (*responseHeader, error) {
 	bs, err := reader.ReadBytes(protocol.NewLine)
 	if err != nil {
 		return nil, err
+	}
+
+	for bytes.Equal(bs, protocol.Msg) {
+		msg, err := reader.ReadBytes(protocol.StringSep)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Println(string(msg))
+
+		bs, err = reader.ReadBytes(protocol.NewLine)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tmp := bytes.Split(bs, []byte{protocol.EmptySpace})
@@ -53,6 +72,7 @@ func (c *conn) parseResponseHeader(reader protocol.Reader) (*responseHeader, err
 func (c *conn) validateResponseOK(reader protocol.Reader) error {
 	bs, err := reader.ReadBytes(protocol.NewLine)
 	if err != nil {
+		c.isConnected = false
 		return err
 	}
 

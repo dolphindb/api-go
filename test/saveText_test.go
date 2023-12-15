@@ -26,6 +26,7 @@ func CheckVectorEqual(vec *model.Vector) bool {
 	return true
 }
 func TestSaveText(t *testing.T) {
+	t.Parallel()
 	Convey("Test_saveText_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)

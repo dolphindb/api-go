@@ -19,6 +19,7 @@ func StringToBytes(data string) []byte {
 }
 
 func TestTableDataType(t *testing.T) {
+	t.Parallel()
 	Convey("Test table prepare", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -205,7 +206,7 @@ func TestTableDataType(t *testing.T) {
 		})
 		Convey("Test table insert into one rows", func() {
 			Convey("Test table insert into int and long and short and char and bool rows", func() {
-				_, err := db.RunScript(`t=table(100:0, ["id", "longv", "shortv", "charv", "boolv"], 
+				_, err := db.RunScript(`t=table(100:0, ["id", "longv", "shortv", "charv", "boolv"],
 			[INT, LONG, SHORT, CHAR, BOOL])`)
 				So(err, ShouldBeNil)
 				var id int32 = 10
@@ -284,7 +285,7 @@ func TestTableDataType(t *testing.T) {
 				So(reString.String(), ShouldEqual, "vector<string>([A1])")
 			})
 			Convey("Test table insert into temporal rows", func() {
-				_, err := db.RunScript(`t=table(100:0, ["datev", "datetimev", "timestampv", "nanotimestampv", "datehourv", "monthv", "timev", "secondv", "minutev", "nanotimev"], 
+				_, err := db.RunScript(`t=table(100:0, ["datev", "datetimev", "timestampv", "nanotimestampv", "datehourv", "monthv", "timev", "secondv", "minutev", "nanotimev"],
 			[DATE, DATETIME, TIMESTAMP, NANOTIMESTAMP, DATEHOUR, MONTH, TIME, SECOND, MINUTE, NANOTIME])`)
 				So(err, ShouldBeNil)
 				datev := time.Date(1969, time.December, 31, 0, 0, 0, 0, time.UTC)
@@ -434,10 +435,12 @@ func TestTableDataType(t *testing.T) {
 }
 
 func TestTableWithCapacity(t *testing.T) {
+	t.Parallel()
 	Convey("Test_function_TableWithCapacity_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -602,10 +605,12 @@ func TestTableWithCapacity(t *testing.T) {
 }
 
 func TestTableUpload(t *testing.T) {
+	t.Parallel()
 	Convey("Test_function_Table_prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
+			DfsDBPath := "dfs://" + generateRandomString(8)
 			dbPaths := []string{DfsDBPath, DiskDBPath}
 			for _, dbPath := range dbPaths {
 				script := `
@@ -821,6 +826,7 @@ func TestTableUpload(t *testing.T) {
 }
 
 func TestTableDataType_arrayVector(t *testing.T) {
+	t.Parallel()
 	Convey("Test table prepare", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)

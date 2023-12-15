@@ -2,6 +2,8 @@ package test
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"reflect"
 
@@ -10,7 +12,7 @@ import (
 	"github.com/dolphindb/api-go/test/setup"
 )
 
-const (
+var (
 	DfsDBPath    = "dfs://test_dfsTable"
 	TbName1      = "tb1"
 	TbName2      = "tb2"
@@ -700,4 +702,23 @@ func CheckmodelTableEqual(t1 *model.Table, t2 *model.Table, n int) bool {
 		}
 	}
 	return true
+}
+
+func generateRandomString(length int) string {
+	// 计算生成的随机字节数
+	numBytes := length / 4 * 3
+	if length%4 != 0 {
+		numBytes += 3
+	}
+
+	// 生成随机字节序列
+	randomBytes := make([]byte, numBytes)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return ""
+	}
+
+	// 使用base64编码生成随机字符串
+	randomString := base64.URLEncoding.EncodeToString(randomBytes)[:length]
+	return randomString
 }

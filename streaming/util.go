@@ -10,8 +10,6 @@ import (
 
 	"github.com/dolphindb/api-go/dialer"
 	"github.com/dolphindb/api-go/model"
-
-	"github.com/smallnest/chanx"
 )
 
 func getReconnectTimestamp(site string) int64 {
@@ -34,12 +32,13 @@ func contains(src []string, sub string) bool {
 	return false
 }
 
-func addQueue(topic string) (*chanx.UnboundedChan, error) {
+func addQueue(topic string) (*UnboundedChan, error) {
 	if _, ok := queueMap.Load(topic); ok {
 		return nil, fmt.Errorf("topic %s already subscribed", topic)
 	}
 
-	q := chanx.NewUnboundedChan(4096)
+	q := NewUnboundedChan(4096)
+
 	queueMap.Store(topic, q)
 	return q, nil
 }
@@ -68,9 +67,17 @@ func dispatch(msg IMessage) {
 			continue
 		}
 
+		sitesRaw, ok := trueTopicToSites.Load(topic)
+		if(ok && sitesRaw != nil) {
+			sites := sitesRaw.([]*site)
+			for _,s := range sites {
+				s.msgID += 1
+			}
+		}
+
 		raw, ok := queueMap.Load(topic)
 		if ok && raw != nil {
-			q := raw.(*chanx.UnboundedChan)
+			q := raw.(*UnboundedChan)
 			q.In <- msg
 		}
 	}
@@ -106,13 +113,22 @@ func addMessageToCache(msg IMessage) {
 }
 
 func flushToQueue() {
-	messageCache.Range(func(k, v interface{}) bool {
+	messageCache.Range(func(topic, v interface{}) bool {
 		val := v.([]IMessage)
 
-		raw, ok := queueMap.Load(k)
+		sites := make([]*site, 0)
+		sitesRaw, ok := trueTopicToSites.Load(topic)
+		if(ok && sitesRaw != nil) {
+			sites = sitesRaw.([]*site)
+		}
+
+		raw, ok := queueMap.Load(topic)
 		if ok && raw != nil {
-			q := raw.(*chanx.UnboundedChan)
+			q := raw.(*UnboundedChan)
 			for _, m := range val {
+				for _,s := range sites {
+					s.msgID += 1
+				}
 				q.In <- m
 			}
 		}
@@ -327,17 +343,16 @@ func generatePublishTableParams(s *SubscribeRequest, listenHost string, listenPo
 	}
 
 	if s.AllowExists {
-		al, err := model.NewDataType(model.DtBool, byte(1))
+		al, err := model.NewDataType(model.DtBool, true)
 		if err != nil {
 			fmt.Printf("Failed to instantiate DataType with AllowExists: %s\n", err.Error())
 			return nil, err
 		}
-
 		pubReq = append(pubReq, model.NewScalar(al))
-		return pubReq, nil
+		fmt.Println(pubReq[6].String())
 	}
 
-	return pubReq[:6], nil
+	return pubReq, nil
 }
 
 func packListeningHostAndPort(listeningHost string, listeningPort int32) ([]model.DataForm, error) {

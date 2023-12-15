@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,9 +12,11 @@ import (
 	"github.com/dolphindb/api-go/model"
 	"github.com/dolphindb/api-go/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Scalar_DownLoad_Datatype_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_bool:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -44,6 +47,7 @@ func Test_Scalar_DownLoad_Datatype_bool(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_blob(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_blob:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -79,6 +83,7 @@ func Test_Scalar_DownLoad_Datatype_blob(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_void(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_void:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -107,6 +112,7 @@ func Test_Scalar_DownLoad_Datatype_void(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_char:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -180,6 +186,7 @@ func Test_Scalar_DownLoad_Datatype_char(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_short:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -296,6 +303,7 @@ func Test_Scalar_DownLoad_Datatype_short(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_int:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -445,6 +453,7 @@ func Test_Scalar_DownLoad_Datatype_int(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_long:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -556,6 +565,7 @@ func Test_Scalar_DownLoad_Datatype_long(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_date:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -601,6 +611,7 @@ func Test_Scalar_DownLoad_Datatype_date(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_month:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -645,6 +656,7 @@ func Test_Scalar_DownLoad_Datatype_month(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_time:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -690,6 +702,7 @@ func Test_Scalar_DownLoad_Datatype_time(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_minute:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -721,6 +734,7 @@ func Test_Scalar_DownLoad_Datatype_minute(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_second:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -766,6 +780,7 @@ func Test_Scalar_DownLoad_Datatype_second(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_dattime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_datetime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -837,6 +852,7 @@ func Test_Scalar_DownLoad_Datatype_dattime(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_timestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -907,6 +923,7 @@ func Test_Scalar_DownLoad_Datatype_timestamp(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_nanotime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -952,6 +969,7 @@ func Test_Scalar_DownLoad_Datatype_nanotime(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_nanotimestamp:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1024,6 +1042,7 @@ func Test_Scalar_DownLoad_Datatype_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_float:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1033,7 +1052,7 @@ func Test_Scalar_DownLoad_Datatype_float(t *testing.T) {
 			result := s.(*model.Scalar)
 			re := result.DataType.Value()
 			reType := result.GetDataType()
-			So(re, ShouldEqual, 2.1)
+			So(re, ShouldEqual, float32(2.1))
 			So(reType, ShouldEqual, 15)
 			reTypeString := result.GetDataTypeString()
 			So(reTypeString, ShouldEqual, "float")
@@ -1054,7 +1073,7 @@ func Test_Scalar_DownLoad_Datatype_float(t *testing.T) {
 			result := s.(*model.Scalar)
 			re := result.DataType.Value()
 			reType := result.GetDataType()
-			So(re, ShouldEqual, -2.1)
+			So(re, ShouldEqual, float32(-2.1))
 			So(reType, ShouldEqual, 15)
 			reTypeString := result.GetDataTypeString()
 			So(reTypeString, ShouldEqual, "float")
@@ -1135,6 +1154,7 @@ func Test_Scalar_DownLoad_Datatype_float(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_double:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1246,6 +1266,7 @@ func Test_Scalar_DownLoad_Datatype_double(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_string:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1274,6 +1295,7 @@ func Test_Scalar_DownLoad_Datatype_string(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_uuid(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_uuid:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1308,6 +1330,7 @@ func Test_Scalar_DownLoad_Datatype_uuid(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_datehour:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1358,6 +1381,7 @@ func Test_Scalar_DownLoad_Datatype_datehour(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_decimal32:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1403,6 +1427,7 @@ func Test_Scalar_DownLoad_Datatype_decimal32(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_decimal64:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1448,7 +1473,55 @@ func Test_Scalar_DownLoad_Datatype_decimal64(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+func Test_Scalar_DownLoad_Datatype_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_scalar_decimal128:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_scalar_decimal128_scale_lt_digits:", func() {
+			s, err := db.RunScript("decimal128(2.36518, 0)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Scalar)
+			re := result.DataType.Value()
+			reType := result.GetDataType()
+			decimal128Val := &model.Decimal128s{Scale: 0, Value: []string{"2.36518"}}
+
+			So(re.(*model.Decimal128).Scale, ShouldEqual, decimal128Val.Scale)
+			So(result.String(), ShouldEqual, "decimal128(2)")
+			So(reType, ShouldEqual, model.DtDecimal128)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128")
+		})
+		Convey("Test_scalar_decimal128_null:", func() {
+			s, err := db.RunScript("decimal128(NULL, 38)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Scalar)
+			reType := result.GetDataType()
+			So(result.IsNull(), ShouldBeTrue)
+			So(result.DataType.Value().(*model.Decimal128).Scale, ShouldEqual, 38)
+			So(reType, ShouldEqual, model.DtDecimal128)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128")
+		})
+		Convey("Test_scalar_decimal128_scale_gt_digits:", func() {
+			s, err := db.RunScript("decimal128(2.3, 6)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Scalar)
+			re := result.DataType.Value()
+			reType := result.GetDataType()
+			decimal128Val := &model.Decimal128s{Scale: 6, Value: []string{"2.300000"}}
+
+			So(re.(*model.Decimal128).Scale, ShouldEqual, decimal128Val.Scale)
+			So(result.String(), ShouldEqual, "decimal128(2.300000)")
+			So(reType, ShouldEqual, model.DtDecimal128)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "decimal128")
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
 func Test_Scalar_DownLoad_Datatype_ipaddr(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_ipaddr:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1483,6 +1556,7 @@ func Test_Scalar_DownLoad_Datatype_ipaddr(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_int128(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_int128:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1523,6 +1597,7 @@ func Test_Scalar_DownLoad_Datatype_int128(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_complex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_complex:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1635,6 +1710,7 @@ func Test_Scalar_DownLoad_Datatype_complex(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_point(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_point:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1741,6 +1817,7 @@ func Test_Scalar_DownLoad_Datatype_point(t *testing.T) {
 	})
 }
 func Test_Scalar_DownLoad_Datatype_duration(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_duration:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1876,6 +1953,7 @@ func Test_Scalar_DownLoad_Datatype_duration(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_int(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_int_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1897,6 +1975,7 @@ func Test_Scalar_UpLoad_Datatype_int(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_bool(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_bool_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1922,6 +2001,7 @@ func Test_Scalar_UpLoad_Datatype_bool(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_blob(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_blob_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1943,6 +2023,7 @@ func Test_Scalar_UpLoad_Datatype_blob(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_char(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_char_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1964,6 +2045,7 @@ func Test_Scalar_UpLoad_Datatype_char(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_short(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_short_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -1985,6 +2067,7 @@ func Test_Scalar_UpLoad_Datatype_short(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_long(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_long_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2006,6 +2089,7 @@ func Test_Scalar_UpLoad_Datatype_long(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_date(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_date_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2030,6 +2114,7 @@ func Test_Scalar_UpLoad_Datatype_date(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_month(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_month_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2054,6 +2139,7 @@ func Test_Scalar_UpLoad_Datatype_month(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_datetime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_datetime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2078,6 +2164,7 @@ func Test_Scalar_UpLoad_Datatype_datetime(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_time(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_time_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2102,6 +2189,7 @@ func Test_Scalar_UpLoad_Datatype_time(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_timestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_timestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2126,6 +2214,7 @@ func Test_Scalar_UpLoad_Datatype_timestamp(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_minute(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_minute_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2150,6 +2239,7 @@ func Test_Scalar_UpLoad_Datatype_minute(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_second(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_second_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2174,6 +2264,7 @@ func Test_Scalar_UpLoad_Datatype_second(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_nanotime(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_nanotime_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2198,6 +2289,7 @@ func Test_Scalar_UpLoad_Datatype_nanotime(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_nanotimestamp(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_nanotimestamp_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2222,6 +2314,7 @@ func Test_Scalar_UpLoad_Datatype_nanotimestamp(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_datehour(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_datehour_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2246,6 +2339,7 @@ func Test_Scalar_UpLoad_Datatype_datehour(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_decimal32_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2285,6 +2379,7 @@ func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_decimal64(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_decimal64_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2323,7 +2418,68 @@ func Test_Scalar_UpLoad_Datatype_decimal64(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+func Test_Scalar_UpLoad_Datatype_decimal128(t *testing.T) {
+	t.Parallel()
+	Convey("Test_scalar_decimal128_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_scalar_decimal128_gt_digits:", func() {
+			dc128 := &model.Decimal128{Scale: 30, Value: "0"}
+			dt, err := model.NewDataType(model.DtDecimal128, dc128)
+			So(err, ShouldBeNil)
+			s := model.NewScalar(dt)
+			db.Upload(map[string]model.DataForm{"s": s})
+			res, err := db.RunScript("eqObj(s, decimal128(`0, 30))")
+			So(err, ShouldBeNil)
+			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		Convey("Test_scalar_decimal128_lt_digits:", func() {
+			dc128 := &model.Decimal128{Scale: 2, Value: "1.123123123"}
+			dt, err := model.NewDataType(model.DtDecimal128, dc128)
+			So(err, ShouldBeNil)
+			s := model.NewScalar(dt)
+			db.Upload(map[string]model.DataForm{"s": s})
+			res, err := db.RunScript("eqObj(s, decimal128('1.123123123', 2))")
+			So(err, ShouldBeNil)
+			So(res.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		Convey("Test_scalar_decimal128_scale_negative:", func() {
+			dc32 := &model.Decimal128{Scale: -3, Value: "-0.36"}
+			_, err := model.NewDataType(model.DtDecimal128, dc32)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 38], but get: -3)")
+		})
+		Convey("Test_scalar_decimal128_null:", func() {
+			dc128 := &model.Decimal128{Scale: 0, Value: model.NullDecimal128Value}
+			dc128_1 := &model.Decimal128{Scale: 18, Value: ""}
+			dt, err := model.NewDataType(model.DtDecimal128, dc128)
+			So(err, ShouldBeNil)
+			dt1, err := model.NewDataType(model.DtDecimal128, dc128_1)
+			So(err, ShouldBeNil)
+			s := model.NewScalar(dt)
+			s1 := model.NewScalar(dt1)
+			db.Upload(map[string]model.DataForm{"s": s, "s1": s1})
+			_, err = db.RunScript("assert 1, eqObj(s, decimal128(NULL, 0));assert 2, eqObj(s1, decimal128(NULL, 18));")
+			So(err, ShouldBeNil)
+		})
+		Convey("Test_scalar_decimal128_scale_large_than_18:", func() {
+			dc32 := &model.Decimal128{Scale: 40, Value: "-0.36"}
+			_, err := model.NewDataType(model.DtDecimal128, dc32)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Scale out of bound(valid range: [0, 38], but get: 40)")
+		})
+		Convey("Test_scalar_decimal128_invalid_value:", func() {
+			dc32 := &model.Decimal128{Scale: 1, Value: " "}
+			_, err := model.NewDataType(model.DtDecimal128, dc32)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Invalid Decimal128 value")
+		})
+
+		So(db.Close(), ShouldBeNil)
+	})
+}
 func Test_Scalar_UpLoad_Datatype_float(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_float_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2349,7 +2505,7 @@ func Test_Scalar_UpLoad_Datatype_float(t *testing.T) {
 			res, err := db.RunScript("s")
 			ty, _ := db.RunScript("typestr(s)")
 			re := res.(*model.Scalar)
-			So(re.Value(), ShouldEqual, 45.456745)
+			So(re.Value(), ShouldAlmostEqual, 45.456745, 0.000001)
 			So(res, ShouldResemble, s)
 			So(err, ShouldBeNil)
 			So(ty.String(), ShouldEqual, "string(FLOAT)")
@@ -2360,6 +2516,7 @@ func Test_Scalar_UpLoad_Datatype_float(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_double(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_double_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2395,6 +2552,7 @@ func Test_Scalar_UpLoad_Datatype_double(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_string(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_string_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2416,6 +2574,7 @@ func Test_Scalar_UpLoad_Datatype_string(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_uuid(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_uuid_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2437,6 +2596,7 @@ func Test_Scalar_UpLoad_Datatype_uuid(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_code(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_code_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2456,6 +2616,7 @@ func Test_Scalar_UpLoad_Datatype_code(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_int128(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_int128_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2477,6 +2638,7 @@ func Test_Scalar_UpLoad_Datatype_int128(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_scalar(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_ipaddr_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2498,6 +2660,7 @@ func Test_Scalar_UpLoad_Datatype_scalar(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_ipaddr(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_ipaddr_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2519,6 +2682,7 @@ func Test_Scalar_UpLoad_Datatype_ipaddr(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_complex(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_complex_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2540,6 +2704,7 @@ func Test_Scalar_UpLoad_Datatype_complex(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_point(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_point_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2561,6 +2726,7 @@ func Test_Scalar_UpLoad_Datatype_point(t *testing.T) {
 	})
 }
 func Test_Scalar_UpLoad_Datatype_duration(t *testing.T) {
+	t.Parallel()
 	Convey("Test_scalar_duration_upload:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
@@ -2578,6 +2744,58 @@ func Test_Scalar_UpLoad_Datatype_duration(t *testing.T) {
 			So(df.GetDataForm(), ShouldEqual, model.DfScalar)
 			So(res.GetDataType(), ShouldEqual, model.DtDuration)
 		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Scalar_huge_val(t *testing.T) {
+	t.Parallel()
+	Convey("Test_scalar_big_string_symbol_blob:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_scalar_big_string:", func() {
+			res, _ := db.RunScript("a=string(concat(take(\"123&#@!^%;d《》中文\",100000)));a")
+
+			result := res.(*model.Scalar)
+			// fmt.Println(result.String())
+			So(result.String(), ShouldEqual, "blob("+strings.Repeat("123&#@!^%;d《》中文", 100000)+")")
+
+			dt, _ := model.NewDataType(model.DtString, strings.Repeat("123&#@!^%;d《》中文", 100000))
+			s := model.NewScalar(dt)
+			_, err := db.Upload(map[string]model.DataForm{"s": s})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+		Convey("Test_scalar_big_blob:", func() {
+			res, _ := db.RunScript("a=blob(concat(take(\"123&#@!^%;d《》中文\",100000)));a")
+
+			result := res.(*model.Scalar)
+			ex := []uint8{}
+			for i := 0; i < 100000; i++ {
+				ex = append(ex, 49, 50, 51, 38, 35, 64, 33, 94, 37, 59, 100, 227, 128, 138, 227, 128, 139, 228, 184, 173, 230, 150, 135)
+			}
+			So(result.Value(), ShouldResemble, ex)
+			_, err := db.Upload(map[string]model.DataForm{"b": result})
+			So(err, ShouldBeNil)
+			ans, _ := db.RunScript("eqObj(a,b)")
+			So(ans.(*model.Scalar).Value(), ShouldBeTrue)
+		})
+		Convey("Test_scalar_big_symbol:", func() {
+			res, err := db.RunScript("a=symbol([concat(take(\"123&#@!^%;d《》中文\",100000))])[0];a")
+			assert.NoError(t, err)
+			result := res.(*model.Scalar)
+			So(result.String(), ShouldEqual, "blob("+strings.Repeat("123&#@!^%;d《》中文", 100000)+")")
+
+			var str string
+			for i := 0; i < 300000; i++ {
+				str += "a"
+			}
+			rawdata, _ := model.NewDataType(model.DtSymbol, str)
+			p := model.NewScalar(rawdata)
+			_, err = db.Upload(map[string]model.DataForm{"p": p})
+			// _, err := db.Upload(map[string]model.DataForm{"s": s})
+			So(err.Error(), ShouldContainSubstring, "Serialized string length must less than 256k bytes.")
+		})
+
 		So(db.Close(), ShouldBeNil)
 	})
 }

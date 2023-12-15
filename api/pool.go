@@ -38,6 +38,13 @@ type PoolOption struct {
 	// If the addresses are not available, you can set LoadBalanceAddresses instead.
 	LoadBalance bool
 
+	// Whether to enable high availability.
+	// If true, when the address is unrearched, another address in HighAvailabilitySites will be connected.
+	EnableHighAvailability bool
+
+	// Available only if EnableHighAvailability is true.
+	HighAvailabilitySites []string
+
 	// addresses of load balance
 	LoadBalanceAddresses []string
 }
@@ -56,7 +63,7 @@ func NewDBConnectionPool(opt *PoolOption) (*DBConnectionPool, error) {
 	if !opt.LoadBalance {
 		p.connections = make(chan dialer.Conn, opt.PoolSize)
 		for i := 0; i < opt.PoolSize; i++ {
-			db, err := dialer.NewSimpleConn(context.TODO(), opt.Address, opt.UserID, opt.Password)
+			db, err := newConn(opt.Address, opt)
 			if err != nil {
 				fmt.Printf("Failed to instantiate a simple connection: %s\n", err.Error())
 				return nil, err
@@ -73,6 +80,31 @@ func NewDBConnectionPool(opt *PoolOption) (*DBConnectionPool, error) {
 	}
 
 	return p, nil
+}
+
+func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
+	bOpt := &dialer.BehaviorOptions{
+		EnableHighAvailability: opt.EnableHighAvailability,
+		HighAvailabilitySites:  opt.HighAvailabilitySites,
+	}
+	conn, err := dialer.NewConn(context.TODO(), addr, bOpt)
+	if err != nil {
+		fmt.Printf("Failed to instantiate a connection: %s\n", err.Error())
+		return nil, err
+	}
+
+	err = conn.Connect()
+	if err != nil {
+		fmt.Printf("Failed to connect to the server: %s\n", err.Error())
+		return nil, err
+	}
+
+	_, err = conn.RunScript(fmt.Sprintf("login('%s','%s')", opt.UserID, opt.Password))
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 // Execute executes all task by connections with DBConnectionPool.
@@ -150,7 +182,7 @@ func (d *DBConnectionPool) initLoadBalanceConnections(opt *PoolOption) error {
 	}
 
 	for i := 0; i < opt.PoolSize; i++ {
-		conn, err := dialer.NewSimpleConn(context.TODO(), address[i%len(address)], opt.UserID, opt.Password)
+		conn, err := newConn(address[i%len(address)], opt)
 		if err != nil {
 			fmt.Printf("Failed to instantiate a simple connection: %s\n", err.Error())
 			return err
