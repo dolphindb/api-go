@@ -16,7 +16,7 @@
     - [3.3.1. 构造数据类型](#331-构造数据类型)
       - [3.3.1.1. NewDataType 入参对照表](#3311-newdatatype-入参对照表)
       - [3.3.1.2. NewDataTypeListFromRawData 入参对照表](#3312-newdatatypelistfromrawdata-入参对照表)
-      - [3.3.1.3. Null 值对照表](#3313-null-值对照表)
+      - [3.3.1.3 Null 值对照表](#3313-null-值对照表)
     - [3.3.2. 完整示例](#332-完整示例)
   - [3.4. 初始化 DBConnectionPool](#34-初始化-dbconnectionpool)
 - [4. 读写 DolphinDB 数据表](#4-读写-dolphindb-数据表)
@@ -32,14 +32,30 @@
     - [4.2.2. 使用 Table 对象](#422-使用-table-对象)
   - [4.3. 批量异步追加数据](#43-批量异步追加数据)
     - [4.3.1. MultiGoroutineTable](#431-multigoroutinetable)
+    - [Insert](#insert)
+    - [GetUnwrittenData](#getunwrittendata)
+    - [InsertUnwrittenData](#insertunwrittendata)
+    - [GetStatus](#getstatus)
+    - [WaitForGoroutineCompletion](#waitforgoroutinecompletion)
     - [4.3.2. MultiGoroutineTable 常见错误](#432-multigoroutinetable-常见错误)
 - [5. 流数据 API](#5-流数据-api)
-  - [5.1. 代码示例:](#51-代码示例)
+  - [5.1. 接口说明](#51-接口说明)
+    - [5.1.1. PollingClient 主动轮询获取消息](#511-pollingclient-主动轮询获取消息)
+    - [5.1.2. 单协程回调 GoroutineClient](#512-单协程回调-goroutineclient)
+    - [5.1.3. 多协程回调 GoroutinePooledClient](#513-多协程回调-goroutinepooledclient)
   - [5.2. 断线重连](#52-断线重连)
   - [5.3. 启用 Filter](#53-启用-filter)
   - [5.4. 取消订阅](#54-取消订阅)
+  - [5.5. 异构流表数据的处理](#55-异构流表数据的处理)
+    - [5.5.1 异构流表反序列化器](#551-异构流表反序列化器)
+    - [5.5.2. 订阅示例 1 （分区表数据源作为输入表）](#552-订阅示例-1-分区表数据源作为输入表)
+    - [5.5.3. 订阅示例 2 （内存表作为输入表）](#553-订阅示例-2-内存表作为输入表)
 - [6. 工具方法](#6-工具方法)
-  - [6.1. model 包](#61-model-包)
+  - [6.1 model 包](#61-model-包)
+    - [GetDataTypeString](#getdatatypestring)
+    - [GetDataFormString](#getdataformstring)
+    - [NewTableFromStruct](#newtablefromstruct)
+    - [NewTableFromRawData](#newtablefromrawdata)
 
 ## 1. Go API 概述
 
@@ -55,7 +71,7 @@ Go API 定义了 DataForm 接口，表示服务器端返回的[数据形式](htt
 | DfDictionary(5)      | Dictionary |
 | DfTable(6)           | Table      |
 
-该接口也提供了 `GetDataType` 方法获取数据类型的整型表示。目前支持获取 39 种数据类型的整型表示。二者对应关系见下表：
+该接口也提供了 `GetDataType` 方法获取数据类型的整型表示。目前支持获取如下数据类型的整型表示：
 
 | `GetDataType` 返回值 | 实际类型   |
 | -------------------- | ---------- |
@@ -153,7 +169,7 @@ Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过该接口在 `D
 ## 2. 安装依赖
 
 Go API 需要运行在 golang 1.15 或以上版本的环境。
-使用 `go get` 下载安装 `Go API`
+使用 `go get` 下载安装 `Go API`。
 
 ```sh
 go get -u github.com/dolphindb/api-go
@@ -163,9 +179,9 @@ go get -u github.com/dolphindb/api-go
 
 ### 3.1. 初始化 DolphinDB
 
-Go API 支持通过 `NewDolphinDBClient` 和 `NewSimpleDolphinDBClient` 两种方式来初始化 `DolphinDB` 实例：
+Go API 支持通过 `NewDolphinDBClient` 和 `NewSimpleDolphinDBClient` 两种方式来初始化 `DolphinDB` 实例。
 
-### 3.1.1. NewDolphinDBClient 初始化 DolphinDB
+#### 3.1.1. NewDolphinDBClient 初始化 DolphinDB
 
 NewDolphinDBClient 仅初始化客户端，需要通过 Connect 和 Login 去连接和登录服务端。该方法支持配置行为标识。步骤如下：
 
@@ -218,7 +234,7 @@ func main() {
 }
 ```
 
-通过配置 BehaviorOptions，可以配置行为标识，可配置行为标识如下：
+通过配置 BehaviorOptions 可以配置行为标识。可配置行为标识如下：
 
 - Priority：指定本任务优先级,可选范围为 0~8，默认为 8。
 - Parallelism：指定本任务并行度,可选范围为 0~64，默认为 8。
@@ -230,7 +246,7 @@ func main() {
 - IsReverseStreaming: 指定是否开启反向流订阅。
 - IsClearSessionMemory: 指定此任务完成后是否清理 Session 缓存。
 
-### 3.1.2. NewSimpleDolphinDBClient 初始化 DolphinDB
+#### 3.1.2. NewSimpleDolphinDBClient 初始化 DolphinDB
 
 NewSimpleDolphinDBClient 初始化客户端，并连接和登录服务端。该方法不支持配置行为标识。
 
@@ -839,7 +855,7 @@ if err != nil {
 }
 ```
 
-然后，使用 Go API 初始化 `PartitionedTableAppender` 对象
+然后，使用 Go API 初始化 `PartitionedTableAppender` 对象。
 
 ```go
 poolOpt := &api.PoolOption{
@@ -932,7 +948,7 @@ if err != nil {
 #### 4.2.2. 使用 Table 对象
 
 Go API 通过 `Table` 对象来存储数据表。`Table` 对象采用列式存储，无法直接读取行数据，因此需要先读取列，再读取行。
-以表对象 t 为例，其包含4个列，列名分别为cstring, cint, ctimestamp, cdouble，数据类型分别是STRING, INT, TIMESTAMP, DOUBLE。通过 Go API 分别打印 t 中每个列的列名和对应的值。
+以表对象 t 为例，其包含4个列，列名分别为 cstring, cint, ctimestamp, cdouble，数据类型分别是 STRING, INT, TIMESTAMP, DOUBLE。通过 Go API 分别打印 t 中每个列的列名和对应的值。
 
 ```go
 for _, v := range t.GetColumnNames() {
@@ -980,15 +996,15 @@ if err != nil {
 
 Option 参数说明：
 
-- Address 字符串，表示所连接的服务器的地址.
+- Address：字符串，表示所连接的服务器的地址.
 - UserID / Password: 字符串，登录时的用户名和密码。
 - Database: 字符串，表示数据库的路径或句柄。如果是内存表，则无需设置该参数。
-- TableName 字符串，表示表的名称。
-- BatchSize 整数，表示批处理的消息的数量。如果该参数值为 1，表示客户端写入数据后就立即发送给服务器；
+- TableName：字符串，表示表的名称。
+- BatchSize：整数，表示批处理的消息的数量。如果该参数值为 1，表示客户端写入数据后就立即发送给服务器；
   如果该参数大于 1，表示数据量达到 BatchSize 时，客户端才会将数据发送给服务器。
-- Throttle 大于 0 的整数，单位为毫秒。若客户端有数据写入，但数据量不足 BatchSize，则等待 Throttle 的时间再发送数据。
-- GoroutineCount 整数，表示创建的工作协程数量，如果值为 1，表示单协程。对于维度表，其值必须为 1。
-- PartitionCol 字符串类型，默认为空，仅在 GoroutineCount 大于1时起效。对于分区表，必须指定为分区字段名；
+- Throttle：大于 0 的整数，单位为毫秒。若客户端有数据写入，但数据量不足 BatchSize，则等待 Throttle 的时间再发送数据。
+- GoroutineCount：整数，表示创建的工作协程数量，如果值为 1，表示单协程。对于维度表，其值必须为 1。
+- PartitionCol：字符串类型，默认为空，仅在 GoroutineCount 大于1时起效。对于分区表，必须指定为分区字段名；
   如果是内存表，必须指定为表的字段名；对于维度表，该参数不起效。
 
 以下是 `MultiGoroutineTable` 对象包含的函数方法介绍：
@@ -1008,7 +1024,7 @@ Insert(args ...interface{}) error
 
 参数说明：
 
-- args: 是变长参数，代表插入一行数据
+- args: 是变长参数，代表插入一行数据。
 
 示例：
 
@@ -1066,7 +1082,7 @@ GetStatus() *Status
 
 返回参数说明：
 
-- Status：包含 MultiGoroutineTable 执行状态的对象
+- Status：包含 MultiGoroutineTable 执行状态的对象。
 
 示例：
 
@@ -1388,25 +1404,25 @@ Go API 可以通过 API 订阅流数据。用户有三种创建订阅客户端�
 2. 单协程回调（GoroutineClient），使用 MessageHandler 回调的方式获取新数据。
 3. 多协程回调（GoroutinePooledClient），使用 MessageHandler 回调的方式获取新数据。
 
-
 ### 5.1. 接口说明
 
-在调用订阅函数之前，需要先封装 SubscribeRequest 对象:
+在调用订阅函数之前，需要先封装 `SubscribeRequest` 对象:
 
 `SubscribeRequest` 参数说明:
 
-- Address: 发布端节点的地址
-- TableName：发布表的名称
-- ActionName：订阅任务的名称
+- Address: 发布端节点的地址。
+- TableName：发布表的名称。
+- ActionName：订阅任务的名称。
 - BatchSize: 整数，表示批处理的消息的数量。如果它是正数，直到消息的数量达到 batchSize 时，Handler 才会处理进来的消息。如果它没有指定或者是非正数，消息到达之后，Handler 就会马上处理消息。仅对 GoroutineClient 客户端有效。
-- Offset: 整数，表示订阅任务开始后的第一条消息所在的位置。消息是流数据表中的行。如果没有指定 offset，或它为负数或超过了流数据表的记录行数，订阅将会从流数据表的当前行开始。offset 与流数据表创建时的第一行对应。如果某些行因为内存限制被删除，在决定订阅开始的位置时，这些行仍然考虑在内
-- AllowExists: 当 AllowExists = true 时，若已存在的订阅被再次订阅，不会抛出异常。默认值为 false。**200.9 后版本的 dolphindb server 此功能失效，不能使用。**
+- Offset: 整数，表示订阅任务开始后的第一条消息所在的位置。消息是流数据表中的行。如果没有指定 offset，或它为负数或超过了流数据表的记录行数，订阅将会从流数据表的当前行开始。offset 与流数据表创建时的第一行对应。如果某些行因为内存限制被删除，在决定订阅开始的位置时，这些行仍然考虑在内。
+- AllowExists: 开启后，若已存在的订阅被再次订阅，则不会抛出异常。默认值为 false。**注意，由于 2.00.9 版本后的 DolphinDB server 此功能失效，故该参数自 1.30.22 版本起作废。**
 - Throttle: 浮点数，表示 Handler 处理到达的消息之前等待的时间，以秒为单位。默认值为 1。如果没有指定 BatchSize，Throttle 将不会起作用。仅对 GoroutineClient 客户端有效。
-- Reconnect: 布尔值，表示订阅中断后，是否会自动重订阅
-- Filter: 一个向量，表示过滤条件。流数据表过滤列在 filter 中的数据才会发布到订阅端，不在 filter 中的数据不会发布
-- Handler：用户自定义的回调函数，用于处理每次流入的数据，仅在支持回调的订阅客户端可用
+- MsgAsTable：布尔值，只有设置了 batchSize 参数，该参数才会生效。表示订阅的数据是否为表。默认值是 false，表示订阅的数据是 Vector。
+- Reconnect: 布尔值，表示订阅中断后，是否会自动重订阅。
+- Filter: 一个向量，表示过滤条件。流数据表过滤列在 filter 中的数据才会发布到订阅端，不在 filter 中的数据不会发布。
+- Handler：用户自定义的回调函数，用于处理每次流入的数据，仅在支持回调的订阅客户端可用。
 
-下面分别介绍如何通过3种方法订阅流数据
+下面分别介绍如何通过 3 种方法订阅流数据。
 
 #### 5.1.1. PollingClient 主动轮询获取消息
 
@@ -1435,7 +1451,7 @@ poller 探测到流数据表有新增数据后，会拉取到新数据。无新�
 
 #### 5.1.2. 单协程回调 GoroutineClient
 
-使用 单协程回调（GoroutineClient）、多协程回调（GoroutinePooledClient）的方式首先需要调用者定义数据处理器 Handler。Handler 需要实现 `streaming.MessageHandler` 接口。
+使用单协程回调（GoroutineClient）、多协程回调（GoroutinePooledClient）的方式首先需要调用者定义数据处理器 Handler。Handler 需要实现 `streaming.MessageHandler` 接口。
 
 ```go
 type sampleHandler struct {}
@@ -1503,7 +1519,7 @@ if err != nil {
   - 如果发布端没有对流数据表启用持久化，那么订阅端将自动重新订阅失败。
 - 如果订阅端崩溃，订阅端重启后不会自动重新订阅，需要重新执行 `Subscribe` 函数。
 
-**注意**，如果订阅的是高可用流表，则重连参数无法生效。如果因为高可用流表 leader 切换或者网络终端而导致的断连无法通过此参数重连。
+**注意**：如果订阅的是高可用流表，则重连参数无法生效。如果因为高可用流表 leader 切换或者网络终端而导致的断连，则无法通过此参数重连。
 
 ### 5.3. 启用 Filter
 
@@ -1545,18 +1561,22 @@ if err != nil {
 ```
 
 ### 5.5. 异构流表数据的处理
-DolphinDB 自 1.30.17 及 2.00.5 版本开始，支持通过 replay 函数将多个结构不同的流数据表回放（序列化）到一个流表里，这个流表被称为异构流表。Go API 自 1.30.22 版本开始新增 streamDeserializer 类，用于构造异构流表反序列化器，以实现对异构流表的订阅和反序列化操作。
+
+DolphinDB 自 1.30.17 及 2.00.5 版本开始，支持通过 replay 函数将多个结构不同的流数据表回放（序列化）到一个流表里，这个流表被称为异构流表。Go API 自 1.30.22 版本开始新增 `streamDeserializer` 类，用于构造异构流表反序列化器，以实现对异构流表的订阅和反序列化操作。
 
 #### 5.5.1 异构流表反序列化器
-Go API 通过 streamDeserializer 类来构造异构流表反序列化器，接口定义如下：
 
-构造 streamDeserializer 需要传入 StreamDeserializerOption 对象：
+Go API 通过 `streamDeserializer` 类来构造异构流表反序列化器，接口定义如下：
 
-StreamDeserializerOption 参数说明:
-- TableNames：字典对象，字典的 key 为 string 类型，字典的 value 为长度为 2 的 string 切片类型。其中 string 切片的第一个元素为数据库的名称，是内存表则填 ""，第二个元素为表的名称，其结构与 replay 回放到异构流表的输入表结构保持一致。其结构与 replay 回放到异构流表的输入表结构保持一致。streamDeserializer 将根据 TableNames 指定的结构对注入的数据进行反序列化，必须指定。
+构造 `streamDeserializer` 需要传入 `StreamDeserializerOption` 对象：
+
+`StreamDeserializerOption` 参数说明:
+
+- TableNames：字典对象，字典的 key 为 string 类型，字典的 value 为长度为 2 的 string 切片类型。其中 string 切片的第一个元素为数据库的名称，是内存表则填""，第二个元素为表的名称，其结构与 replay 回放到异构流表的输入表结构保持一致。其结构与 replay 回放到异构流表的输入表结构保持一致。streamDeserializer 将根据 TableNames 指定的结构对注入的数据进行反序列化，必须指定。
 - Conn：已连接 DolphinDB 的 DolphinDB 对象，需要通过该连接获取回放到异构流表的输入表结构，必须指定。
 
 下例构造一个简单的异构流表反序列化器：
+
 ``` go
 host := "localhost:8848";
 db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
@@ -1571,23 +1591,24 @@ opt := streaming.StreamDeserializerOption {
 sd, err := streaming.NewStreamDeserializer(&opt)
 util.AssertNil(err)
 ```
+
 其中，TableNames 的键为不同输入表的标记，用于区分不同输入表的数据；TableNames 的值为表名，或由分区数据库地址和表名组成的列表（或元组）。订阅时，会通过构造时传入的 Conn 调用 schema 方法获得 TableNames 键值对应的表的结构，因此并不一定需要填输入表名，只需要和输入表结构一致即可。
 
 关于构造 DolphinDB 异构流表的具体脚本，请参照异构回放示例。
 
-注意：
+**注意：**
 
-在 DolphinDB 中构造异构流表时，字典中 key 对应的表应为内存表或 replayDS 定义的数据源，请参考 replay。
-
-API 端构造异构流表反序列化器时，TableNames 的值对应的表（可以为分区表、流表或者内存表）结构需要和 DolphinDB 中构造异构流表使用的表结构一致。
+- 在 DolphinDB 中构造异构流表时，字典中 key 对应的表应为内存表或 replayDS 定义的数据源，请参考 replay。
+- API 端构造异构流表反序列化器时，TableNames 的值对应的表（可以为分区表、流表或者内存表）结构需要和 DolphinDB 中构造异构流表使用的表结构一致。
 
 #### 5.5.2. 订阅示例 1 （分区表数据源作为输入表）
+
 下例中，首先在 DolphinDB 中定义由两个分区表组合而成的异构流表。然后在 go 客户端定义异构流表反序列化器，放入回调类中使用。在回调中，反序列化器会根据指定表的结构反序列化数据，最后输出来自 msg1 和 msg2 的各 6 条数据。
 
 构造异构流表
 首先在 DolphinDB 中定义输出表，即要订阅的异构流表。
 
-``` dolphindb
+```dolphindb
 try{dropStreamTable(`outTables)}catch(ex){}
 share streamTable(100:0, `timestampv`sym`blob`price1,[TIMESTAMP,SYMBOL,BLOB,DOUBLE]) as outTables
 然后定义两张输入表，均为分布式分区表。
@@ -1604,6 +1625,7 @@ tableInsert(table2, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, 
 pt1 = db.createPartitionedTable(table1,'pt1',`datetimev).append!(table1)
 pt2 = db.createPartitionedTable(table2,'pt2',`datetimev).append!(table2)
 ```
+
 将分区表转为数据源后进行回放。
 
 ```dolphindb
@@ -1616,6 +1638,7 @@ replay(inputTables=d, outputTables=`outTables, dateColumn=`timestampv, timeColum
 **订阅异构流表**
 
 定义异构流表反序列化器
+
 ```go
 type sampleHandler struct {
 	sd streaming.StreamDeserializer
@@ -1632,7 +1655,8 @@ func (s *sampleHandler) DoEvent(msg streaming.IMessage) {
 }
 ```
 
-构造反序列化器，建立订阅
+构造反序列化器，建立订阅。
+
 ```go
 host := "localhost:8848";
 db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
@@ -1677,6 +1701,7 @@ util.AssertNil(err)
 ```
 
 输出结果如下所示：
+
 ```
 msg2: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(83.35676231770776)
 msg1: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(75.4657824053429) double(97.13305225968361)
@@ -1693,7 +1718,8 @@ msg1: datetime(2012.01.01T01:21:29) timestamp(2018.12.01T01:21:23.006) symbol(c)
 ```
 
 #### 5.5.3. 订阅示例 2 （内存表作为输入表）
-下例中，在 DolphinDB 中定义了一个由两个内存表构成的异构流表，并在 go 端使用共享内存表的表名构造反序列化器放入回调类中使用。进行订阅后，在回调中反序列化器会根据指定内存表的结构反序列化数据，输出来自 msg1 和 msg2 的各 6 条数据。
+
+下例中，在 DolphinDB 中定义了一个由两个内存表构成的异构流表，并在 Go API 端使用共享内存表的表名构造反序列化器放入回调类中使用。进行订阅后，在回调中反序列化器会根据指定内存表的结构反序列化数据，输出来自 msg1 和 msg2 的各 6 条数据。
 
 **构造异构流表**
 
@@ -1717,6 +1743,7 @@ replay(inputTables=d, outputTables=`outTables, dateColumn=`timestampv, timeColum
 **订阅异构流表**
 
 定义异构流表反序列化器
+
 ```go
 type sampleHandler struct {
 	sd streaming.StreamDeserializer
@@ -1768,6 +1795,7 @@ util.AssertNil(err)
 ```
 
 输出结果如下所示：
+
 ```
 msg2: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(62.26562583283521)
 msg1: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(86.60560709564015) double(71.74879301246256)
