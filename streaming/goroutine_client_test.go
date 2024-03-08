@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -285,4 +286,123 @@ func TestGoroutineClient(t *testing.T) {
 	tc.Close()
 
 	time.Sleep(2 * time.Second)
+}
+
+type unsubscribeHandler struct {
+	times int
+	msgs  []IMessage
+}
+
+var subReq *SubscribeRequest
+var client *GoroutineClient
+var ch chan bool
+
+func (s *unsubscribeHandler) DoEvent(msg IMessage) {
+	s.times += 1
+	if s.times >= 2 {
+		fmt.Println("DoEvent: start to UnSubscribe")
+		client.UnSubscribe(subReq)
+		ch <- true
+	}
+	s.msgs = append(s.msgs, msg)
+}
+
+func TestUnsubscribeInDoEvent(t *testing.T) {
+	ch = make(chan bool)
+	host := "localhost:8848"
+	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
+
+	util.AssertNil(err)
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
+
+	err = db.Connect()
+	util.AssertNil(err)
+
+	err = db.Login(loginReq)
+	util.AssertNil(err)
+
+	_, err = db.RunScript(scripts)
+	util.AssertNil(err)
+
+	client = NewGoroutineClient("localhost", 12345)
+
+	sh := unsubscribeHandler{}
+	throttle := float32(1)
+	subReq = &SubscribeRequest{
+		Address:    "localhost:8848",
+		TableName:  "outTables",
+		ActionName: "action1",
+		MsgAsTable: false,
+		Handler:    &sh,
+		Offset:     0,
+		Reconnect:  true,
+		Throttle:   &throttle,
+	}
+
+	err = client.Subscribe(subReq)
+	assert.Nil(t, err)
+	time.Sleep(time.Duration(1))
+	<-ch
+	fmt.Println("TestUnsubscribeInDoEvent test finish ")
+}
+
+
+
+var arrayVectorStreamScript = "st1 = streamTable(100:0, `arrayInt`timestampv`sym,[INT[],TIMESTAMP,SYMBOL]);" +
+	"share st1 as outTables;" +
+	"outTables.append!(table(arrayVector([4], [1,2,3,4]) as arrayInt, [2018.12.01T01:21:23.000] as timestampv, [`a] as sym));"
+
+type arrayHandle struct {
+	msgs []IMessage
+}
+
+func (s *arrayHandle) DoEvent(msg IMessage) {
+	fmt.Println(msg.GetValue(1).GetDataTypeString(), msg.GetValue(1).GetDataFormString(), msg)
+	fmt.Println(msg.GetValue(1))
+	s.msgs = append(s.msgs, msg)
+}
+
+func TestArrayVectorStream(t *testing.T) {
+	host := "localhost:8848"
+	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
+
+	util.AssertNil(err)
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
+
+	err = db.Connect()
+	util.AssertNil(err)
+
+	err = db.Login(loginReq)
+	util.AssertNil(err)
+
+	_, err = db.RunScript(arrayVectorStreamScript) //script defined in goroutine_client_test.go
+	util.AssertNil(err)
+
+	client := NewGoroutineClient("localhost", 12345)
+
+	sh := arrayHandle{make([]IMessage, 0)}
+	throttle := float32(1)
+	req := &SubscribeRequest{
+		Address:    "localhost:8848",
+		TableName:  "outTables",
+		ActionName: "action1",
+		MsgAsTable: false,
+		Handler:    &sh,
+		Offset:     0,
+		Reconnect:  true,
+		Throttle:   &throttle,
+	}
+	err = client.Subscribe(req)
+	util.AssertNil(err)
+
+	time.Sleep(time.Duration(3) * time.Second)
+
+	assert.Equal(t, 1, len(sh.msgs))
+
 }

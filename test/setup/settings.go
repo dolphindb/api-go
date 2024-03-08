@@ -3,9 +3,18 @@ package setup
 import (
 	"math/rand"
 	"strconv"
+	"time"
+
+	"github.com/dolphindb/api-go/model"
 )
 
+type Tuple struct {
+	Dt     model.DataTypeByte
+	VecVal string
+}
+
 func getPort(ports []int) (int, []int) {
+	rand.Seed(time.Now().UnixNano())
 	randomIndex := rand.Intn(len(ports))
 	return ports[randomIndex], append(ports[:randomIndex], ports[randomIndex+1:]...)
 }

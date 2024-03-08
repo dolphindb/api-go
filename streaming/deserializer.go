@@ -33,12 +33,21 @@ func (md *msgDeserializer) parse(data []byte) (*model.Vector, error) {
 
 	scalarList := make([]model.DataForm, len(md.colTypes))
 	for k, v := range md.colTypes {
-		dt, err := model.ParseDataType(rd, v, protocol.LittleEndian)
-		if err != nil {
-			return nil, err
-		}
+		if(v >= 64) {
+			vct, err := model.ParseArrayVector(rd, v, protocol.LittleEndian)
+			if err != nil {
+				return nil, err
+			}
+			scalarList[k] = vct
 
-		scalarList[k] = model.NewScalar(dt)
+		} else {
+			dt, err := model.ParseDataType(rd, v, protocol.LittleEndian)
+			if err != nil {
+				return nil, err
+			}
+
+			scalarList[k] = model.NewScalar(dt)
+		}
 	}
 
 	dtl, err := model.NewDataTypeListFromRawData(model.DtAny, scalarList)

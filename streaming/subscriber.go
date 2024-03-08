@@ -228,7 +228,7 @@ func (s *subscriber) checkServerVersion(address string) error {
 }
 
 func isLater(ori, raw string) bool {
-	oris := strings.Split(ori, ".")
+	oris := strings.Split(strings.Split(ori, " ")[0], ".") // remove content after whitespace
 	raws := strings.Split(raw, ".")
 	for k, v := range oris {
 		r := raws[k]

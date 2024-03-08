@@ -11,9 +11,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host13 = getRandomClusterAddress()
+
 func TestNewTableFromRawData(t *testing.T) {
 	Convey("test_NewTableFromRawData", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host13, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("test_NewTableFromRawData_with_all_datatype", func() {
 			colNames := []string{"cbool", "cchar", "cshort", "cint", "clong", "cfloat", "cdouble", "cdate", "cdatetime", "cminute", "csecond", "cmonth", "cdatehour", "cnanotime", "cnanotimestamp", "ctimestamp",
@@ -83,7 +85,7 @@ func TestNewTableFromRawData(t *testing.T) {
 		})
 	})
 	Convey("test_NewTableFromRawData_parameter", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host13, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		_ = ddb
 		Convey("test_NewTableFromRawData_with_diff_colName_nums", func() {

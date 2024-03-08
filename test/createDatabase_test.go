@@ -13,10 +13,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var host2 = getRandomClusterAddress()
 func TestExistsDatabase_ex(t *testing.T) {
 	t.Parallel()
 	Convey("Test_ExistsDatabase_ex", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host2, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		_, err = ExistsDatabase(ddb, "''''''''")
 		So(err, ShouldNotBeNil)
@@ -28,7 +29,7 @@ func TestExistsDatabase_ex(t *testing.T) {
 func TestExistsTable_ex(t *testing.T) {
 	t.Parallel()
 	Convey("Test_TestExistsTable_ex", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host2, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		_, err = ddb.RunScript(fmt.Sprintf("existsTable('%s','%s')", "''", "tables"))
 		So(err, ShouldNotBeNil)
@@ -40,7 +41,7 @@ func TestExistsTable_ex(t *testing.T) {
 func TestCreateDatabase_ex(t *testing.T) {
 	t.Parallel()
 	Convey("Test_CreateDatabase_ex", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host2, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		_, err = ddb.RunScript(fmt.Sprintf("%s=database(%s)", DBhandler, "db"))
 		So(err, ShouldNotBeNil)
@@ -52,7 +53,7 @@ func TestCreateDatabase_ex(t *testing.T) {
 func TestDropDatabase_ex(t *testing.T) {
 	t.Parallel()
 	Convey("Test_DropDataBase_ex", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host2, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		_, err = ddb.RunScript(fmt.Sprintf("dropDatabase('%s')", "nj"))
 		So(err, ShouldNotBeNil)
@@ -64,7 +65,7 @@ func TestDropDatabase_ex(t *testing.T) {
 func TestCreateDatabase(t *testing.T) {
 	t.Parallel()
 	Convey("Test_CreateDatabase_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host2, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_CreateDatabase_dropDatabase", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
@@ -651,7 +652,7 @@ func TestCreateDatabase(t *testing.T) {
 func TestDataBaseGetSession(t *testing.T) {
 	t.Parallel()
 	Convey("Test_CreateDatabase_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host2, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("TestCreateDatabase_dropDatabase", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)

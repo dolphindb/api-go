@@ -147,6 +147,7 @@ func (vct *Vector) Set(ind int, d DataType) error {
 
 // Get gets DataType from vct.
 // If ind exceeds the size of Vector, return nil.
+// ArrayVector does not support Combine.
 func (vct *Vector) Get(ind int) DataType {
 	if ind >= vct.Rows()*int(vct.ColumnCount) && vct.ArrayVector == nil {
 		return nil
@@ -226,6 +227,18 @@ func (vct *Vector) GetVectorValue(ind int) *Vector {
 		}
 	}
 
+	return nil
+}
+
+// AppendVectorValue appends the vector to arrayVector.
+func (vct *Vector) AppendVectorValue(data *Vector) (err error) {
+	if(vct.category.DataType != data.GetDataType() + 64) {
+		return fmt.Errorf("mismatched type, expect %s actual %s", GetDataTypeString(vct.category.DataType-64), data.GetDataTypeString())
+	}
+	arrayVec := NewArrayVector([]*Vector{data})
+	vct.ArrayVector = append(vct.ArrayVector, arrayVec...)
+	vct.ColumnCount += 1
+	vct.RowCount += 1
 	return nil
 }
 

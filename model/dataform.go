@@ -39,21 +39,20 @@ func newCategory(dataForm, datatype byte) *Category {
 }
 
 func (cg *Category) render(w *protocol.Writer) error {
-	return w.Write([]byte{byte(cg.DataType), byte(cg.DataForm)})
+	return w.Write(protocol.ByteSliceFromInt16Slice([]int16{int16(cg.DataForm) << 8 + int16(cg.DataType)}))
 }
 
-func parseCategory(r protocol.Reader) (*Category, error) {
-	c, err := r.ReadCertainBytes(2)
+func parseCategory(r protocol.Reader, bo protocol.ByteOrder) (*Category, error) {
+	c, err := readShort(r, bo)
 	if err != nil {
 		return nil, errors.ReadDataTypeAndDataFormError(err.Error())
 	}
-
-	return newCategory(c[1], c[0]), nil
+	return newCategory(byte(c >> 8), byte(c << 8 >> 8)), nil
 }
 
 // ParseDataForm parses the raw bytes in r with bo and return a DataForm object.
 func ParseDataForm(r protocol.Reader, bo protocol.ByteOrder) (DataForm, error) {
-	c, err := parseCategory(r)
+	c, err := parseCategory(r, bo)
 	if err != nil {
 		return nil, err
 	}

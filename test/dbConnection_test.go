@@ -13,6 +13,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host3 = getRandomClusterAddress()
+
 func TestNewDolphinDBClient(t *testing.T) {
 	t.Parallel()
 	Convey("func NewDolphinDB exception test", t, func() {
@@ -24,7 +26,7 @@ func TestNewDolphinDBClient(t *testing.T) {
 		})
 
 		Convey("Test NewDolphinDB login wrong userName exception", func() {
-			db, _ := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+			db, _ := api.NewDolphinDBClient(context.TODO(), host3, nil)
 			err := db.Connect()
 			So(err, ShouldBeNil)
 			defer db.Close()
@@ -38,7 +40,7 @@ func TestNewDolphinDBClient(t *testing.T) {
 		})
 
 		Convey("Test NewDolphinDB login wrong password exception", func() {
-			db, _ := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+			db, _ := api.NewDolphinDBClient(context.TODO(), host3, nil)
 			err := db.Connect()
 			So(err, ShouldBeNil)
 			defer db.Close()
@@ -54,7 +56,7 @@ func TestNewDolphinDBClient(t *testing.T) {
 
 	Convey("Test NewDolphinDB login and logout", t, func() {
 		Convey("Test NewDolphinDB login", func() {
-			db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+			db, err := api.NewDolphinDBClient(context.TODO(), host3, nil)
 			So(err, ShouldBeNil)
 			err = db.Connect()
 			So(err, ShouldBeNil)
@@ -67,7 +69,7 @@ func TestNewDolphinDBClient(t *testing.T) {
 		})
 
 		Convey("Test NewDolphinDB logout", func() {
-			db, _ := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+			db, _ := api.NewDolphinDBClient(context.TODO(), host3, nil)
 			err := db.Connect()
 			So(err, ShouldBeNil)
 			defer db.Close()
@@ -93,14 +95,14 @@ func TestNewSimpleDolphinDBClient(t *testing.T) {
 		})
 
 		Convey("Test NewSimpleDolphinDB wrong userName int exception", func() {
-			_, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, "1234", setup.Password)
+			_, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, "1234", setup.Password)
 			result := fmt.Errorf("\n exception error is %w", err)
 			fmt.Println(result.Error())
 			So(result, ShouldNotBeNil)
 		})
 
 		Convey("Test NewSimpleDolphinDB wrong password exception", func() {
-			_, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, "12")
+			_, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, "12")
 			result := fmt.Errorf("\n exception error is %w", err)
 			fmt.Println(result.Error())
 			So(result, ShouldNotBeNil)
@@ -109,11 +111,11 @@ func TestNewSimpleDolphinDBClient(t *testing.T) {
 
 	Convey("Test NewSimpleDolphinDB login and logout", t, func() {
 		Convey("Test NewSimpleDolphinDB login", func() {
-			db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
-			dbName := `"dfs://test"`
+			dbName := `dfs://` + generateRandomString(10)
 			re, err := db.RunScript(
-				`dbName=` + dbName + `
+				`dbName='` + dbName + `'
 					if(existsDatabase(dbName)){
 						dropDatabase(dbName)
 					}
@@ -122,16 +124,16 @@ func TestNewSimpleDolphinDBClient(t *testing.T) {
 			So(err, ShouldBeNil)
 			s := re.(*model.Scalar)
 			result := s.DataType.Value()
-			ex := "DB[dfs://test]"
+			ex := "DB[" + dbName + "]"
 			So(result, ShouldEqual, ex)
 		})
 
 		Convey("Test NewSimpleDolphinDB logout", func() {
-			db, _ := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			db, _ := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 			err := db.Logout()
 			So(err, ShouldBeNil)
 			re, err := db.RunScript(`
-			dbName="dfs://test"
+			dbName="dfs://` + generateRandomString(10) + `"
 			if(existsDatabase(dbName)){
 				dropDatabase(dbName)
 			}
@@ -147,7 +149,7 @@ func TestClose(t *testing.T) {
 	t.Parallel()
 	Convey("Test connection Close", t, func() {
 		Convey("Test NewDolphinDB Close", func() {
-			db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+			db, err := api.NewDolphinDBClient(context.TODO(), host3, nil)
 			So(err, ShouldBeNil)
 			err = db.Connect()
 			So(err, ShouldBeNil)
@@ -160,7 +162,7 @@ func TestClose(t *testing.T) {
 		})
 
 		Convey("Test NewSimpleDolphinDB Close", func() {
-			db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
 			db.Close()
 			connections, err := db.RunScript("getConnections()")
@@ -176,7 +178,7 @@ func TestIsClosed(t *testing.T) {
 	t.Parallel()
 	Convey("Test connection IsClosed", t, func() {
 		Convey("Test NewDolphinDB IsClosed", func() {
-			db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+			db, err := api.NewDolphinDBClient(context.TODO(), host3, nil)
 			So(err, ShouldBeNil)
 			err = db.Connect()
 			So(err, ShouldBeNil)
@@ -189,7 +191,7 @@ func TestIsClosed(t *testing.T) {
 		})
 
 		Convey("Test NewSimpleDolphinDB IsClosed", func() {
-			db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
 			IsClosedd := db.IsClosed()
 			So(IsClosedd, ShouldEqual, false)
@@ -204,7 +206,7 @@ func TestIsClosed(t *testing.T) {
 func TestRefreshTimeout(t *testing.T) {
 	t.Parallel()
 	Convey("Test RefreshTimeout NewSimpleConn", t, func() {
-		db, err := dialer.NewSimpleConn(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := dialer.NewSimpleConn(context.TODO(), host3, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		SessionID1 := db.GetSession()
 		So(SessionID1, ShouldNotBeNil)
@@ -214,7 +216,7 @@ func TestRefreshTimeout(t *testing.T) {
 		db.Close()
 	})
 	Convey("Test RefreshTimeout NewConn", t, func() {
-		db, err := dialer.NewConn(context.TODO(), setup.Address, nil)
+		db, err := dialer.NewConn(context.TODO(), host3, nil)
 		So(err, ShouldBeNil)
 		err = db.Connect()
 		So(err, ShouldBeNil)
@@ -230,7 +232,7 @@ func TestGetSession(t *testing.T) {
 	t.Parallel()
 	Convey("Test connection GetSession", t, func() {
 		Convey("Test NewDolphinDB GetSession", func() {
-			db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+			db, err := api.NewDolphinDBClient(context.TODO(), host3, nil)
 			So(err, ShouldBeNil)
 			err = db.Connect()
 			So(err, ShouldBeNil)
@@ -243,7 +245,7 @@ func TestGetSession(t *testing.T) {
 		})
 
 		Convey("Test NewSimpleDolphinDB GetSession", func() {
-			db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
 			SessionID := db.GetSession()
 			So(SessionID, ShouldNotBeNil)
@@ -266,7 +268,7 @@ func TestNewConn(t *testing.T) {
 		})
 	})
 	Convey("Test NewConn connection", t, func() {
-		db, err := dialer.NewConn(context.TODO(), setup.Address, nil)
+		db, err := dialer.NewConn(context.TODO(), host3, nil)
 		So(err, ShouldBeNil)
 		err = db.Connect()
 		So(err, ShouldBeNil)
@@ -288,14 +290,14 @@ func TestNewSimpleConn(t *testing.T) {
 		})
 
 		Convey("Test NewSimpleConn wrong userName int exception", func() {
-			_, err := dialer.NewSimpleConn(context.TODO(), setup.Address, "1234", setup.Password)
+			_, err := dialer.NewSimpleConn(context.TODO(), host3, "1234", setup.Password)
 			result := fmt.Errorf("\n exception error is %w", err)
 			fmt.Println(result.Error())
 			So(result, ShouldNotBeNil)
 		})
 
 		Convey("Test NewSimpleConn wrong password exception", func() {
-			_, err := dialer.NewSimpleConn(context.TODO(), setup.Address, setup.UserName, "12")
+			_, err := dialer.NewSimpleConn(context.TODO(), host3, setup.UserName, "12")
 			result := fmt.Errorf("\n exception error is %w", err)
 			fmt.Println(result.Error())
 			So(result, ShouldNotBeNil)
@@ -304,7 +306,7 @@ func TestNewSimpleConn(t *testing.T) {
 
 	Convey("Test NewSimpleConn login and logout", t, func() {
 		Convey("Test NewSimpleConn login", func() {
-			db, err := dialer.NewSimpleConn(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			db, err := dialer.NewSimpleConn(context.TODO(), host3, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
 			dbName := `"dfs://test"`
 			re, err := db.RunScript(
@@ -323,7 +325,7 @@ func TestNewSimpleConn(t *testing.T) {
 		})
 
 		Convey("Test NewSimpleConn getSessionId", func() {
-			db, _ := dialer.NewSimpleConn(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			db, _ := dialer.NewSimpleConn(context.TODO(), host3, setup.UserName, setup.Password)
 			re, err := db.RunScript(`
 			dbName="dfs://test"
 			if(existsDatabase(dbName)){
@@ -346,7 +348,7 @@ func TestNewSimpleConn(t *testing.T) {
 func TestGetLocalAddress(t *testing.T) {
 	t.Parallel()
 	Convey("Test GetLocalAddress NewSimpleConn", t, func() {
-		db, err := dialer.NewSimpleConn(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := dialer.NewSimpleConn(context.TODO(), host3, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		So(db.IsConnected(), ShouldBeTrue)
 		re := db.GetLocalAddress()
@@ -354,21 +356,24 @@ func TestGetLocalAddress(t *testing.T) {
 		db.Close()
 	})
 	Convey("Test GetLocalAddress NewConn", t, func() {
-		db, err := dialer.NewConn(context.TODO(), setup.Address, nil)
+		db, err := dialer.NewConn(context.TODO(), host3, nil)
+		db.Connect()
 		So(err, ShouldBeNil)
 		re := db.GetLocalAddress()
 		So(re, ShouldEqual, setup.LocalIP)
 		db.Close()
 	})
 	Convey("Test GetLocalAddress NewSimpleDolphinDBClient", t, func() {
-		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		re := db.GetLocalAddress()
 		So(re, ShouldEqual, setup.LocalIP)
 		db.Close()
 	})
 	Convey("Test GetLocalAddress NewDolphinDBClient", t, func() {
-		db, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+		db, err := api.NewDolphinDBClient(context.TODO(), host3, nil)
+		So(err, ShouldBeNil)
+		err = db.Connect()
 		So(err, ShouldBeNil)
 		re := db.GetLocalAddress()
 		So(re, ShouldEqual, setup.LocalIP)

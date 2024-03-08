@@ -2,13 +2,17 @@ package test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"reflect"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/dolphindb/api-go/api"
 	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/streaming"
 	"github.com/dolphindb/api-go/test/setup"
 )
 
@@ -251,8 +255,8 @@ func LoadPartitionedTable(db api.DolphinDB, partitionedTableName string, dbPath 
 	return df, err
 }
 
-func CreateDfsDimensiondb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsDimensiondb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -270,8 +274,8 @@ func CreateDfsDimensiondb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDfsRangedb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsRangedb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -289,8 +293,8 @@ func CreateDfsRangedb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDfsRangedbChunkGranularity(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsRangedbChunkGranularity(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -308,8 +312,8 @@ func CreateDfsRangedbChunkGranularity(dbPath string, tableName1 string, tableNam
 	AssertNil(errClose)
 }
 
-func CreateDfsHashdb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsHashdb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -327,8 +331,8 @@ func CreateDfsHashdb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDfsHashdbChunkGranularity(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsHashdbChunkGranularity(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -346,8 +350,8 @@ func CreateDfsHashdbChunkGranularity(dbPath string, tableName1 string, tableName
 	AssertNil(errClose)
 }
 
-func CreateDfsValuedb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsValuedb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -364,8 +368,8 @@ func CreateDfsValuedb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDfsValuedbChunkGranularity(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsValuedbChunkGranularity(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -382,8 +386,8 @@ func CreateDfsValuedbChunkGranularity(dbPath string, tableName1 string, tableNam
 	AssertNil(errClose)
 }
 
-func CreateDfsListdb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsListdb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -401,8 +405,8 @@ func CreateDfsListdb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDfsListdbChunkGranularity(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsListdbChunkGranularity(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -420,8 +424,8 @@ func CreateDfsListdbChunkGranularity(dbPath string, tableName1 string, tableName
 	AssertNil(errClose)
 }
 
-func CreateDfsCompoRangeRangedb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsCompoRangeRangedb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -440,8 +444,8 @@ func CreateDfsCompoRangeRangedb(dbPath string, tableName1 string, tableName2 str
 	AssertNil(errClose)
 }
 
-func CreateDfsCompoRangeRangedbChunkGranularity(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsCompoRangeRangedbChunkGranularity(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -460,8 +464,8 @@ func CreateDfsCompoRangeRangedbChunkGranularity(dbPath string, tableName1 string
 	AssertNil(errClose)
 }
 
-func CreateDfsCompoRangeValuedb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsCompoRangeValuedb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -480,8 +484,8 @@ func CreateDfsCompoRangeValuedb(dbPath string, tableName1 string, tableName2 str
 	AssertNil(errClose)
 }
 
-func CreateDfsCompoRangeHashdb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsCompoRangeHashdb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -500,8 +504,8 @@ func CreateDfsCompoRangeHashdb(dbPath string, tableName1 string, tableName2 stri
 	AssertNil(errClose)
 }
 
-func CreateDfsCompoRangeListdb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDfsCompoRangeListdb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -520,8 +524,8 @@ func CreateDfsCompoRangeListdb(dbPath string, tableName1 string, tableName2 stri
 	AssertNil(errClose)
 }
 
-func CreateDiskUnpartitioneddb(dbPath string, tbName1 string, tbName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDiskUnpartitioneddb(addr string, dbPath string, tbName1 string, tbName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -538,8 +542,8 @@ func CreateDiskUnpartitioneddb(dbPath string, tbName1 string, tbName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDiskRangedb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDiskRangedb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -556,8 +560,8 @@ func CreateDiskRangedb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDiskHashdb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDiskHashdb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -574,8 +578,8 @@ func CreateDiskHashdb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDiskValuedb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDiskValuedb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -592,8 +596,8 @@ func CreateDiskValuedb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDiskListdb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDiskListdb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -610,8 +614,8 @@ func CreateDiskListdb(dbPath string, tableName1 string, tableName2 string) {
 	AssertNil(errClose)
 }
 
-func CreateDiskCompoRangeRangedb(dbPath string, tableName1 string, tableName2 string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func CreateDiskCompoRangeRangedb(addr string, dbPath string, tableName1 string, tableName2 string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	ddbScript := `
     dbPath="` + dbPath + `"
@@ -638,9 +642,9 @@ func SaveText(ddb api.DolphinDB, obj string, remoteFilePath string) error {
 	return err
 }
 
-func CreateDBConnectionPool(threadNumCount int, loadbalance bool) *api.DBConnectionPool {
+func CreateDBConnectionPool(addr string, threadNumCount int, loadbalance bool) *api.DBConnectionPool {
 	opt := &api.PoolOption{
-		Address:     setup.Address,
+		Address:     addr,
 		UserID:      setup.UserName,
 		Password:    setup.Password,
 		PoolSize:    threadNumCount,
@@ -651,8 +655,8 @@ func CreateDBConnectionPool(threadNumCount int, loadbalance bool) *api.DBConnect
 	return pool
 }
 
-func ClearEnv() {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func ClearEnv(addr string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	_, err = ddb.RunScript("a = getStreamingStat().pubTables\n" +
 		"for(i in a){\n" +
@@ -682,8 +686,8 @@ func ClearEnv() {
 	AssertNil(err)
 }
 
-func ClearStreamTable(tableName string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+func ClearStreamTable(addr string, tableName string) {
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), addr, setup.UserName, setup.Password)
 	AssertNil(err)
 	script := "login(`admin,`123456);" +
 		"dropStreamTable('" + tableName + "');go"
@@ -717,16 +721,451 @@ func CheckmodelTableEqual_throttle(t1 *model.Table, t2 *model.Table, m int, n in
 
 func getRandomStr(length int) string {
 	// 定义字符集
-	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	letterRunes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-	// 初始化随机数种子
-	rand.Seed(time.Now().UnixNano())
+	b := make([]rune, length)
+	for i := range b {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
+		if err != nil {
+			panic(err)
+		}
+		b[i] = letterRunes[n.Int64()]
+	}
+	return string(b)
+}
 
-	// 生成随机字符串
-	result := make([]byte, length)
-	for i := 0; i < length; i++ {
-		result[i] = charset[rand.Intn(len(charset))]
+func CreateStreamingTableWithRandomName(conn api.DolphinDB) (string, string) {
+	suffix := getRandomStr(5)
+	_, err := conn.RunScript("login(`admin,`123456);" +
+		"try{dropStreamTable('st1')}catch(ex){};" +
+		"try{dropStreamTable('st2')}catch(ex){};")
+	AssertNil(err)
+	st := "Trades_" + suffix
+	re := "Receive_" + suffix
+	_, err = conn.RunScript("st1 = streamTable(1:0,`tag`ts`data,[INT,TIMESTAMP,DOUBLE])\n" +
+		"share(st1,`" + st + ")\t\n" + "setStreamTableFilterColumn(objByName(`" + st + "),`tag)")
+	AssertNil(err)
+	_, err = conn.RunScript("st2 = streamTable(1:0,`tag`ts`data,[INT,TIMESTAMP,DOUBLE])\n" +
+		"share(st2, `" + re + ")\t\n")
+	AssertNil(err)
+	return st, re
+}
+
+var wg sync.WaitGroup
+
+func threadWriteData(conn api.DolphinDB, tabName string, batch int) {
+	defer wg.Done()
+	for i := 0; i < batch; i++ {
+		_, err := conn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + tabName + ".append!(t);sleep(10)")
+		AssertNil(err)
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func waitData(conn api.DolphinDB, tableName string, dataRow int) {
+	loop := 0
+	for {
+		loop += 1
+		if loop > 60 {
+			panic("wait for subscribe datas timeout.")
+		}
+		tmp, err := conn.RunScript("exec count(*) from " + tableName)
+		AssertNil(err)
+		rowNum := tmp.(*model.Scalar)
+		fmt.Printf("\nexpectedData is: %v", dataRow)
+		fmt.Printf("\nactualData is: %v", rowNum)
+		if dataRow == int(rowNum.Value().(int32)) {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+type MessageBatchHandler struct {
+	receive string
+	conn    api.DolphinDB
+}
+type MessageHandler struct {
+	receive string
+	conn    api.DolphinDB
+}
+type MessageHandler_table struct {
+	receive string
+	conn    api.DolphinDB
+}
+
+type MessageHandler_unsubscribeInDoEvent struct {
+	subType      string
+	subClient    interface{}
+	subReq       *streaming.SubscribeRequest
+	successCount int
+}
+
+type sdHandler struct {
+	sd         streaming.StreamDeserializer
+	msg1_total int
+	msg2_total int
+	res1_data  []*model.Vector
+	res2_data  []*model.Vector
+	coltype1   []model.DataTypeByte
+	coltype2   []model.DataTypeByte
+	lock       *sync.Mutex
+}
+
+type sdBatchHandler struct {
+	sd         streaming.StreamDeserializer
+	msg1_total int
+	msg2_total int
+	res1_data  []*model.Vector
+	res2_data  []*model.Vector
+	coltype1   []model.DataTypeByte
+	coltype2   []model.DataTypeByte
+	lock       *sync.Mutex
+}
+
+type sdHandler_av struct {
+	sd         streaming.StreamDeserializer
+	msg1_total int
+	msg2_total int
+	res1_data  []*model.Vector
+	res2_data  []*model.Vector
+	coltype1   []model.DataTypeByte
+	coltype2   []model.DataTypeByte
+	lock       *sync.Mutex
+}
+
+type sdBatchHandler_av struct {
+	sd         streaming.StreamDeserializer
+	msg1_total int
+	msg2_total int
+	res1_data  []*model.Vector
+	res2_data  []*model.Vector
+	coltype1   []model.DataTypeByte
+	coltype2   []model.DataTypeByte
+	lock       *sync.Mutex
+}
+
+func (s *MessageBatchHandler) DoEvent(msgv []streaming.IMessage) {
+	for _, msg := range msgv {
+		val0 := msg.GetValue(0).(*model.Scalar).DataType.String()
+		val1 := msg.GetValue(1).(*model.Scalar).DataType.String()
+		val2 := msg.GetValue(2).(*model.Scalar).DataType.String()
+		script := fmt.Sprintf("tableInsert(objByName(`"+s.receive+", true), %s,%s,%s)",
+			val0, val1, val2)
+		_, err := s.conn.RunScript(script)
+		AssertNil(err)
+	}
+}
+
+func (s *MessageHandler) DoEvent(msg streaming.IMessage) {
+	val0 := msg.GetValue(0).(*model.Scalar).DataType.String()
+	val1 := msg.GetValue(1).(*model.Scalar).DataType.String()
+	val2 := msg.GetValue(2).(*model.Scalar).DataType.String()
+	script := fmt.Sprintf("tableInsert(objByName(`"+s.receive+", true), %s,%s,%s)",
+		val0, val1, val2)
+	_, err := s.conn.RunScript(script)
+	AssertNil(err)
+}
+
+func (s *MessageHandler_table) DoEvent(msg streaming.IMessage) {
+	val0 := msg.GetValue(0).(*model.Vector)
+	val1 := msg.GetValue(1).(*model.Vector)
+	val2 := msg.GetValue(2).(*model.Vector)
+
+	for i := 0; i < len(val0.Data.Value()); i++ {
+		script := fmt.Sprintf("tableInsert(objByName(`"+s.receive+", true), %s,%s,%s)",
+			val0.Data.Get(i).String(), val1.Data.Get(i).String(), val2.Data.Get(i).String())
+		_, err := s.conn.RunScript(script)
+		AssertNil(err)
+	}
+}
+
+func (s *MessageHandler_unsubscribeInDoEvent) DoEvent(msg streaming.IMessage) {
+	time.Sleep(3 * time.Second)
+	var err error
+	if s.subType == "gc" {
+		err = s.subClient.(*streaming.GoroutineClient).UnSubscribe(s.subReq)
+	} else if s.subType == "gpc" {
+		err = s.subClient.(*streaming.GoroutinePooledClient).UnSubscribe(s.subReq)
+	} else if s.subType == "pc" {
+		err = s.subClient.(*streaming.PollingClient).UnSubscribe(s.subReq)
+	}
+	if err == nil {
+		s.successCount += 1
+	}
+}
+
+func (s *sdHandler) DoEvent(msg streaming.IMessage) {
+	ret, err := s.sd.Parse(msg)
+	AssertNil(err)
+	sym := ret.GetSym()
+
+	s.lock.Lock()
+	if sym == "msg1" {
+		s.msg1_total += 1
+		AssertEqual(ret.Size(), 5)
+		for i := 0; i < len(s.coltype1); i++ {
+			AssertEqual(ret.GetValue(i).GetDataType(), s.coltype1[i])
+			// fmt.Println(ret.GetValue(i).(*model.Scalar).Value())
+			val := ret.GetValue(i).(*model.Scalar).Value()
+			dt, err := model.NewDataType(s.coltype1[i], val)
+			AssertNil(err)
+			AssertNil(s.res1_data[i].Append(dt))
+		}
+
+	} else if sym == "msg2" {
+		s.msg2_total += 1
+		AssertEqual(ret.Size(), 4)
+		for i := 0; i < len(s.coltype2); i++ {
+			AssertEqual(ret.GetValue(i).GetDataType(), s.coltype2[i])
+			// fmt.Println(ret.GetValue(i).GetDataType(), ex_types2[i])
+			val := ret.GetValue(i).(*model.Scalar).Value()
+			dt, err := model.NewDataType(s.coltype2[i], val)
+			AssertNil(err)
+			AssertNil(s.res2_data[i].Append(dt))
+		}
+	}
+	s.lock.Unlock()
+}
+
+func (s *sdBatchHandler) DoEvent(msgs []streaming.IMessage) {
+	for _, msg := range msgs {
+		ret, err := s.sd.Parse(msg)
+		AssertNil(err)
+		sym := ret.GetSym()
+
+		s.lock.Lock()
+		if sym == "msg1" {
+			s.msg1_total += 1
+			AssertEqual(ret.Size(), 5)
+			for i := 0; i < len(s.coltype1); i++ {
+				AssertEqual(ret.GetValue(i).GetDataType(), s.coltype1[i])
+				// fmt.Println(ret.GetValue(i).(*model.Scalar).Value())
+				val := ret.GetValue(i).(*model.Scalar).Value()
+				dt, err := model.NewDataType(s.coltype1[i], val)
+				AssertNil(err)
+				AssertNil(s.res1_data[i].Append(dt))
+			}
+
+		} else if sym == "msg2" {
+			s.msg2_total += 1
+			AssertEqual(ret.Size(), 4)
+			for i := 0; i < len(s.coltype2); i++ {
+				AssertEqual(ret.GetValue(i).GetDataType(), s.coltype2[i])
+				// fmt.Println(ret.GetValue(i).GetDataType(), ex_types2[i])
+				val := ret.GetValue(i).(*model.Scalar).Value()
+				dt, err := model.NewDataType(s.coltype2[i], val)
+				AssertNil(err)
+				AssertNil(s.res2_data[i].Append(dt))
+			}
+
+		}
+		s.lock.Unlock()
 	}
 
-	return string(result)
+}
+
+func (s *sdHandler_av) DoEvent(msg streaming.IMessage) {
+	ret, err := s.sd.Parse(msg)
+	AssertNil(err)
+	sym := ret.GetSym()
+
+	s.lock.Lock()
+	if sym == "msg1" {
+		s.msg1_total += 1
+		AssertEqual(ret.Size(), 5)
+		for i := 0; i < len(s.coltype1); i++ {
+			AssertEqual(ret.GetValue(i).GetDataType(), s.coltype1[i])
+			fmt.Println(ret.GetValue(i).GetDataFormString())
+			if i != 3 {
+				val := ret.GetValue(i).(*model.Scalar).Value()
+				dt, err := model.NewDataType(s.coltype1[i], val)
+				AssertNil(err)
+				AssertNil(s.res1_data[i].Append(dt))
+			} else {
+				val := ret.GetValue(i).(*model.Vector)
+				dt, err := model.NewDataType(s.coltype1[i], val)
+				AssertNil(err)
+				AssertNil(s.res1_data[i].Append(dt))
+			}
+		}
+
+	} else if sym == "msg2" {
+		s.msg2_total += 1
+		AssertEqual(ret.Size(), 4)
+		for i := 0; i < len(s.coltype2); i++ {
+			AssertEqual(ret.GetValue(i).GetDataType(), s.coltype2[i])
+			fmt.Println(ret.GetValue(i).GetDataFormString())
+			val := ret.GetValue(i).(*model.Scalar).Value()
+			dt, err := model.NewDataType(s.coltype2[i], val)
+			AssertNil(err)
+			AssertNil(s.res2_data[i].Append(dt))
+		}
+	}
+	s.lock.Unlock()
+}
+
+func (s *sdBatchHandler_av) DoEvent(msgs []streaming.IMessage) {
+	for _, msg := range msgs {
+		ret, err := s.sd.Parse(msg)
+		AssertNil(err)
+		sym := ret.GetSym()
+
+		s.lock.Lock()
+		if sym == "msg1" {
+			s.msg1_total += 1
+			AssertEqual(ret.Size(), 5)
+			for i := 0; i < len(s.coltype1); i++ {
+				AssertEqual(ret.GetValue(i).GetDataType(), s.coltype1[i])
+				// fmt.Println(ret.GetValue(i).(*model.Scalar).Value())
+				val := ret.GetValue(i).(*model.Scalar).Value()
+				dt, err := model.NewDataType(s.coltype1[i], val)
+				AssertNil(err)
+				AssertNil(s.res1_data[i].Append(dt))
+			}
+
+		} else if sym == "msg2" {
+			s.msg2_total += 1
+			AssertEqual(ret.Size(), 4)
+			for i := 0; i < len(s.coltype2); i++ {
+				AssertEqual(ret.GetValue(i).GetDataType(), s.coltype2[i])
+				// fmt.Println(ret.GetValue(i).GetDataType(), ex_types2[i])
+				val := ret.GetValue(i).(*model.Scalar).Value()
+				dt, err := model.NewDataType(s.coltype2[i], val)
+				AssertNil(err)
+				AssertNil(s.res2_data[i].Append(dt))
+			}
+
+		}
+		s.lock.Unlock()
+	}
+
+}
+
+func createStreamDeserializer(conn api.DolphinDB, tbname string) (sdHandler, sdBatchHandler) {
+	_, err := conn.RunScript("try{ dropStreamTable(`" + tbname + ");}catch(ex){};" +
+		"try{ dropStreamTable(`st2);}catch(ex){};" +
+		"try{ undef(`table1, SHARED);}catch(ex){};" +
+		"try{ undef(`table2, SHARED);}catch(ex){};go;" +
+		`st2 = streamTable(100:0, 'timestampv''sym''blob''price1',[TIMESTAMP,SYMBOL,BLOB,DOUBLE]);
+		enableTableShareAndPersistence(table=st2, tableName='` + tbname + `', asynWrite=true, compress=true, cacheSize=200000, retentionMinutes=180, preCache = 0);
+		go;
+		setStreamTableFilterColumn(` + tbname + `, 'sym')`)
+	AssertNil(err)
+	_, err = conn.RunScript(
+		`n = 1000;
+		t0 = table(100:0, "datetimev""timestampv""sym""price1""price2", [DATETIME, TIMESTAMP, SYMBOL, DOUBLE, DOUBLE]);
+		share t0 as table1;
+		t = table(100:0, "datetimev""timestampv""sym""price1", [DATETIME, TIMESTAMP, SYMBOL, DOUBLE]);
+		tableInsert(table1, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take("a1""b1""c1",n), rand(100,n)+rand(1.0, n), rand(100,n)+rand(1.0, n));
+		tableInsert(t, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take("a1""b1""c1",n), rand(100,n)+rand(1.0, n));
+		dbpath="dfs://test_dfs";if(existsDatabase(dbpath)){dropDatabase(dbpath)};db=database(dbpath, VALUE, "a1""b1""c1");
+		db.createPartitionedTable(t,"table2","sym").append!(t);
+		t2 = select * from loadTable(dbpath,"table2");share t2 as table2;
+		d = dict(['msg1','msg2'], [table1, table2]);
+		replay(inputTables=d, outputTables="` + tbname + `", dateColumn="timestampv", timeColumn="timestampv")`)
+	AssertNil(err)
+	sdMap := make(map[string][2]string)
+	sdMap["msg1"] = [2]string{"", "table1"}
+	sdMap["msg2"] = [2]string{"dfs://test_dfs", "table2"}
+	opt := streaming.StreamDeserializerOption{
+		TableNames: sdMap,
+		Conn:       conn,
+	}
+	sd, err := streaming.NewStreamDeserializer(&opt)
+	AssertNil(err)
+	ex_types1 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, model.DtDouble, model.DtDouble}
+	args1 := make([]*model.Vector, 5)
+	args1[0] = model.NewVector(model.NewDataTypeList(ex_types1[0], []model.DataType{}))
+	args1[1] = model.NewVector(model.NewDataTypeList(ex_types1[1], []model.DataType{}))
+	args1[2] = model.NewVector(model.NewDataTypeList(ex_types1[2], []model.DataType{}))
+	args1[3] = model.NewVector(model.NewDataTypeList(ex_types1[3], []model.DataType{}))
+	args1[4] = model.NewVector(model.NewDataTypeList(ex_types1[4], []model.DataType{}))
+	ex_types2 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, model.DtDouble}
+	args2 := make([]*model.Vector, 4)
+	args2[0] = model.NewVector(model.NewDataTypeList(ex_types2[0], []model.DataType{}))
+	args2[1] = model.NewVector(model.NewDataTypeList(ex_types2[1], []model.DataType{}))
+	args2[2] = model.NewVector(model.NewDataTypeList(ex_types2[2], []model.DataType{}))
+	args2[3] = model.NewVector(model.NewDataTypeList(ex_types2[3], []model.DataType{}))
+
+	var lock1 sync.Mutex
+	var lock2 sync.Mutex
+	plock1 := &lock1
+	plock2 := &lock2
+	sh := sdHandler{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock1}
+	sbh := sdBatchHandler{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock2}
+	fmt.Println("create handler successfully.")
+	return sh, sbh
+}
+
+func createStreamDeserializer_av(conn api.DolphinDB, tbname string, dataType model.DataTypeByte, vecVal string) (sdHandler_av, sdBatchHandler_av) {
+	typeString := strings.ToUpper(model.GetDataTypeString(dataType))
+	if strings.Contains(typeString, "DECIMAL32") {
+		typeString = "DECIMAL32(5)"
+	} else if strings.Contains(typeString, "DECIMAL64") {
+		typeString = "DECIMAL64(15)"
+	} else if strings.Contains(typeString, "DECIMAL128") {
+		typeString = "DECIMAL128(33)"
+	}
+	typeString = typeString + "[]"
+	fmt.Println(`test type: `, typeString)
+
+	_, err := conn.RunScript("login(\"admin\",\"123456\");" +
+		"try{ dropStreamTable(`" + tbname + ");}catch(ex){};" +
+		"try{ dropStreamTable(`st2);}catch(ex){};" +
+		"try{ undef(`table1, SHARED);}catch(ex){};" +
+		"try{ undef(`table2, SHARED);}catch(ex){};go;" +
+		"st2 = streamTable(100:0, `timestampv`sym`blob`price1,[TIMESTAMP,SYMBOL,BLOB," + typeString + "]);" +
+		"enableTableShareAndPersistence(table=st2, tableName=`" + tbname + ", asynWrite=true, compress=true, cacheSize=200000, retentionMinutes=180, preCache = 0);" +
+		"go\n" +
+		"setStreamTableFilterColumn(" + tbname + ", `sym)")
+	AssertNil(err)
+	_, err = conn.RunScript(
+		"n = 1000;table1 = table(100:0, `datetimev`timestampv`sym`price1`price2, [DATETIME, TIMESTAMP, SYMBOL," + typeString + ", DOUBLE]);" +
+			"table2 = table(100:0, `datetimev`timestampv`sym`price1, [DATETIME, TIMESTAMP, SYMBOL, " + typeString + "]);" +
+			"tableInsert(table1, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), take(array(" + typeString + ").append!([" + vecVal + "]),n),rand(100.00,n));" +
+			"tableInsert(table2, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), take(array(" + typeString + ").append!([" + vecVal + "]),n));" +
+			"d = dict(['msg1','msg2'], [table1, table2]);" +
+			"replay(inputTables=d, outputTables=`" + tbname + ", dateColumn=`timestampv, timeColumn=`timestampv)")
+	AssertNil(err)
+	sdMap := make(map[string][2]string)
+	sdMap["msg1"] = [2]string{"", "table1"}
+	sdMap["msg2"] = [2]string{"", "table2"}
+	opt := streaming.StreamDeserializerOption{
+		TableNames: sdMap,
+		Conn:       conn,
+	}
+	sd, err := streaming.NewStreamDeserializer(&opt)
+	AssertNil(err)
+	ex_types1 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, dataType + 64, model.DtDouble}
+	args1 := make([]*model.Vector, 5)
+	args1[0] = model.NewVector(model.NewDataTypeList(ex_types1[0], []model.DataType{}))
+	args1[1] = model.NewVector(model.NewDataTypeList(ex_types1[1], []model.DataType{}))
+	args1[2] = model.NewVector(model.NewDataTypeList(ex_types1[2], []model.DataType{}))
+	args1[3] = model.NewVector(model.NewDataTypeList(ex_types1[3], []model.DataType{}))
+	args1[4] = model.NewVector(model.NewDataTypeList(ex_types1[4], []model.DataType{}))
+	ex_types2 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, dataType + 64}
+	args2 := make([]*model.Vector, 4)
+	args2[0] = model.NewVector(model.NewDataTypeList(ex_types2[0], []model.DataType{}))
+	args2[1] = model.NewVector(model.NewDataTypeList(ex_types2[1], []model.DataType{}))
+	args2[2] = model.NewVector(model.NewDataTypeList(ex_types2[2], []model.DataType{}))
+	args2[3] = model.NewVector(model.NewDataTypeList(ex_types2[3], []model.DataType{}))
+
+	var lock1 sync.Mutex
+	var lock2 sync.Mutex
+	plock1 := &lock1
+	plock2 := &lock2
+	sh := sdHandler_av{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock1}
+	sbh := sdBatchHandler_av{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock2}
+	fmt.Println("create handler successfully.")
+	return sh, sbh
+}
+
+func getRandomClusterAddress() string {
+	addressV := setup.HA_sites
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(addressV))))
+	if err != nil {
+		panic(err)
+	}
+	return addressV[n.Int64()]
 }

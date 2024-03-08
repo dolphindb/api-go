@@ -24,10 +24,12 @@ func checkVectorisNull(arr *model.Vector) bool {
 	return true
 }
 
+var host16 = getRandomClusterAddress()
+
 func TestRunScript(t *testing.T) {
 	t.Parallel()
 	Convey("test_RunScript_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host16, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("test_RunScript_func", func() {
 			Convey("test_RunScript_bool_scalar", func() {
@@ -113,7 +115,7 @@ func TestRunScript(t *testing.T) {
 func TestPrint(t *testing.T) {
 	t.Parallel()
 	Convey("test_print_msg_on_console", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host16, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		_, err = ddb.RunScript(`a=int(1);
 								b=bool(1);

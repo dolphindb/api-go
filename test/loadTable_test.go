@@ -11,10 +11,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host9 = getRandomClusterAddress()
 func TestLoadTable(t *testing.T) {
 	t.Parallel()
 	Convey("Test LoadTable prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host9, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)

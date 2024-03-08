@@ -21,6 +21,8 @@ type messageParser struct {
 
 	topic            string
 	topicNameToIndex map[string]map[string]int
+	firstColType	 model.DataTypeByte
+	isReversed       bool
 }
 func closeUnboundedChan(q *UnboundedChan) {
 	close(q.In)
@@ -78,8 +80,12 @@ func (m *messageParser) parseHeader(r protocol.Reader, bo protocol.ByteOrder) (u
 }
 
 func (m *messageParser) parse() error {
-	r := m.Conn.(dialer.Conn).GetReader()
-	// r := protocol.NewReader(m.Conn)
+	var r protocol.Reader
+	if(m.isReversed) {
+		r = m.Conn.(dialer.Conn).GetReader()
+	} else {
+		r = protocol.NewReader(m.Conn)
+	}
 	m.Conn.SetDeadline(time.Time{})
 	for !m.IsClosed() {
 		b, err := r.ReadByte()
@@ -133,6 +139,7 @@ func (m *messageParser) parseData(msgID uint64, r protocol.Reader, bo protocol.B
 
 func (m *messageParser) parseTable(tb *model.Table) {
 	for _, v := range strings.Split(m.topic, ",") {
+		// TODO bad design
 		setReconnectItem(v, 0)
 	}
 
@@ -142,17 +149,25 @@ func (m *messageParser) parseTable(tb *model.Table) {
 		nameToIndex[strings.ToLower(v)] = count
 		count++
 	}
-
+	m.firstColType = tb.GetColumnByIndex(0).GetDataType()
 	m.topicNameToIndex[m.topic] = nameToIndex
+}
+
+func (m *messageParser) isTupleMsg(firstElement model.DataForm) bool {
+	if (firstElement.GetDataForm() == model.DfScalar) || (firstElement.GetDataType() == m.firstColType - 64) {
+		return true;
+	}
+	return false;
 }
 
 func (m *messageParser) parseVector(msgID uint64, vct *model.Vector) {
 	colSize := vct.Rows()
 	rowSize := vct.Data.ElementValue(0).(model.DataForm).Rows()
-	if rowSize > 1 {
-		m.parseVectorWithMultiRows(rowSize, colSize, msgID, vct)
-	} else if rowSize == 1 {
+	// form := vct.Data.ElementValue(0).(model.DataForm).GetDataForm()
+	if m.isTupleMsg(vct.Data.ElementValue(0).(model.DataForm)) {
 		dispatch(m.generateMessage(int64(msgID), vct))
+	} else {
+		m.parseVectorWithMultiRows(rowSize, colSize, msgID, vct)
 	}
 }
 

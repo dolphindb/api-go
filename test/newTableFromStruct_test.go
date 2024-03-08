@@ -38,10 +38,12 @@ type Sample struct {
 	Cint128        []string          `dolphindb:"column:cint128;type:int128"`
 }
 
+var host14 = getRandomClusterAddress()
+
 func TestNewTableFromStruct(t *testing.T) {
 	t.Parallel()
 	Convey("test_NewTableFromStruct", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host14, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("test_NewTableFromStruct_with_all_datatype", func() {
 			sam := &Sample{
@@ -105,7 +107,7 @@ func TestNewTableFromStruct(t *testing.T) {
 		})
 	})
 	Convey("test_NewTableFromStruct_parameter", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host14, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("test_NewTableFromStruct_with_val_nil", func() {
 			_ = ddb

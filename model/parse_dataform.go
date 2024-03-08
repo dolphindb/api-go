@@ -118,7 +118,7 @@ func parseTable(r protocol.Reader, bo protocol.ByteOrder, c *Category) (*Table, 
 }
 
 func parseVectorWithCategory(r protocol.Reader, bo protocol.ByteOrder) (*Vector, error) {
-	c, err := parseCategory(r)
+	c, err := parseCategory(r, bo)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func parseVectorWithCategoryList(r protocol.Reader, bo protocol.ByteOrder, count
 	list := make([]*Vector, count)
 	var symBase *symbolBaseCollection
 	for i := 0; i < count; i++ {
-		c, err := parseCategory(r)
+		c, err := parseCategory(r, bo)
 		if err != nil {
 			return nil, err
 		}
@@ -228,6 +228,18 @@ func readVectorData(r protocol.Reader, bo protocol.ByteOrder, dv *Vector) error 
 	}
 
 	return err
+}
+
+func ParseArrayVector(r protocol.Reader, t DataTypeByte, bo protocol.ByteOrder) (*Vector, error) {
+	vct := &Vector{
+		category:  &Category{DataForm: DfVector,DataType: t},
+		RowCount: 1,
+	}
+	err := parseArrayVector(r, bo, vct)
+	if err != nil {
+		return nil, err
+	}
+	return vct, nil
 }
 
 func parseArrayVector(r protocol.Reader, bo protocol.ByteOrder, dv *Vector) error {

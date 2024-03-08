@@ -10,6 +10,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host18 = getRandomClusterAddress()
+
 func CheckVectorEqual(vec *model.Vector) bool {
 	data := vec.Data.Value()
 	var j int32 = 1
@@ -28,7 +30,7 @@ func CheckVectorEqual(vec *model.Vector) bool {
 func TestSaveText(t *testing.T) {
 	t.Parallel()
 	Convey("Test_saveText_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host18, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		WORK_DIR := setup.WORK_DIR + "/testSaveText.txt"
 		Convey("Test_saveText_exception", func() {

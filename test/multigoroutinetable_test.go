@@ -22,6 +22,7 @@ var (
 	DfsTableName2 = "pt2"
 )
 
+var host12 = getRandomClusterAddress()
 var waitGroup sync.WaitGroup
 
 func CreateTimeList(n int, timeFomat string, timeList []string) []time.Time {
@@ -142,7 +143,7 @@ func threadinsertData(mtt *mtw.MultiGoroutineTable, n int) {
 }
 
 func insertDataTotable(n int, tableName string) {
-	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+	ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 	AssertNil(err)
 	var symarr []string
 	var datetimearr []time.Time
@@ -174,7 +175,7 @@ func insertDataTotable(n int, tableName string) {
 
 func TestMultiGoroutineTable_exception(t *testing.T) {
 	Convey("test_multiGoroutineTable_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		Convey("Drop all Databases", func() {
@@ -267,7 +268,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         "dabsk",
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -292,7 +293,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       "-2",
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -317,7 +318,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -342,7 +343,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -367,7 +368,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      "hsb",
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -392,7 +393,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      "",
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -417,7 +418,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -442,7 +443,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -467,7 +468,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -492,7 +493,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -517,7 +518,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -542,7 +543,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -576,7 +577,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         "mark",
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				mtt, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldBeNil)
@@ -603,7 +604,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      "shareTable",
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -630,7 +631,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -655,7 +656,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -680,7 +681,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -705,7 +706,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				mtt, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldBeNil)
@@ -733,7 +734,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      "",
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -760,7 +761,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				mtt, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldBeNil)
@@ -787,7 +788,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				mtt, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldBeNil)
@@ -814,7 +815,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      DfsTableName1,
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				mtt, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldBeNil)
@@ -834,7 +835,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      "t1",
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				mtt, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldBeNil)
@@ -881,7 +882,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 					TableName:      "pt",
 					UserID:         setup.UserName,
 					Password:       setup.Password,
-					Address:        setup.Address,
+					Address:        host12,
 				}
 				_, err = mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
@@ -896,7 +897,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 
 func TestMultiGoroutineTable_all_data_type(t *testing.T) {
 	Convey("test_multithreadTableWriterTest_all_data_type", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		scriptalldatatype := `
 		t = table(1000:0, ["boolv", "charv", "shortv", "intv", "longv", "datev", "monthv", "timestampv", "floatv", "doublev", "stringv", "sym", "uuidv", "int128v", "ipv", "decimal32v", "decimal64v", "decimal128v"],
@@ -913,7 +914,7 @@ func TestMultiGoroutineTable_all_data_type(t *testing.T) {
 			TableName:      "all_data_type",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -996,7 +997,7 @@ func TestMultiGoroutineTable_all_data_type(t *testing.T) {
 
 func TestMultiGoroutineTable_GoroutineCount(t *testing.T) {
 	Convey("test_multithreadTableWriterTest_GoroutineCount", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		scriptGoroutineCount := "t = table(1000:0, `date`id`values,[TIMESTAMP,SYMBOL,INT]);share t as t1;"
 		_, err = ddb.RunScript(scriptGoroutineCount)
@@ -1010,7 +1011,7 @@ func TestMultiGoroutineTable_GoroutineCount(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1063,7 +1064,7 @@ func TestMultiGoroutineTable_GoroutineCount(t *testing.T) {
 
 func TestMultiGoroutineTable_null(t *testing.T) {
 	Convey("test_multiGoroutineTable_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("test_multithreadTableWriterTest_insert_all_null", func() {
 			scriptGoroutineCount := "t = table(1000:0, `boolv`charv`shortv`longv`datev`monthv`secondv`datetimev`timestampv`nanotimev`nanotimestampv`floatv`doublev`symbolv`stringv`uuidv`ipaddrv`int128v`intv`arrv`blobv," +
@@ -1080,7 +1081,7 @@ func TestMultiGoroutineTable_null(t *testing.T) {
 				TableName:      "t1",
 				UserID:         setup.UserName,
 				Password:       setup.Password,
-				Address:        setup.Address,
+				Address:        host12,
 			}
 			mtt, err := mtw.NewMultiGoroutineTable(opt)
 			So(err, ShouldBeNil)
@@ -1110,7 +1111,7 @@ func TestMultiGoroutineTable_null(t *testing.T) {
 				TableName:      "t1",
 				UserID:         setup.UserName,
 				Password:       setup.Password,
-				Address:        setup.Address,
+				Address:        host12,
 			}
 			mtt, err := mtw.NewMultiGoroutineTable(opt)
 			So(err, ShouldBeNil)
@@ -1131,7 +1132,7 @@ func TestMultiGoroutineTable_null(t *testing.T) {
 
 func TestMultiGoroutineTable_getStatus_write_successful(t *testing.T) {
 	Convey("test_multithreadTableWriterTest_getStatus_write_successful", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		scriptGoroutineCount := "t = streamTable(1000:0, `intv`datev,[INT,DATE]);" + "share t as t1;"
 		_, err = ddb.RunScript(scriptGoroutineCount)
@@ -1145,7 +1146,7 @@ func TestMultiGoroutineTable_getStatus_write_successful(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1168,7 +1169,7 @@ func TestMultiGoroutineTable_getStatus_write_successful(t *testing.T) {
 
 func TestMultithreadTableWriterTest_getStatus_write_successful_normalData(t *testing.T) {
 	Convey("test_multithreadTableWriterTest_getStatus_write_successful_normalData", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		scriptGoroutineCount := "t = streamTable(1000:0, `intv`datev,[INT,DATE]);" + "share t as t1;"
 		_, err = ddb.RunScript(scriptGoroutineCount)
@@ -1182,7 +1183,7 @@ func TestMultithreadTableWriterTest_getStatus_write_successful_normalData(t *tes
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1210,7 +1211,7 @@ func TestMultithreadTableWriterTest_getStatus_write_successful_normalData(t *tes
 
 func TestMultiGoroutineTable_insert_bool(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_bool", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		scriptGoroutineCount := "t = streamTable(1000:0, `bool`id," +
 			"[BOOL,INT]);" +
@@ -1226,7 +1227,7 @@ func TestMultiGoroutineTable_insert_bool(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1253,7 +1254,7 @@ func TestMultiGoroutineTable_insert_bool(t *testing.T) {
 }
 func TestMultiGoroutineTable_insert_byte_int32_int64_int16(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_byte", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		scriptGoroutineCount := "t = streamTable(1000:0, `char`int`long`short`id," +
 			"[CHAR,INT,LONG,SHORT,INT]);" +
@@ -1269,7 +1270,7 @@ func TestMultiGoroutineTable_insert_byte_int32_int64_int16(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1296,7 +1297,7 @@ func TestMultiGoroutineTable_insert_byte_int32_int64_int16(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_float32_float64(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_double", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = streamTable(1000:0, `floatv`doublev`id," +
@@ -1313,7 +1314,7 @@ func TestMultiGoroutineTable_insert_float32_float64(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1338,7 +1339,7 @@ func TestMultiGoroutineTable_insert_float32_float64(t *testing.T) {
 
 func TestMultiGoroutineTable_streamTable_insert_timetype(t *testing.T) {
 	Convey("TestMultiGoroutineTable_streamTable_insert_timetype", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = streamTable(1000:0, `datev`monthv`secondv`minutev`datetimev`timestampv`datehourv`timev`nanotimev`nanotimestampv," +
@@ -1355,7 +1356,7 @@ func TestMultiGoroutineTable_streamTable_insert_timetype(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1425,7 +1426,7 @@ func TestMultiGoroutineTable_streamTable_insert_timetype(t *testing.T) {
 
 func TestMultiGoroutineTable_memTable_insert_timetype(t *testing.T) {
 	Convey("TestMultiGoroutineTable_memTable_insert_timetype", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `datev`monthv`secondv`minutev`datetimev`timestampv`datehourv`timev`nanotimev`nanotimestampv," +
@@ -1442,7 +1443,7 @@ func TestMultiGoroutineTable_memTable_insert_timetype(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1512,7 +1513,7 @@ func TestMultiGoroutineTable_memTable_insert_timetype(t *testing.T) {
 
 func TestMultiGoroutineTable_dfsTable_insert_timetype(t *testing.T) {
 	Convey("TestMultiGoroutineTable_dfsTable_insert_timetype", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptdfshashtable := `
@@ -1533,7 +1534,7 @@ func TestMultiGoroutineTable_dfsTable_insert_timetype(t *testing.T) {
 			TableName:      DfsTableName1,
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1603,7 +1604,7 @@ func TestMultiGoroutineTable_dfsTable_insert_timetype(t *testing.T) {
 
 func TestMultiGoroutineTable_dimensionTable_insert_timetype(t *testing.T) {
 	Convey("TestMultiGoroutineTable_dimensionTable_insert_timetype", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptdfshashtable := `
@@ -1624,7 +1625,7 @@ func TestMultiGoroutineTable_dimensionTable_insert_timetype(t *testing.T) {
 			TableName:      DfsTableName1,
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1694,7 +1695,7 @@ func TestMultiGoroutineTable_dimensionTable_insert_timetype(t *testing.T) {
 
 func TestMultiGoroutineTable_memTable_insert_localTime(t *testing.T) {
 	Convey("TestMultiGoroutineTable_memTable_insert_timetype", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `datev`monthv`secondv`minutev`datetimev`timestampv`datehourv`timev`nanotimev`nanotimestampv," +
@@ -1711,7 +1712,7 @@ func TestMultiGoroutineTable_memTable_insert_localTime(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1781,7 +1782,7 @@ func TestMultiGoroutineTable_memTable_insert_localTime(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_part_null(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_part_null", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -1802,7 +1803,7 @@ func TestMultiGoroutineTable_insert_dfs_part_null(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1843,7 +1844,7 @@ func TestMultiGoroutineTable_insert_dfs_part_null(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_empty_arrayVector(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_empty_arrayVector", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`arrayv," +
@@ -1860,7 +1861,7 @@ func TestMultiGoroutineTable_insert_empty_arrayVector(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1882,7 +1883,7 @@ func TestMultiGoroutineTable_insert_empty_arrayVector(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_different_length(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_different_length", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`arrayv`arrayv1`arrayv2," +
@@ -1899,7 +1900,7 @@ func TestMultiGoroutineTable_insert_arrayVector_different_length(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1927,7 +1928,7 @@ func TestMultiGoroutineTable_insert_arrayVector_different_length(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_char(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_char", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`charArr," +
@@ -1944,7 +1945,7 @@ func TestMultiGoroutineTable_insert_arrayVector_char(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -1968,7 +1969,7 @@ func TestMultiGoroutineTable_insert_arrayVector_char(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_int(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_int", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr," +
@@ -1985,7 +1986,7 @@ func TestMultiGoroutineTable_insert_arrayVector_int(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2009,7 +2010,7 @@ func TestMultiGoroutineTable_insert_arrayVector_int(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_bool(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_bool", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr," +
@@ -2026,7 +2027,7 @@ func TestMultiGoroutineTable_insert_arrayVector_bool(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2050,7 +2051,7 @@ func TestMultiGoroutineTable_insert_arrayVector_bool(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_long(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_long", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr," +
@@ -2067,7 +2068,7 @@ func TestMultiGoroutineTable_insert_arrayVector_long(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2093,7 +2094,7 @@ func TestMultiGoroutineTable_insert_arrayVector_long(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_short(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_short", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr," +
@@ -2110,7 +2111,7 @@ func TestMultiGoroutineTable_insert_arrayVector_short(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2136,7 +2137,7 @@ func TestMultiGoroutineTable_insert_arrayVector_short(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_float(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_float", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr," +
@@ -2153,7 +2154,7 @@ func TestMultiGoroutineTable_insert_arrayVector_float(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2177,7 +2178,7 @@ func TestMultiGoroutineTable_insert_arrayVector_float(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_double(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_double", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr," +
@@ -2194,7 +2195,7 @@ func TestMultiGoroutineTable_insert_arrayVector_double(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2219,7 +2220,7 @@ func TestMultiGoroutineTable_insert_arrayVector_double(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_date_month(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_date_month", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr1`Arr2," +
@@ -2236,7 +2237,7 @@ func TestMultiGoroutineTable_insert_arrayVector_date_month(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2262,7 +2263,7 @@ func TestMultiGoroutineTable_insert_arrayVector_date_month(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_arrayVector_time_minute_month(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_time_minute_month", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr1`Arr2`Arr3," +
@@ -2279,7 +2280,7 @@ func TestMultiGoroutineTable_insert_arrayVector_time_minute_month(t *testing.T) 
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2307,7 +2308,7 @@ func TestMultiGoroutineTable_insert_arrayVector_time_minute_month(t *testing.T) 
 
 func TestMultiGoroutineTable_insert_arrayVector_datetime_timestamp_nanotime_nanotimstamp(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_datetime_timestamp_nanotime_nanotimstamp", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `intv`Arr1`Arr2`Arr3`Arr4," +
@@ -2324,7 +2325,7 @@ func TestMultiGoroutineTable_insert_arrayVector_datetime_timestamp_nanotime_nano
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2354,7 +2355,7 @@ func TestMultiGoroutineTable_insert_arrayVector_datetime_timestamp_nanotime_nano
 
 func TestMultiGoroutineTable_insert_arrayVector_otherType(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_otherType", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = table(1000:0, `uuidv`int128v`ipaddrv," +
@@ -2371,7 +2372,7 @@ func TestMultiGoroutineTable_insert_arrayVector_otherType(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2397,7 +2398,7 @@ func TestMultiGoroutineTable_insert_arrayVector_otherType(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_blob(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_blob", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = streamTable(1000:0, `intv`blobv," +
@@ -2414,7 +2415,7 @@ func TestMultiGoroutineTable_insert_blob(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2434,7 +2435,7 @@ func TestMultiGoroutineTable_insert_blob(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_wrong_type(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_arrayVector_otherType", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		scriptGoroutineCount := "t = streamTable(1000:0, `intv`doublev," +
@@ -2451,7 +2452,7 @@ func TestMultiGoroutineTable_insert_wrong_type(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2482,7 +2483,7 @@ func TestMultiGoroutineTable_insert_wrong_type(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_uuid_int128_ipaddr", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script1 := "t = streamTable(1000:0, `uuidv`ipaddrv`int128v," +
@@ -2499,7 +2500,7 @@ func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2532,7 +2533,7 @@ func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 
 func TestMultiGoroutineTable_keytable(t *testing.T) {
 	Convey("TestMultiGoroutineTable_keytable", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "t=keyedStreamTable(`sym,1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade," +
@@ -2548,7 +2549,7 @@ func TestMultiGoroutineTable_keytable(t *testing.T) {
 			TableName:      "t1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2573,7 +2574,7 @@ func TestMultiGoroutineTable_keytable(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dt_multipleThreadCount(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dt_multipleThreadCount", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2594,7 +2595,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThreadCount(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		_, err = mtw.NewMultiGoroutineTable(opt)
 		So(err.Error(), ShouldContainSubstring, "the parameter GoroutineCount must be 1 for a dimension table")
@@ -2607,7 +2608,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThreadCount(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_tsdb_dt_multipleThreadCount(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_tsdb_dt_multipleThreadCount", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2628,7 +2629,7 @@ func TestMultiGoroutineTable_insert_tsdb_dt_multipleThreadCount(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		_, err = mtw.NewMultiGoroutineTable(opt)
 		So(err.Error(), ShouldContainSubstring, "the parameter GoroutineCount must be 1 for a dimension table")
@@ -2640,7 +2641,7 @@ func TestMultiGoroutineTable_insert_tsdb_dt_multipleThreadCount(t *testing.T) {
 }
 func TestMultiGoroutineTable_insert_dt_multipleThread_groutine(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dt_multipleThread_groutine", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2661,7 +2662,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThread_groutine(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2692,7 +2693,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThread_groutine(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dt_multipleThread_tsdb_groutine(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dt_multipleThread_tsdb_groutine", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2713,7 +2714,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThread_tsdb_groutine(t *testing.T
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2744,7 +2745,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThread_tsdb_groutine(t *testing.T
 
 func TestMultiGoroutineTable_insert_dt_oneThread(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dt_oneThread", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2765,7 +2766,7 @@ func TestMultiGoroutineTable_insert_dt_oneThread(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2796,7 +2797,7 @@ func TestMultiGoroutineTable_insert_dt_oneThread(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_value(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_value", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2817,7 +2818,7 @@ func TestMultiGoroutineTable_insert_dfs_value(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2848,7 +2849,7 @@ func TestMultiGoroutineTable_insert_dfs_value(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_hash(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_hash", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2869,7 +2870,7 @@ func TestMultiGoroutineTable_insert_dfs_hash(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2900,7 +2901,7 @@ func TestMultiGoroutineTable_insert_dfs_hash(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_list(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_list", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2921,7 +2922,7 @@ func TestMultiGoroutineTable_insert_dfs_list(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -2952,7 +2953,7 @@ func TestMultiGoroutineTable_insert_dfs_list(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_value_value(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_value_value", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -2975,7 +2976,7 @@ func TestMultiGoroutineTable_insert_dfs_value_value(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3006,7 +3007,7 @@ func TestMultiGoroutineTable_insert_dfs_value_value(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_value_range(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_value_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3029,7 +3030,7 @@ func TestMultiGoroutineTable_insert_dfs_value_range(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3060,7 +3061,7 @@ func TestMultiGoroutineTable_insert_dfs_value_range(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_range_value(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_value_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3083,7 +3084,7 @@ func TestMultiGoroutineTable_insert_dfs_range_value(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3114,7 +3115,7 @@ func TestMultiGoroutineTable_insert_dfs_range_value(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_range_range(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_range_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3137,7 +3138,7 @@ func TestMultiGoroutineTable_insert_dfs_range_range(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3168,7 +3169,7 @@ func TestMultiGoroutineTable_insert_dfs_range_range(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_range_hash(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_range_hash", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3191,7 +3192,7 @@ func TestMultiGoroutineTable_insert_dfs_range_hash(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3222,7 +3223,7 @@ func TestMultiGoroutineTable_insert_dfs_range_hash(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_hash_range(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_hash_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3245,7 +3246,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_range(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3276,7 +3277,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_range(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_hash_hash_chunkGranularity_database(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_hash_hash", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3299,7 +3300,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_hash_chunkGranularity_database(t *t
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3330,7 +3331,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_hash_chunkGranularity_database(t *t
 
 func TestMultiGoroutineTable_insert_dfs_hash_value_chunkGranularity_database(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_hash_value_chunkGranularity_database", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3353,7 +3354,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_value_chunkGranularity_database(t *
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3384,7 +3385,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_value_chunkGranularity_database(t *
 
 func TestMultiGoroutineTable_insert_dfs_hash_range_chunkGranularity_database(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_dfs_hash_value", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3407,7 +3408,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_range_chunkGranularity_database(t *
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3438,7 +3439,7 @@ func TestMultiGoroutineTable_insert_dfs_hash_range_chunkGranularity_database(t *
 
 func TestMultiGoroutineTable_insert_PartitionType_datehour_partirtioncoldatetime(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncoldatetime", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3461,7 +3462,7 @@ func TestMultiGoroutineTable_insert_PartitionType_datehour_partirtioncoldatetime
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3492,7 +3493,7 @@ func TestMultiGoroutineTable_insert_PartitionType_datehour_partirtioncoldatetime
 
 func TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncoltimestamp(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncoltimestamp", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3515,7 +3516,7 @@ func TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncoltimestamp
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3546,7 +3547,7 @@ func TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncoltimestamp
 
 func TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncolnanotimestamp(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncolnanotimestamp", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3569,7 +3570,7 @@ func TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncolnanotimes
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3600,7 +3601,7 @@ func TestMultiGoroutineTable_insert_PartitionType_datehour_partitioncolnanotimes
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoldatetime(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoldatetime", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3621,7 +3622,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3652,7 +3653,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoltimestamp(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoltimestamp", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3673,7 +3674,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3704,7 +3705,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncolnanotimestamp(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncolnanotimestamp", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3725,7 +3726,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3756,7 +3757,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoldate_range(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoldate_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3777,7 +3778,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3808,7 +3809,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoldatetime_range(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoldatetime_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3829,7 +3830,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3860,7 +3861,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoltimestamp_range(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncoltimestamp_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3881,7 +3882,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3912,7 +3913,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncolnanotimestamp_range(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partitioncolnanotimestamp", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3933,7 +3934,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -3964,7 +3965,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_date_partiti
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partitioncoldatetime_range(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partitioncoldatetime_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -3985,7 +3986,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partit
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -4016,7 +4017,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partit
 
 func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partitioncoltimestamp_range(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partitioncoltimestamp_range", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -4037,7 +4038,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partit
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -4068,7 +4069,7 @@ func TestMultiGoroutineTable_insert_dfs_PartitionType_partitiontype_month_partit
 
 func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "\n" +
@@ -4090,7 +4091,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
@@ -4165,7 +4166,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 
 func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_differentTable(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_differentTable", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "\n" +
@@ -4190,7 +4191,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			TableName:      "pt1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4203,7 +4204,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			TableName:      "pt2",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
 		So(err, ShouldBeNil)
@@ -4216,7 +4217,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			TableName:      "pt3",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt3, err := mtw.NewMultiGoroutineTable(opt3)
 		So(err, ShouldBeNil)
@@ -4229,7 +4230,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			TableName:      "pt4",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt4, err := mtw.NewMultiGoroutineTable(opt4)
 		So(err, ShouldBeNil)
@@ -4300,7 +4301,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 
 func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_differentDatabase(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_differentDatabase", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script1 := "\n" +
@@ -4342,7 +4343,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			TableName:      "pt1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4355,7 +4356,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			TableName:      "pt1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
 		So(err, ShouldBeNil)
@@ -4368,7 +4369,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			TableName:      "pt1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt3, err := mtw.NewMultiGoroutineTable(opt3)
 		So(err, ShouldBeNil)
@@ -4436,7 +4437,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 
 func TestMultiGoroutineTable_insert_differentTable_status_isExiting(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_differentTable_status_isExiting", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "tmp1=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, INT, DOUBLE])\n;share tmp1 as st1;" +
@@ -4453,7 +4454,7 @@ func TestMultiGoroutineTable_insert_differentTable_status_isExiting(t *testing.T
 			TableName:      "st1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4466,7 +4467,7 @@ func TestMultiGoroutineTable_insert_differentTable_status_isExiting(t *testing.T
 			TableName:      "st2",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
 		So(err, ShouldBeNil)
@@ -4479,7 +4480,7 @@ func TestMultiGoroutineTable_insert_differentTable_status_isExiting(t *testing.T
 			TableName:      "st3",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt3, err := mtw.NewMultiGoroutineTable(opt3)
 		So(err, ShouldBeNil)
@@ -4527,7 +4528,7 @@ func TestMultiGoroutineTable_insert_differentTable_status_isExiting(t *testing.T
 
 func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_tsdb_keepDuplicates", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "\n" +
@@ -4553,7 +4554,7 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 			TableName:      "pt1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4566,7 +4567,7 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 			TableName:      "pt2",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
 		So(err, ShouldBeNil)
@@ -4579,7 +4580,7 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 			TableName:      "pt3",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt3, err := mtw.NewMultiGoroutineTable(opt3)
 		So(err, ShouldBeNil)
@@ -4592,7 +4593,7 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 			TableName:      "pt4",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt4, err := mtw.NewMultiGoroutineTable(opt4)
 		So(err, ShouldBeNil)
@@ -4643,7 +4644,7 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_length_eq_1024(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_length_eq_1024", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -4666,7 +4667,7 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_1024(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4696,7 +4697,7 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_1024(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_length_eq_1048576(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_length_eq_1048576", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -4719,7 +4720,7 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_1048576(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4749,7 +4750,7 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_1048576(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfs_length_eq_3000000(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfs_length_eq_3000000", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -4772,7 +4773,7 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_3000000(t *testing.T) {
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4802,7 +4803,7 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_3000000(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_streamTable_multipleThread(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_streamTable_multipleThread", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "t=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share t as t1;" +
@@ -4818,7 +4819,7 @@ func TestMultiGoroutineTable_insert_streamTable_multipleThread(t *testing.T) {
 			TableName:      "t2",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4846,7 +4847,7 @@ func TestMultiGoroutineTable_insert_streamTable_multipleThread(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_streamtable_200cols(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_streamtable_200cols", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "t=streamTable(1:0, `sym`tradeDate, [SYMBOL,DATEHOUR])\n;\n" +
@@ -4864,7 +4865,7 @@ func TestMultiGoroutineTable_insert_streamtable_200cols(t *testing.T) {
 			TableName:      "trades",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4912,7 +4913,7 @@ func TestMultiGoroutineTable_insert_streamtable_200cols(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_dfstable_200cols(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_dfstable_200cols", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "t=table(1:0, `sym`tradeDate, [SYMBOL,TIMESTAMP]);\n" +
@@ -4934,7 +4935,7 @@ func TestMultiGoroutineTable_insert_dfstable_200cols(t *testing.T) {
 			TableName:      "pt1",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -4982,7 +4983,7 @@ func TestMultiGoroutineTable_insert_dfstable_200cols(t *testing.T) {
 
 func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "login(`admin,`123456)\n" +
@@ -5004,7 +5005,7 @@ func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write
 			TableName:      "pt",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -5026,7 +5027,7 @@ func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write
 
 func TestMultiGoroutineTable_insert_streamTable_eq_1024(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_streamTable_eq_1024", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "t=streamTable(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share t as t1;" +
@@ -5042,7 +5043,7 @@ func TestMultiGoroutineTable_insert_streamTable_eq_1024(t *testing.T) {
 			TableName:      "t2",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -5070,7 +5071,7 @@ func TestMultiGoroutineTable_insert_streamTable_eq_1024(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_streamTable_eq_1048576(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_streamTable_eq_1048576", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "t=streamTable(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share t as t1;" +
@@ -5086,7 +5087,7 @@ func TestMultiGoroutineTable_insert_streamTable_eq_1048576(t *testing.T) {
 			TableName:      "t2",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
@@ -5116,7 +5117,7 @@ func TestMultiGoroutineTable_insert_streamTable_eq_1048576(t *testing.T) {
 
 func TestMultiGoroutineTable_insert_streamTable_eq_3000000(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_streamTable_eq_3000000", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		script := "t=streamTable(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share t as t1;" +
@@ -5132,7 +5133,7 @@ func TestMultiGoroutineTable_insert_streamTable_eq_3000000(t *testing.T) {
 			TableName:      "t2",
 			UserID:         setup.UserName,
 			Password:       setup.Password,
-			Address:        setup.Address,
+			Address:        host12,
 		}
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)

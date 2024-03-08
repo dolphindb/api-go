@@ -11,10 +11,12 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host15 = getRandomClusterAddress()
+
 func TestPloadTest(t *testing.T) {
 	t.Parallel()
 	Convey("test_PloadTest_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host15, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		data := setup.DATA_DIR + "/TradesSmall.csv"
 		fmt.Println(data)

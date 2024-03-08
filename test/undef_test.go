@@ -11,6 +11,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host21 = getRandomClusterAddress()
+
 func CompareTablesTwoDataformTable(tableName1 *model.Table, tableName2 *model.Table) bool {
 	if tableName1.Columns() == tableName2.Columns() && tableName1.GetDataTypeString() == tableName2.GetDataTypeString() && tableName1.GetDataForm() == tableName2.GetDataForm() {
 		for i := 0; i < tableName1.Columns(); i++ {
@@ -30,7 +32,7 @@ func CompareTablesTwoDataformTable(tableName1 *model.Table, tableName2 *model.Ta
 }
 func TestUndef(t *testing.T) {
 	Convey("Test_func_undef_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host21, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_func_undef_varible_data", func() {
 			_, err = ddb.RunScript("x=1")
@@ -81,7 +83,7 @@ func TestUndef(t *testing.T) {
 
 func TestUndefAll(t *testing.T) {
 	Convey("Test_func_UndefAll_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host21, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_func_UndefAll_varible_data", func() {
 			_, err = ddb.RunScript("x=1")
@@ -104,7 +106,7 @@ func TestUndefAll(t *testing.T) {
 
 func TestClearAllCache(t *testing.T) {
 	Convey("Test_func_ClearAllCache_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host21, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_func_ClearAllCache_SetIsDFS_true", func() {
 			_, err := ddb.RunScript(

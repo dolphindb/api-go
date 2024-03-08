@@ -12,10 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var host19 = getRandomClusterAddress()
+
 func TestSql(t *testing.T) {
 	t.Parallel()
 	Convey("Test_sql", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host19, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_sql_select_NULL", func() {
 			Convey("Test_sql_select_NULL_with_table_data", func() {

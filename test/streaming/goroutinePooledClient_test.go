@@ -3,8 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"sync"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,18 +15,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var gpcConn, _ = api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+var host3 = getRandomClusterAddress()
+var gpcConn, _ = api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 
 func TestNewGoroutinePooledClient_subscribe_ex_ubsubscribe(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_ex_ubsubscribe", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable",
 			BatchHandler: &handler,
@@ -37,7 +38,7 @@ func TestNewGoroutinePooledClient_subscribe_ex_ubsubscribe(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = gpcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		waitData(receive, 1000)
+		waitData(gpcConn, receive, 1000)
 		tmp1, err := gpcConn.RunScript("select * from " + receive + " order by tag")
 		So(err, ShouldBeNil)
 		tmp2, err := gpcConn.RunScript("select * from " + st + " order by tag")
@@ -49,8 +50,8 @@ func TestNewGoroutinePooledClient_subscribe_ex_ubsubscribe(t *testing.T) {
 		CheckmodelTableEqual(re, ex, 0)
 		err = gpc.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -59,12 +60,13 @@ func TestNewGoroutinePooledClient_subscribe_ex_ubsubscribe(t *testing.T) {
 func TestNewGoroutinePooledClient_subscribe_ex_ActionName(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_ex_ActionName", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			Offset:       0,
 			Reconnect:    true,
@@ -75,11 +77,11 @@ func TestNewGoroutinePooledClient_subscribe_ex_ActionName(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = gpcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		waitData(receive, 1000)
+		waitData(gpcConn, receive, 1000)
 		err = gpc.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -88,20 +90,21 @@ func TestNewGoroutinePooledClient_subscribe_ex_ActionName(t *testing.T) {
 func TestNewGoroutinePooledClient_subscribe_exTableName(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_exTableName", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			Offset:       0,
 			Reconnect:    true,
 			BatchHandler: &handler,
 		}
 		err := gpc.Subscribe(req)
 		So(err, ShouldNotBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -109,12 +112,13 @@ func TestNewGoroutinePooledClient_subscribe_exTableName(t *testing.T) {
 func TestNewGoroutinePooledClient_subscribe_ex_offset(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_ex_offset", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable",
 			Offset:       -2,
@@ -125,8 +129,8 @@ func TestNewGoroutinePooledClient_subscribe_ex_offset(t *testing.T) {
 		So(err, ShouldNotBeNil)
 		err = gpc.UnSubscribe(req)
 		AssertNil(err)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -135,12 +139,13 @@ func TestNewGoroutinePooledClient_subscribe_ex_offset(t *testing.T) {
 func TestNewGoroutinePooledClient_subscribe_offset_0(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_offset_0", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable",
 			Offset:       0,
@@ -152,7 +157,7 @@ func TestNewGoroutinePooledClient_subscribe_offset_0(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = gpcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		waitData(receive, 1000)
+		waitData(gpcConn, receive, 1000)
 
 		res, _ := gpcConn.RunScript("res = select * from " + receive + " order by tag;ex = select * from " + st + " order by tag;each(eqObj, ex.values(), res.values())")
 		for _, val := range res.(*model.Vector).Data.Value() {
@@ -160,8 +165,8 @@ func TestNewGoroutinePooledClient_subscribe_offset_0(t *testing.T) {
 		}
 		err = gpc.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -170,12 +175,13 @@ func TestNewGoroutinePooledClient_subscribe_offset_0(t *testing.T) {
 func TestNewGoroutinePooledClient_subscribe_offset_negative(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_offset_negative", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable",
 			Offset:       -1,
@@ -190,7 +196,7 @@ func TestNewGoroutinePooledClient_subscribe_offset_negative(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = gpcConn.RunScript("n=2000;t2=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t2)")
 		So(err, ShouldBeNil)
-		waitData(receive, 2000)
+		waitData(gpcConn, receive, 2000)
 		res, err := gpcConn.RunScript("res = select * from " + receive + " order by tag;ex = select * from t2 order by tag;each(eqObj, ex.values(), res.values())")
 		AssertNil(err)
 		for _, val := range res.(*model.Vector).Data.Value() {
@@ -198,8 +204,8 @@ func TestNewGoroutinePooledClient_subscribe_offset_negative(t *testing.T) {
 		}
 		err = gpc.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -208,14 +214,15 @@ func TestNewGoroutinePooledClient_subscribe_offset_negative(t *testing.T) {
 func TestNewGoroutinePooledClient_subscribe_offset_10(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_offset_10", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		_, err := gpcConn.RunScript("n=100;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable",
 			Offset:       10,
@@ -227,7 +234,7 @@ func TestNewGoroutinePooledClient_subscribe_offset_10(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = gpcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		waitData(receive, 1090)
+		waitData(gpcConn, receive, 1090)
 		tmp1, err := gpcConn.RunScript("select * from " + receive + " order by tag")
 		So(err, ShouldBeNil)
 		tmp2, err := gpcConn.RunScript("select * from " + st + " where rowNo(tag)>=10 order by tag")
@@ -238,8 +245,8 @@ func TestNewGoroutinePooledClient_subscribe_offset_10(t *testing.T) {
 		So(ex.Rows(), ShouldEqual, 1090)
 		err = gpc.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -248,14 +255,15 @@ func TestNewGoroutinePooledClient_subscribe_offset_10(t *testing.T) {
 func TestNewGoroutinePooledClient_subscribe_offset_morethanowCount(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_offset_morethanowCount", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		_, err := gpcConn.RunScript("n=100;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable",
 			Offset:       1000,
@@ -266,8 +274,8 @@ func TestNewGoroutinePooledClient_subscribe_offset_morethanowCount(t *testing.T)
 		So(err, ShouldNotBeNil)
 		err = gpc.UnSubscribe(req)
 		AssertNil(err)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -276,9 +284,10 @@ func TestNewGoroutinePooledClient_subscribe_offset_morethanowCount(t *testing.T)
 func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_filter", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		script2 := "try{dropStreamTable('st3')}catch(ex){};try{dropStreamTable('" + receive + "')}catch(ex){};go;tmp3 = streamTable(1000000:0,`tag`ts`data,[INT,TIMESTAMP,DOUBLE]);" +
 			"enableTableShareAndPersistence(table=tmp3, tableName=`" + receive + ", asynWrite=true, compress=true, cacheSize=200000, retentionMinutes=180)\t\n"
@@ -289,7 +298,7 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 		filter2, err := gpcConn.RunScript("2001..3000")
 		So(err, ShouldBeNil)
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host3,
 			TableName:  st,
 			ActionName: "subTradesTable1",
 			Offset:     0,
@@ -298,7 +307,7 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 			Handler:    &handler,
 		}
 		req2 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host3,
 			TableName:  st,
 			ActionName: "subTradesTable2",
 			Offset:     0,
@@ -312,7 +321,7 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 		So(err, ShouldBeNil)
 		tmp1, err := gpcConn.RunScript("select * from " + receive + " order by tag, ts, data")
 		So(err, ShouldBeNil)
-		waitData(receive, 1000)
+		waitData(gpcConn, receive, 1000)
 		tmp3, err := gpcConn.RunScript("select * from " + receive + " order by tag, ts, data")
 		So(err, ShouldBeNil)
 		So(tmp3.Rows(), ShouldEqual, 1000)
@@ -320,7 +329,7 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 
 		err = gpc.Subscribe(req2)
 		So(err, ShouldBeNil)
-		waitData(receive, 1000)
+		waitData(gpcConn, receive, 1000)
 		tmp3, err = gpcConn.RunScript("select * from " + receive + " order by tag, ts, data")
 		So(err, ShouldBeNil)
 		So(tmp3.Rows(), ShouldEqual, 1000)
@@ -329,8 +338,8 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 		So(err, ShouldBeNil)
 		err = gpc.UnSubscribe(req2)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -339,14 +348,15 @@ func TestNewGoroutinePooledClient_subscribe_filter(t *testing.T) {
 func TestNewGoroutinePooledClient_batchSize_throttle(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_batchSize_throttle", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		filter1, err := gpcConn.RunScript("1..1000")
 		So(err, ShouldBeNil)
 		req1 := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable1",
 			Offset:       -1,
@@ -359,7 +369,7 @@ func TestNewGoroutinePooledClient_batchSize_throttle(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = gpcConn.RunScript("n=10000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		waitData(receive, 1000)
+		waitData(gpcConn, receive, 1000)
 		res, err := gpcConn.RunScript("res = select * from " + receive + " order by tag;ex = select * from " + st + " where tag between 1:1000 order by tag;each(eqObj, ex.values(), res.values())")
 		AssertNil(err)
 		for _, val := range res.(*model.Vector).Data.Value() {
@@ -367,8 +377,8 @@ func TestNewGoroutinePooledClient_batchSize_throttle(t *testing.T) {
 		}
 		err = gpc.UnSubscribe(req1)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 
 	})
 	gpc.Close()
@@ -378,14 +388,15 @@ func TestNewGoroutinePooledClient_batchSize_throttle(t *testing.T) {
 func TestNewGoroutinePooledClient_batchSize_throttle2(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_batchSize_throttle2", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		filter1, err := gpcConn.RunScript("1..1000")
 		So(err, ShouldBeNil)
 		req1 := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable1",
 			Offset:       -1,
@@ -400,7 +411,7 @@ func TestNewGoroutinePooledClient_batchSize_throttle2(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = gpcConn.RunScript("n=100;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		waitData(receive, 200)
+		waitData(gpcConn, receive, 200)
 		tmp1, err := gpcConn.RunScript("select * from " + receive + " order by tag,ts,data")
 		So(err, ShouldBeNil)
 		tmp2, err := gpcConn.RunScript("select * from " + st + " order by tag,ts,data")
@@ -411,70 +422,72 @@ func TestNewGoroutinePooledClient_batchSize_throttle2(t *testing.T) {
 		ex := tmp2.(*model.Table)
 		So(re1.Rows(), ShouldEqual, 200)
 		CheckmodelTableEqual(re1, ex, 0)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
 }
 
-func TestNewGoroutinePooledClient_tableName_handler_offset_reconnect_success(t *testing.T) {
-	var pc = streaming.NewGoroutinePooledClient(setup.IP, setup.Reverse_subPort)
-	Convey("TestNewGoroutinePooledClient_tableName_handler_offset_reconnect_success", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+func TestNewGoroutinePooledClient_tableName_handler_offseteconnect_success(t *testing.T) {
+	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.Reverse_subPort)
+	Convey("TestNewGoroutinePooledClient_tableName_handler_offseteconnect_success", t, func() {
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
-		_, err := gcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
+		_, err := gpcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:   setup.Address,
+			Address:   host3,
 			TableName: st,
 			Offset:    0,
 			Reconnect: true,
 			Handler:   &handler,
 		}
-		err = pc.Subscribe(req)
+		err = gpc.Subscribe(req)
 		So(err, ShouldBeNil)
 
-		_, err = gcConn.RunScript("n=500;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
+		_, err = gpcConn.RunScript("n=500;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)
-		_, err = gcConn.RunScript("stopPublishTable('" + setup.IP + "'," + strconv.Itoa(setup.Port) + ",'" + st + "')")
+		_, err = gpcConn.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host3, ":")[1] + ",'" + st + "')")
 		So(err, ShouldBeNil)
 
-		_, err = gcConn.RunScript("n=500;t=table(1..n+500 as tag,now()+1..n+500 as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
+		_, err = gpcConn.RunScript("n=500;t=table(1..n+500 as tag,now()+1..n+500 as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)
-		_, err = gcConn.RunScript("stopPublishTable('" + setup.IP + "'," + strconv.Itoa(setup.Port) + ",'" + st + "')")
+		_, err = gpcConn.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host3, ":")[1] + ",'" + st + "')")
 		So(err, ShouldBeNil)
 
 		time.Sleep(10 * time.Second)
-		res, _ := gcConn.RunScript("res = select * from " + receive + " order by tag;ex = select * from " + st + " order by tag;each(eqObj, ex.values(), res.values())")
+		res, _ := gpcConn.RunScript("res = select * from " + receive + " order by tag;ex = select * from " + st + " order by tag;each(eqObj, ex.values(), res.values())")
 		for _, val := range res.(*model.Vector).Data.Value() {
 			So(val, ShouldBeTrue)
 		}
-
-		err = pc.UnSubscribe(req)
+		waitData(gpcConn, receive, 2000)
+		err = gpc.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
-	pc.Close()
-	assert.True(t, pc.IsClosed())
+	gpc.Close()
+	assert.True(t, gpc.IsClosed())
 }
 
 func TestNewGoroutinePooledClient_subscribe_unsubscribeesubscribe(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_subscribe_unsubscribeesubscribe", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageBatchHandler{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		filter1, err := gpcConn.RunScript("1..1000")
 		So(err, ShouldBeNil)
 		req1 := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    st,
 			ActionName:   "subTradesTable1",
 			Offset:       -1,
@@ -491,8 +504,8 @@ func TestNewGoroutinePooledClient_subscribe_unsubscribeesubscribe(t *testing.T) 
 		So(err, ShouldBeNil)
 		err = gpc.UnSubscribe(req1)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
@@ -501,12 +514,13 @@ func TestNewGoroutinePooledClient_subscribe_unsubscribeesubscribe(t *testing.T) 
 func TestNewGoroutinePooledClient_msgAsTable(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 	Convey("TestNewGoroutinePooledClient_msgAsTable", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
 		handler := MessageHandler_table{
 			receive: receive,
+			conn:    gpcConn,
 		}
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host3,
 			TableName:  st,
 			ActionName: "subTrades1",
 			Offset:     0,
@@ -528,79 +542,20 @@ func TestNewGoroutinePooledClient_msgAsTable(t *testing.T) {
 		}
 		err = gpc.UnSubscribe(req1)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())
-}
-
-func createStreamDeserializer2() (sdHandler1, sdBatchHandler1) {
-	_, err := gcConn.RunScript(
-		`st2_gpc = streamTable(100:0, 'timestampv''sym''blob''price1',[TIMESTAMP,SYMBOL,BLOB,DOUBLE]);
-		enableTableShareAndPersistence(table=st2_gpc, tableName='SDoutTables_gpc', asynWrite=true, compress=true, cacheSize=200000, retentionMinutes=180, preCache = 0);
-		go;
-		setStreamTableFilterColumn(SDoutTables_gpc, 'sym')`)
-	AssertNil(err)
-	_, err = gcConn.RunScript(
-		`n = 1000;
-		t0 = table(100:0, "datetimev""timestampv""sym""price1""price2", [DATETIME, TIMESTAMP, SYMBOL, DOUBLE, DOUBLE]);
-		share t0 as table1_gpc;
-		t = table(100:0, "datetimev""timestampv""sym""price1", [DATETIME, TIMESTAMP, SYMBOL, DOUBLE]);
-		tableInsert(table1_gpc, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take("a1""b1""c1",n), rand(100,n)+rand(1.0, n), rand(100,n)+rand(1.0, n));
-		tableInsert(t, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take("a1""b1""c1",n), rand(100,n)+rand(1.0, n));
-		dbpath="dfs://test_dfs";if(existsDatabase(dbpath)){dropDatabase(dbpath)};db=database(dbpath, VALUE, "a1""b1""c1");
-		db.createPartitionedTable(t,"table2_gpc","sym").append!(t);
-		t2 = select * from loadTable(dbpath,"table2_gpc");share t2 as table2_gpc;
-		d = dict(['msg1','msg2'], [table1_gpc, table2_gpc]);
-		replay(inputTables=d, outputTables="SDoutTables_gpc", dateColumn="timestampv", timeColumn="timestampv")`)
-	AssertNil(err)
-	sdMap := make(map[string][2]string)
-	sdMap["msg1"] = [2]string{"", "table1_gpc"}
-	sdMap["msg2"] = [2]string{"dfs://test_dfs", "table2_gpc"}
-	opt := streaming.StreamDeserializerOption{
-		TableNames: sdMap,
-		Conn:       gcConn,
-	}
-	sd, err := streaming.NewStreamDeserializer(&opt)
-	AssertNil(err)
-	ex_types1 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, model.DtDouble, model.DtDouble}
-	args1 := make([]*model.Vector, 5)
-	args1[0] = model.NewVector(model.NewDataTypeList(ex_types1[0], []model.DataType{}))
-	args1[1] = model.NewVector(model.NewDataTypeList(ex_types1[1], []model.DataType{}))
-	args1[2] = model.NewVector(model.NewDataTypeList(ex_types1[2], []model.DataType{}))
-	args1[3] = model.NewVector(model.NewDataTypeList(ex_types1[3], []model.DataType{}))
-	args1[4] = model.NewVector(model.NewDataTypeList(ex_types1[4], []model.DataType{}))
-	ex_types2 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, model.DtDouble}
-	args2 := make([]*model.Vector, 4)
-	args2[0] = model.NewVector(model.NewDataTypeList(ex_types2[0], []model.DataType{}))
-	args2[1] = model.NewVector(model.NewDataTypeList(ex_types2[1], []model.DataType{}))
-	args2[2] = model.NewVector(model.NewDataTypeList(ex_types2[2], []model.DataType{}))
-	args2[3] = model.NewVector(model.NewDataTypeList(ex_types2[3], []model.DataType{}))
-
-	var lock1 sync.Mutex
-	var lock2 sync.Mutex
-	plock1 := &lock1
-	plock2 := &lock2
-	sh := sdHandler1{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock1}
-	sbh := sdBatchHandler1{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock2}
-	fmt.Println("create handler successfully.")
-	return sh, sbh
 }
 
 func TestNewGoroutinePooledClient_subscribe_with_StreamDeserializer(t *testing.T) {
 	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
 
 	Convey("TestNewGoroutinePooledClient_subscribe_onehandler_with_StreamDeserializer", t, func() {
-		_, err := gpcConn.RunScript(
-			"try{ dropStreamTable(`SDoutTables_gpc);}catch(ex){};" +
-				"try{ dropStreamTable(`st2_gpc);}catch(ex){};" +
-				"try{ undef(`table1_gpc, SHARED);}catch(ex){};" +
-				"try{ undef(`table2_gpc, SHARED);}catch(ex){};go")
-		So(err, ShouldBeNil)
-		sdhandler, _ := createStreamDeserializer2()
+		sdhandler, _ := createStreamDeserializer(gpcConn, "SDoutTables_gpc")
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host3,
 			TableName:  "SDoutTables_gpc",
 			ActionName: "testStreamDeserializer",
 			Offset:     0,
@@ -609,7 +564,7 @@ func TestNewGoroutinePooledClient_subscribe_with_StreamDeserializer(t *testing.T
 		}
 
 		targetows := 2000
-		err = gpc.Subscribe(req1)
+		err := gpc.Subscribe(req1)
 		So(err, ShouldBeNil)
 		fmt.Println("started subscribe...")
 		for {
@@ -628,79 +583,116 @@ func TestNewGoroutinePooledClient_subscribe_with_StreamDeserializer(t *testing.T
 		res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdhandler.res2_data)
 
 		gpcConn.Upload(map[string]model.DataForm{"res1": res_tab1, "res2": res_tab2})
-		ans1, err := gpcConn.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1_gpc order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
+		ans1, err := gpcConn.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1 order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
 		AssertNil(err)
 		for _, ans := range ans1.(*model.Vector).Data.Value() {
 			So(ans, ShouldBeTrue)
 		}
 
-		ans2, err := gpcConn.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2_gpc order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
+		ans2, err := gpcConn.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2 order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
 		AssertNil(err)
 		for _, ans := range ans2.(*model.Vector).Data.Value() {
 			So(ans, ShouldBeTrue)
 		}
 		_, err = gpcConn.RunScript(
 			"try{ dropStreamTable(`SDoutTables_gpc);}catch(ex){};" +
-				"try{ dropStreamTable(`st2_gpc);}catch(ex){};" +
-				"try{ undef(`table1_gpc, SHARED);}catch(ex){};" +
-				"try{ undef(`table2_gpc, SHARED);}catch(ex){};go")
+				"try{ dropStreamTable(`st2);}catch(ex){};" +
+				"try{ undef(`table1, SHARED);}catch(ex){};" +
+				"try{ undef(`table2, SHARED);}catch(ex){};go")
 		So(err, ShouldBeNil)
 
 	})
 	Convey("TestNewGoroutinePooledClient_subscribe_batchHandler_with_StreamDeserializer", t, func() {
-		_, err := gpcConn.RunScript(
-			"try{ dropStreamTable(`SDoutTables_gpc);}catch(ex){};" +
-				"try{ dropStreamTable(`st2_gpc);}catch(ex){};" +
-				"try{ undef(`table1_gpc, SHARED);}catch(ex){};" +
-				"try{ undef(`table2_gpc, SHARED);}catch(ex){};go")
-		So(err, ShouldBeNil)
-		_, sdBatchHandler1 := createStreamDeserializer2()
+		_, sdBatchHandler := createStreamDeserializer(gpcConn, "SDoutTables_gpc")
 		req1 := &streaming.SubscribeRequest{
-			Address:      setup.Address,
+			Address:      host3,
 			TableName:    "SDoutTables_gpc",
 			ActionName:   "testStreamDeserializer",
 			Offset:       0,
-			BatchHandler: &sdBatchHandler1,
+			BatchHandler: &sdBatchHandler,
 			Reconnect:    true,
 		}
 		req1.SetBatchSize(500)
 		targetows := 2000
-		err = gpc.Subscribe(req1)
+		err := gpc.Subscribe(req1)
 		So(err, ShouldBeNil)
 		fmt.Println("started subscribe...")
 		for {
 			time.Sleep(1 * time.Second)
-			if sdBatchHandler1.msg1_total+sdBatchHandler1.msg2_total == targetows {
+			if sdBatchHandler.msg1_total+sdBatchHandler.msg2_total == targetows {
 				break
 			} else {
-				fmt.Println(sdBatchHandler1.msg1_total + sdBatchHandler1.msg2_total)
+				fmt.Println(sdBatchHandler.msg1_total + sdBatchHandler.msg2_total)
 			}
 		}
 		err = gpc.UnSubscribe(req1)
 		So(err, ShouldBeNil)
 
-		res_tab1 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1", "price2"}, sdBatchHandler1.res1_data)
-		res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdBatchHandler1.res2_data)
+		res_tab1 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1", "price2"}, sdBatchHandler.res1_data)
+		res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdBatchHandler.res2_data)
 
 		gpcConn.Upload(map[string]model.DataForm{"res1": res_tab1, "res2": res_tab2})
-		ans1, err := gpcConn.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1_gpc order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
+		ans1, err := gpcConn.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1 order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
 		AssertNil(err)
 		for _, ans := range ans1.(*model.Vector).Data.Value() {
 			So(ans, ShouldBeTrue)
 		}
 
-		ans2, err := gpcConn.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2_gpc order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
+		ans2, err := gpcConn.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2 order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
 		AssertNil(err)
 		for _, ans := range ans2.(*model.Vector).Data.Value() {
 			So(ans, ShouldBeTrue)
 		}
 		_, err = gpcConn.RunScript(
 			"try{ dropStreamTable(`SDoutTables_gpc);}catch(ex){};" +
-				"try{ dropStreamTable(`st2_gpc);}catch(ex){};" +
-				"try{ undef(`table1_gpc, SHARED);}catch(ex){};" +
-				"try{ undef(`table2_gpc, SHARED);}catch(ex){};go")
+				"try{ dropStreamTable(`st2);}catch(ex){};" +
+				"try{ undef(`table1, SHARED);}catch(ex){};" +
+				"try{ undef(`table2, SHARED);}catch(ex){};go")
 		So(err, ShouldBeNil)
 
+	})
+	gpc.Close()
+	assert.True(t, gpc.IsClosed())
+}
+
+func TestNewGoroutinePooledClient_unsubscribe_in_doEvent(t *testing.T) {
+	var gpc = streaming.NewGoroutinePooledClient(setup.IP, setup.SubPort)
+	Convey("TestNewGoroutinePooledClient_unsubscribe_in_doEvent", t, func() {
+		st, receive := CreateStreamingTableWithRandomName(gpcConn)
+		handler := MessageHandler_unsubscribeInDoEvent{
+			subType:   "gpc",
+			subClient: gpc,
+			subReq: &streaming.SubscribeRequest{
+				Address:    host3,
+				TableName:  st,
+				ActionName: "subTrades1",
+				Offset:     0},
+			successCount: 0,
+		}
+		_, err := gpcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
+		So(err, ShouldBeNil)
+		req := &streaming.SubscribeRequest{
+			Address:    host3,
+			TableName:  st,
+			ActionName: "subTrades1",
+			Offset:     0,
+			Reconnect:  true,
+			Handler:    &handler,
+		}
+		err = gpc.Subscribe(req)
+		So(err, ShouldBeNil)
+
+		res_inSub, _ := gpcConn.RunScript("getStreamingStat().pubConns")
+		// fmt.Println(res_inSub)
+		time.Sleep(8 * time.Second)
+		res_afterSub, _ := gpcConn.RunScript("getStreamingStat().pubConns")
+		// fmt.Println(res_afterSub)
+		So(res_inSub.(*model.Table).GetColumnByName("tables").String(), ShouldContainSubstring, st)
+		So(res_afterSub.(*model.Table).GetColumnByName("tables").String(), ShouldNotContainSubstring, st)
+		So(handler.successCount, ShouldBeGreaterThan, 1)
+
+		ClearStreamTable(host3, st)
+		ClearStreamTable(host3, receive)
 	})
 	gpc.Close()
 	assert.True(t, gpc.IsClosed())

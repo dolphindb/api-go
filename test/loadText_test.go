@@ -10,10 +10,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host11 = getRandomClusterAddress()
 func TestLoadTest(t *testing.T) {
 	t.Parallel()
 	Convey("test_loadText_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host11, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		data := setup.DATA_DIR + "/TradesSmall.csv"
 		Convey("test_loadText_filName_not_exist_exception", func() {

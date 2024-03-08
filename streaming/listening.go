@@ -38,13 +38,16 @@ func listening(c AbstractClient) {
 		fmt.Print("")
 		var conn net.Conn
 		var ok bool
+		var isReversed bool
 		if int(c.getSubscriber().listeningPort) == 0 {
+			isReversed = true
 			conn, ok = c.getConn()
 			if !ok {
 				runtime.Gosched()
 				continue;
 			}
 		} else {
+			isReversed = false
 			connTcp, err := ln.AcceptTCP()
 			if err != nil {
 				fmt.Printf("Failed to accept tcp: %s\n", err.Error())
@@ -58,7 +61,7 @@ func listening(c AbstractClient) {
 			conn = connTcp
 		}
 
-		err = receiveData(ctx, conn, c)
+		err = receiveData(ctx, conn, c, isReversed)
 		if err != nil {
 			runtime.Gosched()
 			// time.Sleep(100 * time.Millisecond)
@@ -74,12 +77,13 @@ func listening(c AbstractClient) {
 	}
 }
 
-func receiveData(ctx context.Context, conn net.Conn, c AbstractClient) error {
+func receiveData(ctx context.Context, conn net.Conn, c AbstractClient, isReversed bool) error {
 	mp := &messageParser{
 		ctx:              ctx,
 		Conn:             conn,
 		subscriber:       c.getSubscriber(),
 		topicNameToIndex: make(map[string]map[string]int),
+		isReversed:       isReversed,
 	}
 
 	go mp.run()

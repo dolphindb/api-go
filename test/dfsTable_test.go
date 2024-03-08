@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var host4 = getRandomClusterAddress()
+
 func CreateScript(Num int) string {
 	script := `
 	dbName="dfs://` + generateRandomString(5) + `"
@@ -54,7 +56,7 @@ func CreateScript(Num int) string {
 func TestDfsTable(t *testing.T) {
 	t.Parallel()
 	Convey("test dfsTable download data", t, func() {
-		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), host4, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		var rowNum int
 		Convey("test dfsTable only one rows", func() {
@@ -447,7 +449,7 @@ func CreateDecimalTypeScript(Num int) string {
 func TestDfsTable_decimal(t *testing.T) {
 	t.Parallel()
 	Convey("test dfsTable download data", t, func() {
-		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), host4, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		var rowNum int
 		Convey("test dfsTable only one rows", func() {
@@ -588,7 +590,7 @@ func CreateDecimalTypeScript_arrayVector(Num int) string {
 func TestDfsTable_decimal_arrayVector(t *testing.T) {
 	t.Parallel()
 	Convey("test dfsTable download data", t, func() {
-		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), host4, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		var rowNum int
 		Convey("test dfsTable only one rows", func() {

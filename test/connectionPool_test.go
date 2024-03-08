@@ -15,7 +15,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var globalConn, _ = api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+var host1 = getRandomClusterAddress()
+var globalConn, _ = api.NewSimpleDolphinDBClient(context.TODO(), host1, setup.UserName, setup.Password)
 
 func average(connections []int) float64 {
 	sum := 0.0
@@ -101,7 +102,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 	Convey("Test_function_DBConnectionPool_exception_test", t, func() {
 		Convey("Test_function_DBConnectionPool_wrong_address_exception \n", func() {
 			opt := &api.PoolOption{
-				Address:     "129.16.12.14",
+				Address:     "999.999.12.14",
 				UserID:      setup.UserName,
 				Password:    setup.Password,
 				PoolSize:    2,
@@ -123,7 +124,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 		})
 		Convey("Test_function_DBConnectionPool_wrong_userName_exception \n", func() {
 			opt := &api.PoolOption{
-				Address:     setup.Address,
+				Address:     host1,
 				UserID:      "rootn1",
 				Password:    setup.Password,
 				PoolSize:    2,
@@ -134,7 +135,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 		})
 		Convey("Test_function_DBConnectionPool_userName_null_exception \n", func() {
 			opt := &api.PoolOption{
-				Address:     setup.Address,
+				Address:     host1,
 				UserID:      "",
 				Password:    setup.Password,
 				PoolSize:    2,
@@ -145,7 +146,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 		})
 		Convey("Test_function_DBConnectionPool_wrong_Password_exception \n", func() {
 			opt := &api.PoolOption{
-				Address:     setup.Address,
+				Address:     host1,
 				UserID:      setup.UserName,
 				Password:    "rpoot120@",
 				PoolSize:    2,
@@ -156,7 +157,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 		})
 		Convey("Test_function_DBConnectionPool_wrong_Password_special_symbol_exception \n", func() {
 			opt := &api.PoolOption{
-				Address:     setup.Address,
+				Address:     host1,
 				UserID:      setup.UserName,
 				Password:    "!!!!!",
 				PoolSize:    2,
@@ -167,7 +168,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 		})
 		Convey("Test_function_DBConnectionPool_PoolSize_less_than_0_exception", func() {
 			opt := &api.PoolOption{
-				Address:     setup.Address,
+				Address:     host1,
 				UserID:      setup.UserName,
 				Password:    setup.Password,
 				PoolSize:    -1,
@@ -180,7 +181,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 			OriginConnectionNum := GetOriginConnNum()
 			fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
 			opt := &api.PoolOption{
-				Address:              setup.Address,
+				Address:              host1,
 				UserID:               setup.UserName,
 				Password:             setup.Password,
 				PoolSize:             5,
@@ -203,7 +204,7 @@ func TestDBConnectionPool_exception(t *testing.T) {
 func TestDBConnectionPool_Execute(t *testing.T) {
 	Convey("Test_function_DBConnectionPool_Execute", t, func() {
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    2,
@@ -237,7 +238,7 @@ func TestDBConnectionPool_LoadBalance(t *testing.T) {
 		OriginConnectionNum := GetOriginConnNum()
 		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    8,
@@ -265,7 +266,7 @@ func TestDBConnectionPool_SetLoadBalanceAddress(t *testing.T) {
 		OriginConnectionNum := GetConnectionNum()
 		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
 		opt := &api.PoolOption{
-			Address:              setup.Address,
+			Address:              host1,
 			UserID:               setup.UserName,
 			Password:             setup.Password,
 			PoolSize:             5,
@@ -302,7 +303,7 @@ func TestDBConnectionPool_hash_hash_string(t *testing.T) {
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -340,7 +341,7 @@ func TestDBConnectionPool_hash_hash_string(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -360,7 +361,7 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -398,7 +399,7 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -418,7 +419,7 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -456,7 +457,7 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -478,7 +479,7 @@ func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
 			"pt=db.createPartitionedTable(t,`pt,`sym`datev)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -518,7 +519,7 @@ func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -539,7 +540,7 @@ func TestDBConnectionPool_range_hash_date(t *testing.T) {
 			"pt=db.createPartitionedTable(t,`pt,`datev`sym)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -579,7 +580,7 @@ func TestDBConnectionPool_range_hash_date(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -601,7 +602,7 @@ func TestDBConnectionPool_range_range_int(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -641,7 +642,7 @@ func TestDBConnectionPool_range_range_int(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -663,7 +664,7 @@ func TestDBConnectionPool_value_range_int(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -703,7 +704,7 @@ func TestDBConnectionPool_value_range_int(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -725,7 +726,7 @@ func TestDBConnectionPool_range_range_month(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -765,7 +766,7 @@ func TestDBConnectionPool_range_range_month(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -787,7 +788,7 @@ func TestDBConnectionPool_hash_range_date(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -827,7 +828,7 @@ func TestDBConnectionPool_hash_range_date(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -849,7 +850,7 @@ func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -889,7 +890,7 @@ func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -911,7 +912,7 @@ func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -951,7 +952,7 @@ func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -973,7 +974,7 @@ func TestDBConnectionPool_value_value_date(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -1013,7 +1014,7 @@ func TestDBConnectionPool_value_value_date(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -1035,7 +1036,7 @@ func TestDBConnectionPool_value_value_month(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`sym`datev)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -1075,7 +1076,7 @@ func TestDBConnectionPool_value_value_month(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -1097,7 +1098,7 @@ func TestDBConnectionPool_range_value_int(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -1137,7 +1138,7 @@ func TestDBConnectionPool_range_value_int(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -1159,7 +1160,7 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 			"pt = db.createPartitionedTable(t,`pt,`datev`sym)\n")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
@@ -1199,7 +1200,7 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 		resultCount := re.(*model.Scalar).Value()
 		So(resultCount, ShouldEqual, int64(1000000))
 		So(pool.IsClosed(), ShouldBeFalse)
-		globalConn.RunScript("dropDatabase('" + dbname + "')")
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		err = pool.Close()
 		So(err, ShouldBeNil)
 		So(pool.IsClosed(), ShouldBeTrue)
@@ -1208,9 +1209,9 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 
 func TestPartitionedTableAppender(t *testing.T) {
 	t.Parallel()
-	dbname := generateRandomString(8)
 	Convey("Test_function_PartitionedTableAppender_prepare", t, func() {
 		Convey("Test_function_PartitionedTableAppender_range_int", func() {
+			dbname := generateRandomString(8)
 			_, err := globalConn.RunScript(`
 			dbPath = "dfs://` + dbname + `"
 			if(existsDatabase(dbPath))
@@ -1259,6 +1260,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_value_symbol", func() {
+			dbname := generateRandomString(8)
 			_, err := globalConn.RunScript(`
 				dbPath = "dfs://` + dbname + `"
 				if(existsDatabase(dbPath))
@@ -1307,6 +1309,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_hash_symbol", func() {
+			dbname := generateRandomString(8)
 			_, err := globalConn.RunScript(`
 			dbPath = "dfs://` + dbname + `"
 			if(existsDatabase(dbPath))
@@ -1355,6 +1358,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_list_symbol", func() {
+			dbname := generateRandomString(8)
 			_, err := globalConn.RunScript(`
 			dbPath = "dfs://` + dbname + `"
 			if(existsDatabase(dbPath))
@@ -1403,6 +1407,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test_function_PartitionedTableAppender_compo_value_list_symbol", func() {
+			dbname := generateRandomString(8)
 			_, err := globalConn.RunScript(`
 				dbPath = "dfs://` + dbname + `"
 				if(existsDatabase(dbPath)){dropDatabase(dbPath)}
@@ -1532,8 +1537,8 @@ func TestPartitionedTableAppender(t *testing.T) {
 
 func TestDBConnectionPool_task(t *testing.T) {
 	t.Parallel()
-	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_task_equal_PoolSize", t, func() {
+		dbname := generateRandomString(8)
 		_, err := globalConn.RunScript("db_path = \"dfs://" + dbname + "\";\n" +
 			"if(existsDatabase(db_path)){\n" +
 			"        dropDatabase(db_path)\n" +
@@ -1543,7 +1548,7 @@ func TestDBConnectionPool_task(t *testing.T) {
 			"pt1 = db.createPartitionedTable(t,`pt1,`id)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    100,
@@ -1581,6 +1586,7 @@ func TestDBConnectionPool_task(t *testing.T) {
 		So(closed, ShouldBeTrue)
 	})
 	Convey("TestDBConnectionPool_task_large_than_PoolSize", t, func() {
+		dbname := generateRandomString(8)
 		_, err := globalConn.RunScript("db_path = \"dfs://" + dbname + "\";\n" +
 			"if(existsDatabase(db_path)){\n" +
 			"        dropDatabase(db_path)\n" +
@@ -1590,7 +1596,7 @@ func TestDBConnectionPool_task(t *testing.T) {
 			"pt1 = db.createPartitionedTable(t,`pt1,`id)")
 		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
-			Address:     setup.Address,
+			Address:     host1,
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    10,
@@ -1676,7 +1682,7 @@ func TestTableAppender(t *testing.T) {
 			So(IsClose, ShouldBeTrue)
 		})
 		Convey("Test_function_TableAppender_disk", func() {
-			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
 			_, err = globalConnx.RunScript(`
 		    dbPath = "` + DiskDBPath + `"
@@ -1728,7 +1734,7 @@ func TestTableAppender(t *testing.T) {
 			globalConnx.Close()
 		})
 		Convey("Test_function_TableAppender_dfsTable", func() {
-			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
 			DfsDBPath := "dfs://" + generateRandomString(8)
 			_, err = globalConnx.RunScript(`

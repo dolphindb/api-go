@@ -54,16 +54,13 @@ func (h *handlerLopper) stop() {
 	default:
 		close(h.exit)
 	}
-	<- h.affirmExit
 }
 
 func (h *handlerLopper) run() {
 	h.exit = make(chan bool)
-	h.affirmExit = make(chan bool, 1)
 	for {
 		select {
 		case <-h.exit:
-			h.affirmExit <- true;
 			return
 		default:
 			h.handleMessage()
@@ -118,7 +115,9 @@ func (h *handlerLopper) handleMessage() {
 		if err != nil {
 			fmt.Printf("merge msg to table failed: %s\n", err.Error())
 		}
-		h.handler.DoEvent(ret)
+		if !h.isStopped() {
+			h.handler.DoEvent(ret)
+		}
 	} else if (h.batchSize != nil && *h.batchSize >= 1) {
 		if(h.MsgDeserializer != nil) {
 			outMsg := make([]IMessage, 0)
@@ -130,9 +129,13 @@ func (h *handlerLopper) handleMessage() {
 					outMsg = append(outMsg, ret)
 				}
 			}
-			h.batchHandler.DoEvent(outMsg)
+			if !h.isStopped() {
+				h.batchHandler.DoEvent(outMsg)
+			}
 		} else {
-			h.batchHandler.DoEvent(msg)
+			if !h.isStopped() {
+				h.batchHandler.DoEvent(msg)
+			}
 		}
 	} else {
 		for _, v := range msg {
@@ -141,10 +144,14 @@ func (h *handlerLopper) handleMessage() {
 				if err != nil {
 					fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())
 				} else {
-					h.handler.DoEvent(ret)
+					if !h.isStopped() {
+						h.handler.DoEvent(ret)
+					}
 				}
 			} else {
-				h.handler.DoEvent(v)
+				if !h.isStopped() {
+					h.handler.DoEvent(v)
+				}
 			}
 		}
 	}

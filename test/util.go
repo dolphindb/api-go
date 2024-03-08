@@ -3,8 +3,8 @@ package test
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
+	"math/big"
 	"reflect"
 
 	"github.com/dolphindb/api-go/api"
@@ -705,20 +705,25 @@ func CheckmodelTableEqual(t1 *model.Table, t2 *model.Table, n int) bool {
 }
 
 func generateRandomString(length int) string {
-	// 计算生成的随机字节数
-	numBytes := length / 4 * 3
-	if length%4 != 0 {
-		numBytes += 3
-	}
+	// 定义字符集
+	letterRunes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-	// 生成随机字节序列
-	randomBytes := make([]byte, numBytes)
-	_, err := rand.Read(randomBytes)
+	b := make([]rune, length)
+	for i := range b {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
+		if err != nil {
+			panic(err)
+		}
+		b[i] = letterRunes[n.Int64()]
+	}
+	return string(b)
+}
+
+func getRandomClusterAddress() string {
+	addressV := setup.HA_sites
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(addressV))))
 	if err != nil {
-		return ""
+		panic(err)
 	}
-
-	// 使用base64编码生成随机字符串
-	randomString := base64.URLEncoding.EncodeToString(randomBytes)[:length]
-	return randomString
+	return addressV[n.Int64()]
 }

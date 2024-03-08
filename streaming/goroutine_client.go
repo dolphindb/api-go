@@ -75,13 +75,14 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 
 	t.handlerLoppers.Store(topicStr, handlerLooper)
 
+	go handlerLooper.run()
+
 	return nil
 }
 
 func (t *GoroutineClient) reviseSubscriber(req *SubscribeRequest) error {
 	var err error
 	t.subscriber.once.Do(func() {
-		fmt.Println("do it")
 		err = t.subscriber.checkServerVersion(req.Address)
 		if err == nil {
 			go listening(t)
@@ -113,7 +114,6 @@ func (t *GoroutineClient) initHandlerLooper(queue *UnboundedChan, req *Subscribe
 	// 	handlerLooper.handler = &DefaultMessageHandler{}
 	// }
 
-	go handlerLooper.run()
 
 	return handlerLooper
 }

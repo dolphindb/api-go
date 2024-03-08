@@ -10,10 +10,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var host8 = getRandomClusterAddress()
 func TestDropTableException(t *testing.T) {
 	t.Parallel()
 	Convey("Test_existsTable_and_dropTable_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host8, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_existsTable_dropDatabase", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
@@ -86,7 +87,7 @@ func TestDropTableException(t *testing.T) {
 func TestExistsTableAndDropTable(t *testing.T) {
 	t.Parallel()
 	Convey("Test_existsTable_and_dropTable_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host8, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_existsTable_dropDatabase", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)

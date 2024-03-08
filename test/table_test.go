@@ -18,10 +18,12 @@ func StringToBytes(data string) []byte {
 	return []byte(data)
 }
 
+var host20 = getRandomClusterAddress()
+
 func TestTableDataType(t *testing.T) {
 	t.Parallel()
 	Convey("Test table prepare", t, func() {
-		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), host20, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test table only one rows:", func() {
 			Convey("Test table integer type:", func() {
@@ -437,7 +439,7 @@ func TestTableDataType(t *testing.T) {
 func TestTableWithCapacity(t *testing.T) {
 	t.Parallel()
 	Convey("Test_function_TableWithCapacity_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host20, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
@@ -607,7 +609,7 @@ func TestTableWithCapacity(t *testing.T) {
 func TestTableUpload(t *testing.T) {
 	t.Parallel()
 	Convey("Test_function_Table_prepare", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host20, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Drop all Databases", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
@@ -828,7 +830,7 @@ func TestTableUpload(t *testing.T) {
 func TestTableDataType_arrayVector(t *testing.T) {
 	t.Parallel()
 	Convey("Test table prepare", t, func() {
-		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), host20, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test table only one rows:", func() {
 			Convey("Test table decimal arrayVector type:", func() {

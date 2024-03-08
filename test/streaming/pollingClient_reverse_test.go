@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,14 +16,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var pcConn_r, _ = api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+var host4 = getRandomClusterAddress()
+var pcConn_r, _ = api.NewSimpleDolphinDBClient(context.TODO(), host4, setup.UserName, setup.Password)
 
 func TestSubscribe_exception_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("Test_subscribe_exception", t, func() {
 		Convey("Test_AbstractClient_shared_table_polling_doesnot_exist_exception", func() {
 			req := &streaming.SubscribeRequest{
-				Address:    setup.Address,
+				Address:    host4,
 				TableName:  "errtab",
 				ActionName: "action1",
 				Offset:     0,
@@ -32,7 +33,7 @@ func TestSubscribe_exception_r(t *testing.T) {
 			_, err := pc_r.Subscribe(req)
 			So(err.Error(), ShouldContainSubstring, "shared table errtab doesn't exist")
 		})
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		Convey("Test_subscribe_err_host", func() {
 			req := &streaming.SubscribeRequest{
 				Address:    "999.0.0.1:8876",
@@ -57,7 +58,7 @@ func TestSubscribe_exception_r(t *testing.T) {
 		})
 		Convey("Test_subscribe_err_TableName", func() {
 			req := &streaming.SubscribeRequest{
-				Address:    setup.Address,
+				Address:    host4,
 				TableName:  "",
 				ActionName: "action1",
 				Offset:     0,
@@ -68,7 +69,7 @@ func TestSubscribe_exception_r(t *testing.T) {
 		})
 		Convey("Test_subscribe_ActionName_null", func() {
 			req := &streaming.SubscribeRequest{
-				Address:    setup.Address,
+				Address:    host4,
 				ActionName: "",
 				TableName:  st,
 				Offset:     0,
@@ -80,7 +81,7 @@ func TestSubscribe_exception_r(t *testing.T) {
 		})
 		Convey("Test_subscribe_AllowExists", func() {
 			req := &streaming.SubscribeRequest{
-				Address:     setup.Address,
+				Address:     host4,
 				ActionName:  "AllowExists_test",
 				TableName:   st,
 				Offset:      0,
@@ -95,7 +96,7 @@ func TestSubscribe_exception_r(t *testing.T) {
 			pc_r.UnSubscribe(req)
 
 			req2 := &streaming.SubscribeRequest{
-				Address:     setup.Address,
+				Address:     host4,
 				ActionName:  "AllowExists_test2_pc_r",
 				TableName:   st,
 				Offset:      0,
@@ -109,8 +110,8 @@ func TestSubscribe_exception_r(t *testing.T) {
 			So(err4.Error(), ShouldContainSubstring, "already be subscribed")
 			pc_r.UnSubscribe(req2)
 
-			ClearStreamTable(st)
-			ClearStreamTable(receive)
+			ClearStreamTable(host4, st)
+			ClearStreamTable(host4, receive)
 		})
 	})
 	pc_r.Close()
@@ -120,11 +121,11 @@ func TestSubscribe_exception_r(t *testing.T) {
 func TestPollingClient_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("Test_PollingClient_test_size", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host4, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "action1",
 			Offset:     0,
@@ -291,8 +292,8 @@ func TestPollingClient_r(t *testing.T) {
 		})
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -301,11 +302,11 @@ func TestPollingClient_r(t *testing.T) {
 func TestSubsribe_size_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestSubsribe_size", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host4, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "subtrades1",
 			Offset:     0,
@@ -330,8 +331,8 @@ func TestSubsribe_size_r(t *testing.T) {
 		err = pc_r.UnSubscribe(req1)
 		So(err, ShouldBeNil)
 		So(ddb.Close(), ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -340,11 +341,11 @@ func TestSubsribe_size_r(t *testing.T) {
 func TestSubsribe_take_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestSubsribe_take", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
-		st, receive := CreateStreamingTableWithRandomName()
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host4, setup.UserName, setup.Password)
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "subtrades1",
 			Offset:     0,
@@ -366,26 +367,27 @@ func TestSubsribe_take_r(t *testing.T) {
 		tmp, err := ddb.RunScript("select * from " + st)
 		exTable := tmp.(*model.Table)
 		So(err, ShouldBeNil)
-		retimev := IMessage.GetValue(0).(*model.Vector).String()
-		resymbol := IMessage.GetValue(1).(*model.Vector).String()
-		repricev := IMessage.GetValue(2).(*model.Vector).String()
+		fmt.Println(IMessage)
+		retime := IMessage.GetValue(0).(*model.Scalar).String()
+		resymbol := IMessage.GetValue(1).(*model.Scalar).String()
+		reprice := IMessage.GetValue(2).(*model.Scalar).String()
 		extimev := exTable.GetColumnByIndex(0).Get(0).String()
 		exsymbol := exTable.GetColumnByIndex(1).Get(0).String()
 		expricev := exTable.GetColumnByIndex(2).Get(0).String()
-		retimev1 := IMessage.GetValueByName("tag").String()
+		retime1 := IMessage.GetValueByName("tag").String()
 		resymbol1 := IMessage.GetValueByName("ts").String()
-		repricev1 := IMessage.GetValueByName("data").String()
-		So(retimev, ShouldEqual, "vector<int>(["+extimev+"])")
-		So(resymbol, ShouldEqual, "vector<timestamp>(["+exsymbol+"])")
-		So(repricev, ShouldEqual, "vector<double>(["+expricev+"])")
-		So(retimev1, ShouldEqual, "vector<int>(["+extimev+"])")
-		So(resymbol1, ShouldEqual, "vector<timestamp>(["+exsymbol+"])")
-		So(repricev1, ShouldEqual, "vector<double>(["+expricev+"])")
+		reprice1 := IMessage.GetValueByName("data").String()
+		So(retime, ShouldEqual, "int("+extimev+")")
+		So(resymbol, ShouldEqual, "timestamp("+exsymbol+")")
+		So(reprice, ShouldEqual, "double("+expricev+")")
+		So(retime1, ShouldEqual, "int("+extimev+")")
+		So(resymbol1, ShouldEqual, "timestamp("+exsymbol+")")
+		So(reprice1, ShouldEqual, "double("+expricev+")")
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
 		So(ddb.Close(), ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -393,10 +395,10 @@ func TestSubsribe_take_r(t *testing.T) {
 
 func TestPollingClient_bachSize_throttle_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
-	Convey("test_NewGoroutinePooledClient_batchSize_lt0", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+	Convey("test_NewPollingClient_batchSize_lt0", t, func() {
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "action1",
 			Offset:     0,
@@ -424,14 +426,14 @@ func TestPollingClient_bachSize_throttle_r(t *testing.T) {
 
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
-	Convey("test_NewGoroutinePooledClient_throttle_less_than_0", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+	Convey("test_NewPollingClient_throttle_less_than_0", t, func() {
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "action1",
 			Offset:     0,
@@ -459,8 +461,8 @@ func TestPollingClient_bachSize_throttle_r(t *testing.T) {
 
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -469,11 +471,11 @@ func TestPollingClient_bachSize_throttle_r(t *testing.T) {
 func TestPollingClient_tableName_offset_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_tableName_offset", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		_, err := pcConn_r.RunScript("n=1000;t1=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t1)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "action1",
 			Offset:     -1,
@@ -500,8 +502,8 @@ func TestPollingClient_tableName_offset_r(t *testing.T) {
 		}
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	// TODO: offset = -2
 }
@@ -509,11 +511,11 @@ func TestPollingClient_tableName_offset_r(t *testing.T) {
 func TestPollingClient_tableName_actionName_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_tableName_actionName", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		_, err := pcConn_r.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "test_actionName",
 			Offset:     0,
@@ -530,8 +532,8 @@ func TestPollingClient_tableName_actionName_r(t *testing.T) {
 		So(actions, ShouldContain, "test_actionName")
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -540,9 +542,9 @@ func TestPollingClient_tableName_actionName_r(t *testing.T) {
 func TestPollingClient_tableName_handler_offset_reconnect_success_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_tableName_handler_offset_reconnect_success", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		req := &streaming.SubscribeRequest{
-			Address:   setup.Address,
+			Address:   host4,
 			TableName: st,
 			Offset:    0,
 			Reconnect: true,
@@ -553,13 +555,13 @@ func TestPollingClient_tableName_handler_offset_reconnect_success_r(t *testing.T
 		_, err = pcConn_r.RunScript("n=500;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)
-		_, err = pcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strconv.Itoa(setup.Port) + ",'" + st + "')")
+		_, err = pcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host4, ":")[1] + ",'" + st + "')")
 		So(err, ShouldBeNil)
 
 		_, err = pcConn_r.RunScript("n=500;t=table(1..n+500 as tag,now()+1..n+500 as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)
-		_, err = pcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strconv.Itoa(setup.Port) + ",'" + st + "')")
+		_, err = pcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host4, ":")[1] + ",'" + st + "')")
 		So(err, ShouldBeNil)
 		time.Sleep(15 * time.Second)
 
@@ -580,8 +582,8 @@ func TestPollingClient_tableName_handler_offset_reconnect_success_r(t *testing.T
 
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -590,11 +592,11 @@ func TestPollingClient_tableName_handler_offset_reconnect_success_r(t *testing.T
 func TestPollingClient_subscribe_offset_negative_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_subscribe_offset_negative_r", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		_, err := pcConn_r.RunScript("n=1000;t1=table(1..n as tag,2020.01.04T12:23:45+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t1)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     -1,
@@ -621,8 +623,8 @@ func TestPollingClient_subscribe_offset_negative_r(t *testing.T) {
 
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -631,11 +633,11 @@ func TestPollingClient_subscribe_offset_negative_r(t *testing.T) {
 func TestPollingClient_subscribe_offset_10_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_subscribe_offset_10_r", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		_, err := pcConn_r.RunScript("n=1000;t1=table(1..n as tag,2020.01.04T12:23:45+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t1)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     10,
@@ -662,8 +664,8 @@ func TestPollingClient_subscribe_offset_10_r(t *testing.T) {
 
 		err = pc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -672,12 +674,12 @@ func TestPollingClient_subscribe_offset_10_r(t *testing.T) {
 func TestPollingClient_subscribe_offset_morethan_tableCount_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_subscribe_offset_morethan_tableCount", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		var offset int64 = 1001
 		_, err := pcConn_r.RunScript("n=1000;t=table(1..n as tag,2020.01.04T12:23:45+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     offset,
@@ -687,8 +689,8 @@ func TestPollingClient_subscribe_offset_morethan_tableCount_r(t *testing.T) {
 		So(err.Error(), ShouldContainSubstring, "Failed to subscribe to table "+st+". Can't find the message with offset ["+strconv.Itoa(int(offset))+"].")
 		err = pc_r.UnSubscribe(req)
 		AssertNil(err)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -697,20 +699,20 @@ func TestPollingClient_subscribe_offset_morethan_tableCount_r(t *testing.T) {
 func TestPollingClient_subscribe_filter_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_subscribe_filter", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		filter1, err := pcConn_r.RunScript("1..1000")
 		So(err, ShouldBeNil)
 		filter2, err := pcConn_r.RunScript("2001..3000")
 		So(err, ShouldBeNil)
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     0,
 			Filter:     filter1.(*model.Vector),
 		}
 		req2 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "2",
 			Offset:     0,
@@ -756,8 +758,8 @@ func TestPollingClient_subscribe_filter_r(t *testing.T) {
 		So(err, ShouldBeNil)
 		err = pc_r.UnSubscribe(req2)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 
 	})
 	pc_r.Close()
@@ -767,9 +769,9 @@ func TestPollingClient_subscribe_filter_r(t *testing.T) {
 func TestPollingClient_subscribe_unsubscribe_resubscribe_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_subscribe_unsubscribe_resubscribe", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     0,
@@ -805,8 +807,8 @@ func TestPollingClient_subscribe_unsubscribe_resubscribe_r(t *testing.T) {
 
 		err = pc_r.UnSubscribe(req1)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
@@ -815,11 +817,11 @@ func TestPollingClient_subscribe_unsubscribe_resubscribe_r(t *testing.T) {
 func TestPollingClient_subscribe_AllowExists_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_subscribe_AllowExists_r", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		filter1, err := pcConn_r.RunScript("1..1000")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:     setup.Address,
+			Address:     host4,
 			TableName:   st,
 			ActionName:  "sub" + st + "1",
 			Offset:      0,
@@ -858,9 +860,9 @@ func TestPollingClient_subscribe_AllowExists_r(t *testing.T) {
 func TestPollingClient_subscribe_not_contain_handler_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_subscribe_not_contain_handler_1000", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     -1,
@@ -880,8 +882,8 @@ func TestPollingClient_subscribe_not_contain_handler_r(t *testing.T) {
 		So(actual_rows, ShouldEqual, 1000)
 		err = pc_r.UnSubscribe(req1)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 
 	})
 	pc_r.Close()
@@ -891,9 +893,9 @@ func TestPollingClient_subscribe_not_contain_handler_r(t *testing.T) {
 func TestPollingClient_msgAsTable_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestPollingClient_msgAsTable", t, func() {
-		st, receive := CreateStreamingTableWithRandomName()
+		st, receive := CreateStreamingTableWithRandomName(pcConn_r)
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     0,
@@ -915,7 +917,7 @@ func TestPollingClient_msgAsTable_r(t *testing.T) {
 			for i := 0; i < len(val0.Data.Value()); i++ {
 				script := fmt.Sprintf("tableInsert(objByName(`"+receive+", true), %s,%s,%s)",
 					val0.Data.Get(i).String(), val1.Data.Get(i).String(), val2.Data.Get(i).String())
-				_, err := gcConn_r.RunScript(script)
+				_, err := pcConn_r.RunScript(script)
 				AssertNil(err)
 			}
 		}
@@ -926,79 +928,20 @@ func TestPollingClient_msgAsTable_r(t *testing.T) {
 
 		err = pc_r.UnSubscribe(req1)
 		So(err, ShouldBeNil)
-		ClearStreamTable(st)
-		ClearStreamTable(receive)
+		ClearStreamTable(host4, st)
+		ClearStreamTable(host4, receive)
 	})
 	pc_r.Close()
 	assert.True(t, pc_r.IsClosed())
-}
-
-func createStreamDeserializer_r3() (sdHandler1_r, sdBatchHandler1_r) {
-	_, err := gcConn_r.RunScript(
-		`st2_pc_r = streamTable(100:0, 'timestampv''sym''blob''price1',[TIMESTAMP,SYMBOL,BLOB,DOUBLE]);
-		enableTableShareAndPersistence(table=st2_pc_r, tableName='SDoutTables_pc_r', asynWrite=true, compress=true, cacheSize=200000, retentionMinutes=180, preCache = 0);
-		go;
-		setStreamTableFilterColumn(SDoutTables_pc_r, 'sym')`)
-	AssertNil(err)
-	_, err = gcConn_r.RunScript(
-		`n = 1000;
-		t0 = table(100:0, "datetimev""timestampv""sym""price1""price2", [DATETIME, TIMESTAMP, SYMBOL, DOUBLE, DOUBLE]);
-		share t0 as table1_pc_r;
-		t = table(100:0, "datetimev""timestampv""sym""price1", [DATETIME, TIMESTAMP, SYMBOL, DOUBLE]);
-		tableInsert(table1_pc_r, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take("a1""b1""c1",n), rand(100,n)+rand(1.0, n), rand(100,n)+rand(1.0, n));
-		tableInsert(t, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take("a1""b1""c1",n), rand(100,n)+rand(1.0, n));
-		dbpath="dfs://test_dfs";if(existsDatabase(dbpath)){dropDatabase(dbpath)};db=database(dbpath, VALUE, "a1""b1""c1");
-		db.createPartitionedTable(t,"table2_pc_r","sym").append!(t);
-		t2 = select * from loadTable(dbpath,"table2_pc_r");share t2 as table2_pc_r;
-		d = dict(['msg1','msg2'], [table1_pc_r, table2_pc_r]);
-		replay(inputTables=d, outputTables="SDoutTables_pc_r", dateColumn="timestampv", timeColumn="timestampv")`)
-	AssertNil(err)
-	sdMap := make(map[string][2]string)
-	sdMap["msg1"] = [2]string{"", "table1_pc_r"}
-	sdMap["msg2"] = [2]string{"dfs://test_dfs", "table2_pc_r"}
-	opt := streaming.StreamDeserializerOption{
-		TableNames: sdMap,
-		Conn:       gcConn_r,
-	}
-	sd, err := streaming.NewStreamDeserializer(&opt)
-	AssertNil(err)
-	ex_types1 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, model.DtDouble, model.DtDouble}
-	args1 := make([]*model.Vector, 5)
-	args1[0] = model.NewVector(model.NewDataTypeList(ex_types1[0], []model.DataType{}))
-	args1[1] = model.NewVector(model.NewDataTypeList(ex_types1[1], []model.DataType{}))
-	args1[2] = model.NewVector(model.NewDataTypeList(ex_types1[2], []model.DataType{}))
-	args1[3] = model.NewVector(model.NewDataTypeList(ex_types1[3], []model.DataType{}))
-	args1[4] = model.NewVector(model.NewDataTypeList(ex_types1[4], []model.DataType{}))
-	ex_types2 := []model.DataTypeByte{model.DtDatetime, model.DtTimestamp, model.DtSymbol, model.DtDouble}
-	args2 := make([]*model.Vector, 4)
-	args2[0] = model.NewVector(model.NewDataTypeList(ex_types2[0], []model.DataType{}))
-	args2[1] = model.NewVector(model.NewDataTypeList(ex_types2[1], []model.DataType{}))
-	args2[2] = model.NewVector(model.NewDataTypeList(ex_types2[2], []model.DataType{}))
-	args2[3] = model.NewVector(model.NewDataTypeList(ex_types2[3], []model.DataType{}))
-
-	var lock1 sync.Mutex
-	var lock2 sync.Mutex
-	plock1 := &lock1
-	plock2 := &lock2
-	sh := sdHandler1_r{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock1}
-	sbh := sdBatchHandler1_r{*sd, 0, 0, args1, args2, ex_types1, ex_types2, plock2}
-	fmt.Println("create handler successfully.")
-	return sh, sbh
 }
 
 func TestPollingClient_subscribe_with_StreamDeserializer_r(t *testing.T) {
 	var pc_r = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
 
 	Convey("TestPollingClient_subscribe_with_StreamDeserializer", t, func() {
-		_, err := pcConn_r.RunScript(
-			"try{ dropStreamTable(`SDoutTables_pc_r);}catch(ex){};" +
-				"try{ dropStreamTable(`st2_pc_r);}catch(ex){};" +
-				"try{ undef(`table1_pc_r, SHARED);}catch(ex){};" +
-				"try{ undef(`table2_pc_r, SHARED);}catch(ex){};go")
-		So(err, ShouldBeNil)
-		sdhandler, _ := createStreamDeserializer_r3()
+		sdhandler, _ := createStreamDeserializer(pcConn_r, "SDoutTables_pc_r")
 		req1 := &streaming.SubscribeRequest{
-			Address:    setup.Address,
+			Address:    host4,
 			TableName:  "SDoutTables_pc_r",
 			ActionName: "testStreamDeserializer",
 			Offset:     0,
@@ -1047,22 +990,22 @@ func TestPollingClient_subscribe_with_StreamDeserializer_r(t *testing.T) {
 		res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdhandler.res2_data)
 
 		pcConn_r.Upload(map[string]model.DataForm{"res1": res_tab1, "res2": res_tab2})
-		ans1, err := pcConn_r.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1_pc_r order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
+		ans1, err := pcConn_r.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1 order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
 		AssertNil(err)
 		for _, ans := range ans1.(*model.Vector).Data.Value() {
 			So(ans, ShouldBeTrue)
 		}
 
-		ans2, err := pcConn_r.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2_pc_r order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
+		ans2, err := pcConn_r.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2 order by datetimev,timestampv;each(eqObj, res.values(), ex.values())")
 		AssertNil(err)
 		for _, ans := range ans2.(*model.Vector).Data.Value() {
 			So(ans, ShouldBeTrue)
 		}
 		_, err = pcConn_r.RunScript(
 			"try{ dropStreamTable(`SDoutTables_pc_r);}catch(ex){};" +
-				"try{ dropStreamTable(`st2_pc_r);}catch(ex){};" +
-				"try{ undef(`table1_pc_r, SHARED);}catch(ex){};" +
-				"try{ undef(`table2_pc_r, SHARED);}catch(ex){};go")
+				"try{ dropStreamTable(`st2);}catch(ex){};" +
+				"try{ undef(`table1, SHARED);}catch(ex){};" +
+				"try{ undef(`table2, SHARED);}catch(ex){};go")
 		So(err, ShouldBeNil)
 	})
 	pc_r.Close()
