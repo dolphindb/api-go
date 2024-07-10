@@ -8,12 +8,12 @@ import (
 )
 
 func generateDBName() string {
-	u1 := uuid.Must(uuid.NewV4())
+	u1 := uuid.NewV4()
 	return fmt.Sprintf("db_%s", u1.String()[:8])
 }
 
 func generateTableName() string {
-	u1 := uuid.Must(uuid.NewV4())
+	u1 := uuid.NewV4()
 	return fmt.Sprintf("tb_%s", u1.String()[:8])
 }
 

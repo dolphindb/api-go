@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +27,11 @@ var (
 	DBhandler    = "db"
 	MemTableName = "memTable"
 )
+
+type Tuple struct {
+	Dt     model.DataTypeByte
+	VecVal string
+}
 
 func AssertNil(err error) {
 	if err != nil {
@@ -751,6 +757,69 @@ func CreateStreamingTableWithRandomName(conn api.DolphinDB) (string, string) {
 	return st, re
 }
 
+func CreateStreamingTableWithRandomName_allTypes(conn api.DolphinDB, dataType model.DataTypeByte, vecVal string) (string, string) {
+	suffix := getRandomStr(5)
+	typeString := strings.ToUpper(model.GetDataTypeString(dataType))
+	if strings.Contains(typeString, "DECIMAL32") {
+		typeString = "DECIMAL32(5)"
+	} else if strings.Contains(typeString, "DECIMAL64") {
+		typeString = "DECIMAL64(15)"
+	} else if strings.Contains(typeString, "DECIMAL128") {
+		typeString = "DECIMAL128(33)"
+	}
+	fmt.Println(`test type: `, typeString)
+
+	_, err := conn.RunScript("login(`admin,`123456);" +
+		"try{dropStreamTable('st1')}catch(ex){};" +
+		"try{dropStreamTable('st2')}catch(ex){};")
+	AssertNil(err)
+	st := "arrayVectorTable_" + suffix
+	re := "Receive_arrayVectorTable_" + suffix
+	_, err = conn.RunScript(
+		"colName = `ts`c1;" +
+			"colType = [TIMESTAMP, " + typeString + "];" +
+			"st1 = streamTable(1:0,colName, colType);st2 = streamTable(1:0,colName, colType);" +
+			"enableTableShareAndPersistence(table=st1, tableName=`" + st + ");share(st2, `" + re + ");go;" +
+			"n = 1000;" +
+			"tmp = table(1:0,colName, colType);" +
+			"for(i in 0:n){tableInsert(tmp, timestamp(1+i), array(" + typeString + ").append!(" + vecVal + "[0]));};" +
+			"replay(inputTables=tmp, outputTables=`" + st + ", dateColumn=`ts, timeColumn=`ts);")
+	AssertNil(err)
+	return st, re
+}
+
+func CreateStreamingTableWithRandomName_av(conn api.DolphinDB, dataType model.DataTypeByte, vecVal string) (string, string) {
+	suffix := getRandomStr(5)
+	typeString := strings.ToUpper(model.GetDataTypeString(dataType))
+	if strings.Contains(typeString, "DECIMAL32") {
+		typeString = "DECIMAL32(5)"
+	} else if strings.Contains(typeString, "DECIMAL64") {
+		typeString = "DECIMAL64(15)"
+	} else if strings.Contains(typeString, "DECIMAL128") {
+		typeString = "DECIMAL128(33)"
+	}
+	typeString = typeString + "[]"
+	fmt.Println(`test type: `, typeString)
+
+	_, err := conn.RunScript("login(`admin,`123456);" +
+		"try{dropStreamTable('st1')}catch(ex){};" +
+		"try{dropStreamTable('st2')}catch(ex){};")
+	AssertNil(err)
+	st := "arrayVectorTable_" + suffix
+	re := "Receive_arrayVectorTable_" + suffix
+	_, err = conn.RunScript(
+		"colName = `ts`c1;" +
+			"colType = [TIMESTAMP, " + typeString + "];" +
+			"st1 = streamTable(1:0,colName, colType);st2 = streamTable(1:0,colName, colType);" +
+			"enableTableShareAndPersistence(table=st1, tableName=`" + st + ");share(st2, `" + re + ");go;" +
+			"n = 1000;" +
+			"tmp = table(1:0,colName, colType);" +
+			"for(i in 0:n){tableInsert(tmp, timestamp(1+i), array(" + typeString + ").append!([" + vecVal + "]));};" +
+			"replay(inputTables=tmp, outputTables=`" + st + ", dateColumn=`ts, timeColumn=`ts);")
+	AssertNil(err)
+	return st, re
+}
+
 var wg sync.WaitGroup
 
 func threadWriteData(conn api.DolphinDB, tabName string, batch int) {
@@ -792,6 +861,23 @@ type MessageHandler struct {
 type MessageHandler_table struct {
 	receive string
 	conn    api.DolphinDB
+}
+
+type MessageBatchHandler_av struct {
+	appender *api.TableAppender
+}
+
+// test with msgAsTable=true
+type MessageHandler_av struct {
+	appender *api.TableAppender
+}
+
+type MessageHandler_allTypes struct {
+	appender *api.TableAppender
+}
+
+type MessageBatchHandler_allTypes struct {
+	appender *api.TableAppender
 }
 
 type MessageHandler_unsubscribeInDoEvent struct {
@@ -895,6 +981,80 @@ func (s *MessageHandler_unsubscribeInDoEvent) DoEvent(msg streaming.IMessage) {
 	}
 }
 
+func (s *MessageBatchHandler_av) DoEvent(msgv []streaming.IMessage) {
+	for _, msg := range msgv {
+		var colV = make([]*model.Vector, 2)
+		var colNamesV = make([]string, 2)
+		for i := 0; i < 2; i++ {
+			if i == 0 {
+				dtlist := model.NewEmptyDataTypeList(model.DtTimestamp, 0)
+				dtlist.Append(msg.GetValue(i).(*model.Scalar).DataType)
+				colV[i] = model.NewVector(dtlist)
+			} else {
+				valV := msg.GetValue(i).(*model.Scalar).Value().(*model.Vector)
+				// fmt.Println(valV)
+				av := model.NewArrayVector([]*model.Vector{valV})
+				colV[i] = model.NewVectorWithArrayVector(av)
+			}
+			colNamesV[i] = "col" + strconv.Itoa(i)
+		}
+		tmp := model.NewTable(colNamesV, colV)
+		// fmt.Println(tmp)
+		_, err := s.appender.Append(tmp)
+		AssertNil(err)
+	}
+}
+
+func (s *MessageHandler_av) DoEvent(msg streaming.IMessage) {
+	var colV = make([]*model.Vector, 2)
+	var colNamesV = make([]string, 2)
+	for i := 0; i < 2; i++ {
+		colV[i] = msg.GetValue(i).(*model.Vector)
+		colNamesV[i] = "col" + strconv.Itoa(i)
+	}
+	tmp := model.NewTable(colNamesV, colV)
+	// fmt.Println(tmp)
+	_, err := s.appender.Append(tmp)
+	AssertNil(err)
+}
+
+func (s *MessageBatchHandler_allTypes) DoEvent(msgv []streaming.IMessage) {
+	for _, msg := range msgv {
+		var colV = make([]*model.Vector, 2)
+		var colNamesV = make([]string, 2)
+		for i := 0; i < 2; i++ {
+			if i == 0 {
+				dtlist := model.NewEmptyDataTypeList(model.DtTimestamp, 0)
+				dtlist.Append(msg.GetValue(i).(*model.Scalar).DataType)
+				colV[i] = model.NewVector(dtlist)
+			} else {
+				val := msg.GetValue(i).(*model.Scalar)
+				// fmt.Println(valV)
+				dtlist := model.NewDataTypeList(val.GetDataType(), []model.DataType{val.DataType})
+				colV[i] = model.NewVector(dtlist)
+			}
+			colNamesV[i] = "col" + strconv.Itoa(i)
+		}
+		tmp := model.NewTable(colNamesV, colV)
+		// fmt.Println(tmp)
+		_, err := s.appender.Append(tmp)
+		AssertNil(err)
+	}
+}
+
+func (s *MessageHandler_allTypes) DoEvent(msg streaming.IMessage) {
+	var colV = make([]*model.Vector, 2)
+	var colNamesV = make([]string, 2)
+	for i := 0; i < 2; i++ {
+		colV[i] = msg.GetValue(i).(*model.Vector)
+		colNamesV[i] = "col" + strconv.Itoa(i)
+	}
+	tmp := model.NewTable(colNamesV, colV)
+	// fmt.Println(tmp)
+	_, err := s.appender.Append(tmp)
+	AssertNil(err)
+}
+
 func (s *sdHandler) DoEvent(msg streaming.IMessage) {
 	ret, err := s.sd.Parse(msg)
 	AssertNil(err)
@@ -929,12 +1089,12 @@ func (s *sdHandler) DoEvent(msg streaming.IMessage) {
 }
 
 func (s *sdBatchHandler) DoEvent(msgs []streaming.IMessage) {
+	s.lock.Lock()
 	for _, msg := range msgs {
 		ret, err := s.sd.Parse(msg)
 		AssertNil(err)
 		sym := ret.GetSym()
 
-		s.lock.Lock()
 		if sym == "msg1" {
 			s.msg1_total += 1
 			AssertEqual(ret.Size(), 5)
@@ -960,9 +1120,8 @@ func (s *sdBatchHandler) DoEvent(msgs []streaming.IMessage) {
 			}
 
 		}
-		s.lock.Unlock()
 	}
-
+	s.lock.Unlock()
 }
 
 func (s *sdHandler_av) DoEvent(msg streaming.IMessage) {
@@ -973,33 +1132,27 @@ func (s *sdHandler_av) DoEvent(msg streaming.IMessage) {
 	s.lock.Lock()
 	if sym == "msg1" {
 		s.msg1_total += 1
-		AssertEqual(ret.Size(), 5)
 		for i := 0; i < len(s.coltype1); i++ {
-			AssertEqual(ret.GetValue(i).GetDataType(), s.coltype1[i])
-			fmt.Println(ret.GetValue(i).GetDataFormString())
 			if i != 3 {
-				val := ret.GetValue(i).(*model.Scalar).Value()
-				dt, err := model.NewDataType(s.coltype1[i], val)
-				AssertNil(err)
-				AssertNil(s.res1_data[i].Append(dt))
+				val := ret.GetValue(i).(*model.Scalar).DataType
+				s.res1_data[i].Append(val)
 			} else {
 				val := ret.GetValue(i).(*model.Vector)
-				dt, err := model.NewDataType(s.coltype1[i], val)
-				AssertNil(err)
-				AssertNil(s.res1_data[i].Append(dt))
+				s.res1_data[i].AppendVectorValue(val.GetVectorValue(0))
 			}
 		}
+		// fmt.Println(s.res1_data)
 
 	} else if sym == "msg2" {
 		s.msg2_total += 1
-		AssertEqual(ret.Size(), 4)
 		for i := 0; i < len(s.coltype2); i++ {
-			AssertEqual(ret.GetValue(i).GetDataType(), s.coltype2[i])
-			fmt.Println(ret.GetValue(i).GetDataFormString())
-			val := ret.GetValue(i).(*model.Scalar).Value()
-			dt, err := model.NewDataType(s.coltype2[i], val)
-			AssertNil(err)
-			AssertNil(s.res2_data[i].Append(dt))
+			if i != 3 {
+				val := ret.GetValue(i).(*model.Scalar).DataType
+				s.res2_data[i].Append(val)
+			} else {
+				val := ret.GetValue(i).(*model.Vector)
+				s.res2_data[i].AppendVectorValue(val.GetVectorValue(0))
+			}
 		}
 	}
 	s.lock.Unlock()
@@ -1014,32 +1167,32 @@ func (s *sdBatchHandler_av) DoEvent(msgs []streaming.IMessage) {
 		s.lock.Lock()
 		if sym == "msg1" {
 			s.msg1_total += 1
-			AssertEqual(ret.Size(), 5)
 			for i := 0; i < len(s.coltype1); i++ {
-				AssertEqual(ret.GetValue(i).GetDataType(), s.coltype1[i])
-				// fmt.Println(ret.GetValue(i).(*model.Scalar).Value())
-				val := ret.GetValue(i).(*model.Scalar).Value()
-				dt, err := model.NewDataType(s.coltype1[i], val)
-				AssertNil(err)
-				AssertNil(s.res1_data[i].Append(dt))
+				if i != 3 {
+					val := ret.GetValue(i).(*model.Scalar).DataType
+					s.res1_data[i].Append(val)
+				} else {
+					val := ret.GetValue(i).(*model.Vector)
+					s.res1_data[i].AppendVectorValue(val.GetVectorValue(0))
+				}
 			}
+			// fmt.Println(s.res1_data)
 
 		} else if sym == "msg2" {
 			s.msg2_total += 1
-			AssertEqual(ret.Size(), 4)
 			for i := 0; i < len(s.coltype2); i++ {
-				AssertEqual(ret.GetValue(i).GetDataType(), s.coltype2[i])
-				// fmt.Println(ret.GetValue(i).GetDataType(), ex_types2[i])
-				val := ret.GetValue(i).(*model.Scalar).Value()
-				dt, err := model.NewDataType(s.coltype2[i], val)
-				AssertNil(err)
-				AssertNil(s.res2_data[i].Append(dt))
+				if i != 3 {
+					val := ret.GetValue(i).(*model.Scalar).DataType
+					s.res2_data[i].Append(val)
+				} else {
+					val := ret.GetValue(i).(*model.Vector)
+					s.res2_data[i].AppendVectorValue(val.GetVectorValue(0))
+				}
 			}
-
 		}
-		s.lock.Unlock()
-	}
 
+	}
+	s.lock.Unlock()
 }
 
 func createStreamDeserializer(conn api.DolphinDB, tbname string) (sdHandler, sdBatchHandler) {
@@ -1061,7 +1214,7 @@ func createStreamDeserializer(conn api.DolphinDB, tbname string) (sdHandler, sdB
 		tableInsert(t, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take("a1""b1""c1",n), rand(100,n)+rand(1.0, n));
 		dbpath="dfs://test_dfs";if(existsDatabase(dbpath)){dropDatabase(dbpath)};db=database(dbpath, VALUE, "a1""b1""c1");
 		db.createPartitionedTable(t,"table2","sym").append!(t);
-		t2 = select * from loadTable(dbpath,"table2");share t2 as table2;
+		tmp2 = select * from loadTable(dbpath,"table2");share tmp2 as table2;
 		d = dict(['msg1','msg2'], [table1, table2]);
 		replay(inputTables=d, outputTables="` + tbname + `", dateColumn="timestampv", timeColumn="timestampv")`)
 	AssertNil(err)

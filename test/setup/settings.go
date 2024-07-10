@@ -4,14 +4,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
-
-	"github.com/dolphindb/api-go/model"
 )
-
-type Tuple struct {
-	Dt     model.DataTypeByte
-	VecVal string
-}
 
 func getPort(ports []int) (int, []int) {
 	rand.Seed(time.Now().UnixNano())

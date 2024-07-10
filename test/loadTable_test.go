@@ -12,6 +12,7 @@ import (
 )
 
 var host9 = getRandomClusterAddress()
+
 func TestLoadTable(t *testing.T) {
 	t.Parallel()
 	Convey("Test LoadTable prepare", t, func() {
@@ -47,7 +48,7 @@ func TestLoadTable(t *testing.T) {
 			So(err, ShouldBeNil)
 			_, err = ddb.RunScript(fmt.Sprintf(`select * from %s`, "''"))
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, `client error response. select * from "" => FROM clause must return a table.`)
+			So(err.Error(), ShouldContainSubstring, `RefId:S02033`)
 			exTmp := tmp.(*model.Table)
 			reTmp, err := LoadTable(ddb, TbName1, DfsDBPath)
 			So(err, ShouldBeNil)
@@ -448,6 +449,26 @@ func TestLoadTable(t *testing.T) {
 			So(err, ShouldBeNil)
 			re1 := CompareTablesDataformTable(exTmp, reTmp)
 			So(re1, ShouldBeTrue)
+		})
+		Convey("Test_LoadTable_more_than_once", func() {
+			dbName := "dfs://test_" + generateRandomString(5)
+			tbName := "test_table"
+			_, err := ddb.RunScript(`db = database("` + dbName + `", VALUE, 1..5);
+						   t = table(1 2 3 as c1, rand(100.00, 3) as c2);
+						   db.createPartitionedTable(t, '` + tbName + `', 'c1').append!(t)`)
+			So(err, ShouldBeNil)
+			l := &api.LoadTableRequest{
+				Database:  dbName,
+				TableName: tbName,
+			}
+			for i := 0; i < 1000; i++ {
+				lt, err := ddb.LoadTable(l)
+				So(err, ShouldBeNil)
+				s := lt.GetHandle()
+				res, _ := ddb.RunScript("select * from " + s)
+				ex, _ := ddb.RunScript(s + `=select * from loadTable("` + dbName + `", "` + tbName + `");` + s)
+				So(res, ShouldEqual, ex.(*model.Table))
+			}
 		})
 	})
 }

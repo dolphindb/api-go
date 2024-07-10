@@ -1860,3 +1860,83 @@ func TestConnnectionPoolHighAvailability(t *testing.T) {
 	// })
 
 }
+
+func TestConnnectionPooltimeOut(t *testing.T) {
+	t.Parallel()
+	Convey("TestConnnectionPooltimeOut_timeoutOption", t, func() {
+		opt := &api.PoolOption{
+			Address:  setup.Address4,
+			UserID:   setup.UserName,
+			Password: setup.Password,
+			PoolSize: 10,
+			// Timeout:  1 * time.Second, // use default timeout
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		defer pool.Close()
+		tasks := make([]*api.Task, 1)
+		tasks[0] = &api.Task{Script: "sleep(62000);go;1+1"}
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		if tasks[0].GetError() != nil {
+			threadErr := tasks[0].GetError().Error()
+			So(threadErr, ShouldContainSubstring, "timeout")
+		}
+	})
+	Convey("TestConnnectionPooltimeOut_RefreshTimeout", t, func() {
+		opt := &api.PoolOption{
+			Address:  setup.Address4,
+			UserID:   setup.UserName,
+			Password: setup.Password,
+			PoolSize: 10,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		pool.RefreshTimeout(1 * time.Second)
+
+		defer pool.Close()
+		tasks := make([]*api.Task, 10)
+		for i := 0; i < 10; i++ {
+			if i > 4 {
+				tasks[i] = &api.Task{Script: "sleep(2000);go;1+1"}
+				continue
+			}
+			tasks[i] = &api.Task{Script: "1+1"}
+		}
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		for i := 0; i < 10; i++ {
+			succeed := false
+			for {
+				if tasks[i].IsSuccess(){
+					succeed = true
+					break
+				}else{
+					time.Sleep(3 * time.Second)
+					break
+				}
+			}
+			if succeed {
+				re := tasks[i].GetResult()
+				So(re.(*model.Scalar).Value().(int32), ShouldEqual, int32(2))
+			}else{
+				threadErr := tasks[i].GetError().Error()
+				So(threadErr, ShouldContainSubstring, "timeout")
+			}
+		}
+	})
+
+	Convey("TestConnnectionPooltimeOut_exception", t, func() {
+		opt := &api.PoolOption{
+			Address:  setup.Address4,
+			UserID:   setup.UserName,
+			Password: setup.Password,
+			PoolSize: 10,
+			Timeout:  -100 * time.Second,
+		}
+		_, err := api.NewDBConnectionPool(opt)
+		So(err.Error(), ShouldContainSubstring, "Timeout must be equal or greater than 0")
+	})
+
+
+}

@@ -168,7 +168,7 @@ Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过该接口在 `D
 
 ## 2. 安装依赖
 
-Go API 需要运行在 golang 1.15 或以上版本的环境。
+Go API 需要运行在 Go 1.15 或以上版本的环境。注意，Go API 只支持在 64 位的 Go 环境中运行。
 使用 `go get` 下载安装 `Go API`。
 
 ```sh
@@ -605,6 +605,7 @@ func main() {
 | GetPoolSize()                        | 获取连接数         |
 | Close()                              | 关闭连接池         |
 | IsClosed()                           | 检查连接池是否关闭 |
+| RefreshTimeout(t time.Duration)      | 重置超时时间       |
 
 PoolOption 参数说明：
 
@@ -615,6 +616,7 @@ PoolOption 参数说明：
 - LoadBalanceAddresses: 字符串数组，用于指定数据节点。
 - EnableHighAvailability: 指定是否开启高可用。
 - HighAvailabilitySites: 指定高可用节点地址，当从 Server 获取到的节点地址无法访问时，可通过该配置手动指定。
+- Timeout: 指定每个任务执行的超时时间。
 
 `Task` 封装了查看任务执行结果的相关方法。
 
@@ -1035,14 +1037,18 @@ err = writer.Insert("2", time.Date(2022, time.Month(1), 1, 1, 1, 0, 0, time.UTC)
 #### GetUnwrittenData
 
 ```go
-GetUnwrittenData() [][]model.DataType
+GetUnwrittenData() [][]interface{}
 ```
 
 函数说明：
 
 返回一个嵌套列表，表示未写入服务器的数据。
 
-注意：该方法获取到数据资源后，`MultiGoroutineTable` 将释放这些数据资源。
+注意
+
+1. 返回的结果以 `MultiGoroutineTable` 存储的中间变量的形式存在，只能给写入相同 schema 表的 `MultiGoroutineTable` 使用。
+
+2. 该方法获取到数据资源后，`MultiGoroutineTable` 将释放这些数据资源。
 
 示例：
 
@@ -1053,12 +1059,12 @@ unwrittenData := writer.GetUnwrittenData()
 #### InsertUnwrittenData
 
 ```go
-InsertUnwrittenData(records [][]model.DataType) error
+InsertUnwrittenData(records [][]interface{}) error
 ```
 
 函数说明：
 
-将数据插入数据表。返回值同 insert 方法。与 insert 方法的区别在于，insert 只能插入单行数据，而 insertUnwrittenData 可以同时插入多行数据。
+将通过 GetUnwrittenData 得到的数据插入数据表。返回值同 insert 方法。
 
 参数说明：
 

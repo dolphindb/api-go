@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+		"time"
 
 	"github.com/dolphindb/api-go/dialer"
 	"github.com/dolphindb/api-go/domain"
@@ -20,6 +21,7 @@ type MultiGoroutineTable struct {
 	colNames                                                []string
 	colTypes                                                []int
 	partitionColumnIdx                                      int32
+	partitionTypeList                                       chan model.DataTypeList
 
 	partitionDomain domain.Domain
 	goroutines      []*writerGoroutine
@@ -105,26 +107,25 @@ func (mtt *MultiGoroutineTable) generateMultiGoroutineTable(opt *Option) error {
 // Insert inserts data into the table.
 // The length of args must be equal with the number of columns of the table.
 func (mtt *MultiGoroutineTable) Insert(args ...interface{}) error {
-	if mtt.isExist() {
-		return errors.New("goroutine already exists")
+	if mtt.isExit() {
+		return errors.New("goroutine already exits")
 	}
 
 	if len(args) != len(mtt.colTypes) {
 		return errors.New("column counts don't match")
 	}
 
-	prow, err := mtt.getDataTypes(args...)
-	if err != nil {
-		return err
-	}
-
-	goroutineInd, err := mtt.getGoroutineInd(prow)
+	goroutineInd, err := mtt.getGoroutineInd(args)
 	if err != nil {
 		fmt.Printf("Failed to get goroutine index: %s\n", err.Error())
 		return err
 	}
 
-	mtt.insertGoroutineWrite(goroutineInd, prow)
+	err = mtt.insertInterfaceToGoroutine(goroutineInd, args)
+	if err != nil {
+		fmt.Printf("Failed to insert interface: %s\n", err.Error())
+		return err
+	}
 
 	return nil
 }
@@ -176,7 +177,7 @@ func getDataType(dt model.DataTypeByte, v interface{}) (model.DataType, error) {
 func (mtt *MultiGoroutineTable) GetStatus() *Status {
 	s := &Status{
 		ErrMsg:              mtt.errorInfo,
-		IsExit:              mtt.isExist(),
+		IsExit:              mtt.isExit(),
 		GoroutineStatusList: make([]*GoroutineStatus, len(mtt.goroutines)),
 		GoroutineStatus:     make([]*GoroutineStatus, len(mtt.goroutines)),
 	}
@@ -196,83 +197,162 @@ func (mtt *MultiGoroutineTable) GetStatus() *Status {
 }
 
 // GetUnwrittenData returns the total of unsent data and failed data.
-func (mtt *MultiGoroutineTable) GetUnwrittenData() [][]model.DataType {
-	data := make([][]model.DataType, 0)
-loop:
+func (mtt *MultiGoroutineTable) GetUnwrittenData() [][]interface{} {
+	data := make([][]interface{}, 0)
 	for _, v := range mtt.goroutines {
-		for {
-			if val := v.failedQueue.load(); val != nil {
-				data = append(data, val)
-			} else {
-				break
-			}
+		if val := v.failedQueue.popAll(); val != nil {
+			data = append(data, val...)
 		}
 
-		for {
-			if val := v.writeQueue.load(); val != nil {
-				data = append(data, val)
-			} else {
-				break loop
-			}
+		if val := v.writeQueue.popAll(); val != nil {
+			data = append(data, val...)
 		}
 	}
 
 	return data
 }
 
+func (mtt *MultiGoroutineTable) mockInterface(v []interface{}) ([]interface{}, int, error) {
+	ret := make([]interface{}, 0)
+	count := -1
+	for ind, dt := range mtt.colTypes {
+		switch model.DataTypeByte(dt) {
+		case model.DtBool:
+			_, ok := v[ind].([]byte)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect byte slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]byte))
+			ret = append(ret, v[ind].([]byte)[0])
+		case model.DtBlob:
+			_, ok := v[ind].([][]byte)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect []byte slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([][]byte))
+			ret = append(ret, v[ind].([][]byte)[0])
+		case model.DtChar, model.DtCompress:
+			_, ok := v[ind].([]byte)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect []byte slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]byte))
+			ret = append(ret, v[ind].([]byte)[0])
+		case model.DtComplex, model.DtPoint:
+			_, ok := v[ind].([][2]float64)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect [2]float64 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]float64))
+			ret = append(ret, v[ind].([][2]float64)[0])
+		case model.DtShort:
+			_, ok := v[ind].([]int16)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect int16 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]int16))
+			ret = append(ret, v[ind].([]int16)[0])
+		case model.DtInt:
+			_, ok := v[ind].([]int32)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect int32 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]int32))
+			ret = append(ret, v[ind].([]int32)[0])
+		case model.DtLong:
+			_, ok := v[ind].([]int64)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect int64 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]int64))
+			ret = append(ret, v[ind].([]int64)[0])
+		case model.DtFloat:
+			_, ok := v[ind].([]float32)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect float32 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]float32))
+			ret = append(ret, v[ind].([]float32)[0])
+		case model.DtDouble:
+			_, ok := v[ind].([]float64)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect float64 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]float64))
+			ret = append(ret, v[ind].([]float64)[0])
+		case model.DtDecimal32:
+			_, ok := v[ind].([]*model.Decimal32)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect Decimal32 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]*model.Decimal32))
+			ret = append(ret, v[ind].([]*model.Decimal32)[0])
+		case model.DtDecimal64:
+			_, ok := v[ind].([]*model.Decimal64)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect Decimal64 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]*model.Decimal64))
+			ret = append(ret, v[ind].([]*model.Decimal64)[0])
+		case model.DtDecimal128:
+			_, ok := v[ind].([]*model.Decimal128)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect Decimal128 slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]*model.Decimal128))
+			ret = append(ret, v[ind].([]*model.Decimal128)[0])
+		case model.DtDate, model.DtDateHour, model.DtDateMinute, model.DtDatetime, model.DtMinute, model.DtMonth, model.DtNanoTime, model.DtSecond, model.DtTime, model.DtTimestamp, model.DtNanoTimestamp:
+			_, ok := v[ind].([]time.Time)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect time.Time slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]time.Time))
+			ret = append(ret, v[ind].([]time.Time)[0])
+		case model.DtUUID, model.DtSymbol, model.DtString, model.DtDuration, model.DtInt128, model.DtIP:
+			_, ok := v[ind].([]string)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect string slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]string))
+			ret = append(ret, v[ind].([]string)[0])
+		case model.DtAny:
+			_, ok := v[ind].([]model.DataForm)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect DataForm slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]model.DataForm))
+			ret = append(ret, v[ind].([]model.DataForm)[0])
+		default:
+			_, ok := v[ind].([]model.DataType)
+			if !ok {
+				return nil, 0, fmt.Errorf("col %d of type %s expect DataType slice", ind, model.GetDataTypeString(model.DataTypeByte(dt)))
+			}
+			count = len(v[ind].([]model.DataType))
+			ret = append(ret, v[ind].([]model.DataType)[0])
+		}
+	}
+	return ret, count, nil
+}
+
 // InsertUnwrittenData inserts data into the table.
 // You can insert data obtained from GetUnwrittenData with this function.
-func (mtt *MultiGoroutineTable) InsertUnwrittenData(records [][]model.DataType) error {
-	if mtt.isExist() {
-		return errors.New("goroutine already exists")
+func (mtt *MultiGoroutineTable) InsertUnwrittenData(records [][]interface{}) error {
+	if mtt.isExit() {
+		return errors.New("goroutine already exits")
 	}
-
-	var err error
-	if len(mtt.goroutines) > 1 {
-		if mtt.isPartition {
-			err = mtt.insertPartitionTable(records)
-		} else {
-			err = mtt.insertNonPartitionTable(records)
+	for _, v := range records {
+		mock, count, err := mtt.mockInterface(v)
+		if err != nil {
+			return err
 		}
-	} else {
-		for _, v := range records {
-			mtt.insertGoroutineWrite(0, v)
+		goroutineInd, err := mtt.getGoroutineInd(mock)
+		wt := mtt.goroutines[goroutineInd]
+		if err != nil {
+			fmt.Printf("Failed to get goroutine index: %s\n", err.Error())
+			return err
 		}
-	}
-
-	return err
-}
-
-func (mtt *MultiGoroutineTable) insertNonPartitionTable(records [][]model.DataType) error {
-	vct, err := mtt.getVector(records, mtt.goroutineByColIndexForNonPartition)
-	if err != nil {
-		fmt.Printf("Failed to package vector: %s\n", err.Error())
-		return err
-	}
-
-	for k, v := range records {
-		goroutineInd := vct.HashBucket(k, len(mtt.goroutines))
-		mtt.insertGoroutineWrite(goroutineInd, v)
-	}
-
-	return nil
-}
-
-func (mtt *MultiGoroutineTable) insertPartitionTable(records [][]model.DataType) error {
-	vct, err := mtt.getVector(records, int(mtt.partitionColumnIdx))
-	if err != nil {
-		fmt.Printf("Failed to pack vector: %s\n", err.Error())
-		return err
-	}
-
-	goroutineIndexes, err := mtt.partitionDomain.GetPartitionKeys(vct)
-	if err != nil {
-		fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
-		return err
-	}
-
-	for k, v := range goroutineIndexes {
-		mtt.insertGoroutineWrite(v, records[k])
+		mtt.goroutines[goroutineInd].writeQueue.addBatch(v, count)
+		wt.signal.Signal()
 	}
 
 	return nil
@@ -460,6 +540,14 @@ func (mtt *MultiGoroutineTable) assignForPartitionTable(dt model.DataType, schem
 		fmt.Printf("Failed to create domain: %s\n", err.Error())
 		return err
 	}
+	chanNum := 16
+	if len(mtt.goroutines) > chanNum {
+		chanNum = len(mtt.goroutines)
+	}
+	mtt.partitionTypeList = make(chan model.DataTypeList, chanNum)
+	for i := 0; i < chanNum; i++ {
+		mtt.partitionTypeList <- model.NewEmptyDataTypeList(model.DataTypeByte(mtt.colTypes[mtt.partitionColumnIdx]), 1)
+	}
 
 	return nil
 }
@@ -527,23 +615,50 @@ func validateOption(opt *Option) error {
 	return nil
 }
 
-func (mtt *MultiGoroutineTable) getGoroutineIndForPartitionTable(prow []model.DataType) (int, error) {
+func (mtt *MultiGoroutineTable) getGoroutineIndForPartitionTable(prow []interface{}) (int, error) {
 	var goroutineInd int
 	s := prow[mtt.partitionColumnIdx]
 	if s != nil {
-		dtl := model.NewDataTypeList(s.DataType(), []model.DataType{s})
-		pvc := model.NewVector(dtl)
+		select {
+		case list := <-mtt.partitionTypeList:
+			defer func() {
+				mtt.partitionTypeList <- list
+			}()
+			err := list.SetWithRawData(0, s)
+			if err != nil {
+				return 0, err
+			}
+			pvc := model.NewVector(list)
+			indexes, err := mtt.partitionDomain.GetPartitionKeys(pvc)
+			if err != nil {
+				fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
+				return 0, err
+			}
 
-		indexes, err := mtt.partitionDomain.GetPartitionKeys(pvc)
-		if err != nil {
-			fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
-			return 0, err
-		}
+			if len(indexes) > 0 {
+				goroutineInd = indexes[0]
+			} else {
+				return 0, errors.New("failed to obtain the partition scheme")
+			}
+		default:
+			partitionValue, err := getDataType(model.DataTypeByte(mtt.colTypes[mtt.partitionColumnIdx]), s)
+			if err != nil {
+				return -1, err
+			}
+			dtl := model.NewDataTypeList(partitionValue.DataType(), []model.DataType{partitionValue})
+			pvc := model.NewVector(dtl)
 
-		if len(indexes) > 0 {
-			goroutineInd = indexes[0]
-		} else {
-			return 0, errors.New("failed to obtain the partition scheme")
+			indexes, err := mtt.partitionDomain.GetPartitionKeys(pvc)
+			if err != nil {
+				fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
+				return 0, err
+			}
+
+			if len(indexes) > 0 {
+				goroutineInd = indexes[0]
+			} else {
+				return 0, errors.New("failed to obtain the partition scheme")
+			}
 		}
 	} else {
 		goroutineInd = 0
@@ -552,29 +667,34 @@ func (mtt *MultiGoroutineTable) getGoroutineIndForPartitionTable(prow []model.Da
 	return goroutineInd, nil
 }
 
-func (mtt *MultiGoroutineTable) getGoroutineIndForNonPartitionTable(prow []model.DataType) int {
+func (mtt *MultiGoroutineTable) getGoroutineIndForNonPartitionTable(prow []interface{}) (int, error) {
 	var goroutineInd int
 	if prow[mtt.goroutineByColIndexForNonPartition] != nil {
 		s := prow[mtt.goroutineByColIndexForNonPartition]
-		dtl := model.NewDataTypeList(s.DataType(), []model.DataType{s})
+		partitionValue, err := getDataType(model.DataTypeByte(mtt.colTypes[mtt.goroutineByColIndexForNonPartition]), s)
+		if err != nil {
+			return -1, err
+		}
+		dtl := model.NewDataTypeList(partitionValue.DataType(), []model.DataType{partitionValue})
 		pvc := model.NewVector(dtl)
 		goroutineInd = pvc.HashBucket(0, len(mtt.goroutines))
 	} else {
 		goroutineInd = 0
 	}
 
-	return goroutineInd
+	return goroutineInd, nil
 }
 
-func (mtt *MultiGoroutineTable) getGoroutineInd(prow []model.DataType) (int, error) {
+func (mtt *MultiGoroutineTable) getGoroutineInd(prow []interface{}) (int, error) {
 	var goroutineInd int
 	var err error
 	if len(mtt.goroutines) > 1 {
 		if mtt.isPartition {
 			goroutineInd, err = mtt.getGoroutineIndForPartitionTable(prow)
 		} else {
-			goroutineInd = mtt.getGoroutineIndForNonPartitionTable(prow)
+			goroutineInd, err = mtt.getGoroutineIndForNonPartitionTable(prow)
 		}
+		goroutineInd = goroutineInd % len(mtt.goroutines)
 	} else {
 		goroutineInd = 0
 	}
@@ -582,47 +702,22 @@ func (mtt *MultiGoroutineTable) getGoroutineInd(prow []model.DataType) (int, err
 	return goroutineInd, err
 }
 
-func (mtt *MultiGoroutineTable) insertGoroutineWrite(hashKey int, prow []model.DataType) {
+func (mtt *MultiGoroutineTable) insertInterfaceToGoroutine(hashKey int, prow []interface{}) error {
 	if hashKey < 0 {
 		hashKey = 0
 	}
 
 	ind := hashKey % len(mtt.goroutines)
 	wt := mtt.goroutines[ind]
-	wt.writeQueue.add(prow)
+	err := wt.writeQueue.add(prow)
+	if err != nil {
+		return err
+	}
 
 	wt.signal.Signal()
+	return nil
 }
 
-func (mtt *MultiGoroutineTable) getVector(records [][]model.DataType, ind int) (*model.Vector, error) {
-	dtArr := make([]model.DataType, len(records))
-	dt := model.DataTypeByte(mtt.colTypes[ind])
-	for k, row := range records {
-		if len(row) != len(mtt.colTypes) {
-			return nil, errors.New("column counts don't match")
-		}
-
-		if !isEqualDataTypeByte(row[ind].DataType(), dt) {
-			return nil, fmt.Errorf("column doesn't match. Expect %s, but get %s",
-				model.GetDataTypeString(row[ind].DataType()), model.GetDataTypeString(dt))
-		}
-
-		dtArr[k] = row[ind]
-	}
-
-	dtl := model.NewDataTypeList(dt, dtArr)
-	return model.NewVector(dtl), nil
-}
-
-func (mtt *MultiGoroutineTable) isExist() bool {
+func (mtt *MultiGoroutineTable) isExit() bool {
 	return mtt.hasError
-}
-
-func isEqualDataTypeByte(a, b model.DataTypeByte) bool {
-	if a == b || (a == model.DtSymbol && b == model.DtString) ||
-		(b == model.DtSymbol && a == model.DtString) {
-		return true
-	}
-
-	return false
 }

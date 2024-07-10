@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dolphindb/api-go/dialer"
 	"github.com/dolphindb/api-go/model"
@@ -19,6 +20,7 @@ type DBConnectionPool struct {
 	loadBalanceAddresses []string
 
 	connections chan dialer.Conn
+	timeout time.Duration
 }
 
 // PoolOption helps you to configure DBConnectionPool by calling NewDBConnectionPool.
@@ -47,13 +49,24 @@ type PoolOption struct {
 
 	// addresses of load balance
 	LoadBalanceAddresses []string
+
+	// refresh time of every connection
+	Timeout time.Duration
 }
 
 // NewDBConnectionPool inits a DBConnectionPool object and configures it with opt, finally returns it.
 func NewDBConnectionPool(opt *PoolOption) (*DBConnectionPool, error) {
+	timeout := time.Minute
+	if opt.Timeout != 0 {
+		if opt.Timeout < 0 {
+			return nil, errors.New("Timeout must be equal or greater than 0")
+		}
+		timeout = opt.Timeout
+	}
 	p := &DBConnectionPool{
 		isLoadBalance:        opt.LoadBalance,
 		loadBalanceAddresses: opt.LoadBalanceAddresses,
+		timeout:              timeout,
 	}
 
 	if opt.PoolSize < 1 {
@@ -107,6 +120,9 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 	return conn, nil
 }
 
+func (d *DBConnectionPool) RefreshTimeout(t time.Duration) {
+	d.timeout = t
+}
 // Execute executes all task by connections with DBConnectionPool.
 func (d *DBConnectionPool) Execute(tasks []*Task) error {
 	wg := sync.WaitGroup{}
@@ -118,6 +134,7 @@ func (d *DBConnectionPool) Execute(tasks []*Task) error {
 		wg.Add(1)
 		go func(task *Task) {
 			conn := <-d.connections
+			conn.RefreshTimeout(d.timeout)
 			task.result, task.err = d.RunTask(conn, task)
 			d.connections <- conn
 			wg.Done()

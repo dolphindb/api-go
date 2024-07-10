@@ -134,7 +134,7 @@ func threadinsertData(mtt *mtw.MultiGoroutineTable, n int) {
 			fmt.Println(err)
 			break
 		}
-		if i == n-1 && err == nil {
+		if i == n-1 {
 			break
 		}
 		i++
@@ -212,7 +212,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -237,7 +237,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -262,7 +262,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -287,7 +287,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -312,7 +312,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       "dhb",
 					TableName:      DfsTableName1,
@@ -337,7 +337,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       "",
 					TableName:      DfsTableName1,
@@ -362,7 +362,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      "hsb",
@@ -387,7 +387,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      "",
@@ -462,7 +462,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      0,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -487,7 +487,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      -1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -512,7 +512,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 0,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -537,7 +537,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: -3,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -571,7 +571,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -598,7 +598,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "",
 					Database:       "",
 					TableName:      "shareTable",
@@ -625,7 +625,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "mt",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -650,7 +650,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -675,7 +675,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 3,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "id",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -700,7 +700,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -728,7 +728,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "id",
 					Database:       "",
 					TableName:      "",
@@ -755,7 +755,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -782,7 +782,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -809,7 +809,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "datev",
 					Database:       DBdfsPath,
 					TableName:      DfsTableName1,
@@ -829,7 +829,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				opt := &mtw.Option{
 					GoroutineCount: 2,
 					BatchSize:      1,
-					Throttle:       1,
+					Throttle:       1000,
 					PartitionCol:   "id",
 					Database:       "",
 					TableName:      "t1",
@@ -839,27 +839,27 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				}
 				mtt, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldBeNil)
-				tb := make([][]model.DataType, 0)
+				tb := make([][]interface{}, 0)
+				_tb := make([]interface{}, 0)
+				c1 := make([]time.Time, 0)
+				c2 := make([]int32, 0)
+				c3 := make([]int32, 0)
 				for i := 0; i < 3; i++ {
-					rowData := make([]model.DataType, 0)
-					dt1, _ := model.NewDataType(model.DtDate, time.Date(2022, time.Month(1), i, 1, 1, 0, 0, time.UTC))
-					rowData = append(rowData, dt1)
-					dt2, _ := model.NewDataType(model.DtString, "AAOL")
-					rowData = append(rowData, dt2)
-					dt3, _ := model.NewDataType(model.DtInt, int32(16+i))
-					rowData = append(rowData, dt3)
-					tb = append(tb, rowData)
+					dt1 := time.Date(2022, time.Month(1), i, 1, 1, 0, 0, time.UTC)
+					c1 = append(c1, dt1)
+					dt2 := int32(i)
+					c2 = append(c2, dt2)
+					dt3 := int32(16 + i)
+					c3 = append(c3, dt3)
 				}
+				_tb = append(_tb, c1)
+				_tb = append(_tb, c2)
+				_tb = append(_tb, c3)
+				tb = append(tb, _tb)
 				err = mtt.InsertUnwrittenData(tb)
-				So(err, ShouldBeNil)
+				So(err.Error(), ShouldContainSubstring, "col 1 of type symbol expect string slice")
 				mtt.WaitForGoroutineCompletion()
-				errmsg := mtt.GetStatus().ErrMsg
-				So(errmsg, ShouldEqual, "failed to set DataType(date) into DataTypeList(timestamp)")
-				unSetRows := mtt.GetStatus().UnSentRows
-				FailedRows := mtt.GetStatus().FailedRows
-				So(FailedRows+unSetRows, ShouldEqual, 3)
-				IsExit := mtt.GetStatus().IsExit
-				So(IsExit, ShouldEqual, true)
+				So(mtt.GetStatus().IsExit, ShouldBeTrue)
 			})
 			Convey("TestMultiGoroutineTable_insert_dfs_value_value_ex", func() {
 				script := "Database = \"dfs://test_MultithreadedTableWriter\"\n" +
@@ -908,7 +908,7 @@ func TestMultiGoroutineTable_all_data_type(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 2,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "all_data_type",
@@ -999,13 +999,13 @@ func TestMultiGoroutineTable_GoroutineCount(t *testing.T) {
 	Convey("test_multithreadTableWriterTest_GoroutineCount", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		scriptGoroutineCount := "t = table(1000:0, `date`id`values,[TIMESTAMP,SYMBOL,INT]);share t as t1;"
-		_, err = ddb.RunScript(scriptGoroutineCount)
+		s := "t = table(1:0, `date`id`values,[TIMESTAMP,SYMBOL,INT]);share t as t1;"
+		_, err = ddb.RunScript(s)
 		So(err, ShouldBeNil)
 		opt := &mtw.Option{
-			GoroutineCount: 2,
-			BatchSize:      1,
-			Throttle:       1,
+			GoroutineCount: 5,
+			BatchSize:      10,
+			Throttle:       1000,
 			PartitionCol:   "id",
 			Database:       "",
 			TableName:      "t1",
@@ -1015,50 +1015,16 @@ func TestMultiGoroutineTable_GoroutineCount(t *testing.T) {
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
-		err = mtt.Insert(time.Date(2022, time.Month(1), 1, 1, 1, 0, 0, time.UTC), "AAOL", int32(45))
-		So(err, ShouldBeNil)
-		err = mtt.Insert(time.Date(1969, time.Month(1), 1, 1, 1, 0, 0, time.UTC), "ONSL", int32(45))
-		So(err, ShouldBeNil)
-		tb := make([][]model.DataType, 0)
-		for i := 0; i < 3; i++ {
-			rowData := make([]model.DataType, 0)
-			dt1, _ := model.NewDataType(model.DtTimestamp, time.Date(2022, time.Month(1), i, 1, 1, 0, 0, time.UTC))
-			rowData = append(rowData, dt1)
-			dt2, _ := model.NewDataType(model.DtString, "AAOL")
-			rowData = append(rowData, dt2)
-			dt3, _ := model.NewDataType(model.DtInt, int32(16+i))
-			rowData = append(rowData, dt3)
-			tb = append(tb, rowData)
+		for i := 0; i < 100; i++ {
+			err = mtt.Insert(time.Date(2022, time.Month(1), 1, 1, 1, 0, 0, time.UTC), "sym"+strconv.Itoa(i), int32(i))
+			So(err, ShouldBeNil)
 		}
-		err = mtt.InsertUnwrittenData(tb)
-		So(err, ShouldBeNil)
-		time.Sleep(3 * time.Second)
-		re, err := ddb.RunScript("select * from t1")
-		So(err, ShouldBeNil)
-		reTable := re.(*model.Table)
-		So(reTable.Rows()+mtt.GetStatus().UnSentRows+mtt.GetStatus().FailedRows, ShouldEqual, 5)
-		tb = make([][]model.DataType, 0)
-		for i := 0; i < 3; i++ {
-			rowData := make([]model.DataType, 0)
-			dt1, _ := model.NewDataType(model.DtTimestamp, time.Date(2022, time.Month(1), i, 1, 1, 0, 0, time.UTC))
-			rowData = append(rowData, dt1)
-			dt2, _ := model.NewDataType(model.DtString, "ONSL")
-			rowData = append(rowData, dt2)
-			dt3, _ := model.NewDataType(model.DtInt, int32(16+i))
-			rowData = append(rowData, dt3)
-			tb = append(tb, rowData)
-		}
-		err = mtt.InsertUnwrittenData(tb)
-		So(err, ShouldBeNil)
 		mtt.WaitForGoroutineCompletion()
-		re, err = ddb.RunScript("select * from t1")
-		So(err, ShouldBeNil)
-		reTable = re.(*model.Table)
-		So(reTable.Rows(), ShouldEqual, 8)
-		_, err = ddb.RunScript("undef(`t1,SHARED)")
-		So(err, ShouldBeNil)
-		err = ddb.Close()
-		So(err, ShouldBeNil)
+		status := mtt.GetStatus()
+		So(status.FailedRows, ShouldEqual, 0)
+		So(status.ErrMsg, ShouldEqual, "")
+		So(status.IsExit, ShouldBeTrue)
+		So(len(status.GoroutineStatus), ShouldEqual, 5)
 	})
 }
 
@@ -1075,7 +1041,7 @@ func TestMultiGoroutineTable_null(t *testing.T) {
 			opt := &mtw.Option{
 				GoroutineCount: 1,
 				BatchSize:      1,
-				Throttle:       1,
+				Throttle:       1000,
 				PartitionCol:   "boolv",
 				Database:       "",
 				TableName:      "t1",
@@ -1105,7 +1071,7 @@ func TestMultiGoroutineTable_null(t *testing.T) {
 			opt := &mtw.Option{
 				GoroutineCount: 1,
 				BatchSize:      1,
-				Throttle:       1,
+				Throttle:       1000,
 				PartitionCol:   "boolv",
 				Database:       "",
 				TableName:      "t1",
@@ -1140,7 +1106,7 @@ func TestMultiGoroutineTable_getStatus_write_successful(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "datev",
 			Database:       "",
 			TableName:      "t1",
@@ -1221,7 +1187,7 @@ func TestMultiGoroutineTable_insert_bool(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "bool",
 			Database:       "",
 			TableName:      "t1",
@@ -1264,7 +1230,7 @@ func TestMultiGoroutineTable_insert_byte_int32_int64_int16(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "id",
 			Database:       "",
 			TableName:      "t1",
@@ -1308,7 +1274,7 @@ func TestMultiGoroutineTable_insert_float32_float64(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "id",
 			Database:       "",
 			TableName:      "t1",
@@ -1350,7 +1316,7 @@ func TestMultiGoroutineTable_streamTable_insert_timetype(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      5,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "datev",
 			Database:       "",
 			TableName:      "t1",
@@ -1437,7 +1403,7 @@ func TestMultiGoroutineTable_memTable_insert_timetype(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      5,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "datev",
 			Database:       "",
 			TableName:      "t1",
@@ -1528,7 +1494,7 @@ func TestMultiGoroutineTable_dfsTable_insert_timetype(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      5,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "datev",
 			Database:       DBdfsPath,
 			TableName:      DfsTableName1,
@@ -1619,7 +1585,7 @@ func TestMultiGoroutineTable_dimensionTable_insert_timetype(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      5,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "",
 			Database:       DBdfsPath,
 			TableName:      DfsTableName1,
@@ -1706,7 +1672,7 @@ func TestMultiGoroutineTable_memTable_insert_localTime(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      5,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "datev",
 			Database:       "",
 			TableName:      "t1",
@@ -1797,7 +1763,7 @@ func TestMultiGoroutineTable_insert_dfs_part_null(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      5,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "boolv",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -1855,7 +1821,7 @@ func TestMultiGoroutineTable_insert_empty_arrayVector(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -1894,7 +1860,7 @@ func TestMultiGoroutineTable_insert_arrayVector_different_length(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -1939,7 +1905,7 @@ func TestMultiGoroutineTable_insert_arrayVector_char(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -1980,7 +1946,7 @@ func TestMultiGoroutineTable_insert_arrayVector_int(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -2021,7 +1987,7 @@ func TestMultiGoroutineTable_insert_arrayVector_bool(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -2062,7 +2028,7 @@ func TestMultiGoroutineTable_insert_arrayVector_long(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -2105,7 +2071,7 @@ func TestMultiGoroutineTable_insert_arrayVector_short(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -2148,7 +2114,7 @@ func TestMultiGoroutineTable_insert_arrayVector_float(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -2189,7 +2155,7 @@ func TestMultiGoroutineTable_insert_arrayVector_double(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -2231,7 +2197,7 @@ func TestMultiGoroutineTable_insert_arrayVector_date_month(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "Arr1",
 			Database:       "",
 			TableName:      "t1",
@@ -2274,7 +2240,7 @@ func TestMultiGoroutineTable_insert_arrayVector_time_minute_month(t *testing.T) 
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "Arr1",
 			Database:       "",
 			TableName:      "t1",
@@ -2319,7 +2285,7 @@ func TestMultiGoroutineTable_insert_arrayVector_datetime_timestamp_nanotime_nano
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "Arr1",
 			Database:       "",
 			TableName:      "t1",
@@ -2363,10 +2329,11 @@ func TestMultiGoroutineTable_insert_arrayVector_otherType(t *testing.T) {
 			"share t as t1"
 		_, err = ddb.RunScript(scriptGoroutineCount)
 		So(err, ShouldBeNil)
+
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "uuidv",
 			Database:       "",
 			TableName:      "t1",
@@ -2384,6 +2351,7 @@ func TestMultiGoroutineTable_insert_arrayVector_otherType(t *testing.T) {
 		re, err := ddb.RunScript("select * from t1;")
 		So(err, ShouldBeNil)
 		reTable := re.(*model.Table)
+		fmt.Println(reTable, reTable.Rows())
 		So(reTable.Rows(), ShouldEqual, 2)
 		reArray1v := reTable.GetColumnByName("uuidv")
 		reArray2v := reTable.GetColumnByName("int128v")
@@ -2409,7 +2377,7 @@ func TestMultiGoroutineTable_insert_blob(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "intv",
 			Database:       "",
 			TableName:      "t1",
@@ -2433,21 +2401,21 @@ func TestMultiGoroutineTable_insert_blob(t *testing.T) {
 	})
 }
 
-func TestMultiGoroutineTable_insert_wrong_type(t *testing.T) {
-	Convey("TestMultiGoroutineTable_insert_arrayVector_otherType", t, func() {
+func TestMultiGoroutineTable_insert_arrayVector_wrong_type(t *testing.T) {
+	Convey("TestMultiGoroutineTable_insert_arrayVector_wrong_type", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		defer ddb.Close()
-		scriptGoroutineCount := "t = streamTable(1000:0, `intv`doublev," +
-			"[INT,DOUBLE]);" +
+		s := "t = streamTable(1000:0, `intv`doublev," +
+			"[INT[],DOUBLE[]]);" +
 			"share t as t1"
-		_, err = ddb.RunScript(scriptGoroutineCount)
+		_, err = ddb.RunScript(s)
 		So(err, ShouldBeNil)
 		opt := &mtw.Option{
 			GoroutineCount: 1,
-			BatchSize:      1,
-			Throttle:       1,
-			PartitionCol:   "intv",
+			BatchSize:      10,
+			Throttle:       1000,
+			PartitionCol:   "",
 			Database:       "",
 			TableName:      "t1",
 			UserID:         setup.UserName,
@@ -2456,26 +2424,9 @@ func TestMultiGoroutineTable_insert_wrong_type(t *testing.T) {
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
-		tb := make([][]model.DataType, 0)
-		for i := 0; i < 1; i++ {
-			rowData := make([]model.DataType, 0)
-			dt1, _ := model.NewDataType(model.DtInt, int32(16+i))
-			rowData = append(rowData, dt1)
-			dt2, _ := model.NewDataType(model.DtInt, int32(i))
-			rowData = append(rowData, dt2)
-			tb = append(tb, rowData)
-		}
-		err = mtt.InsertUnwrittenData(tb)
-		So(err, ShouldBeNil)
-		mtt.WaitForGoroutineCompletion()
-		So(mtt.GetStatus().ErrMsg, ShouldContainSubstring, "failed to set DataType(int) into DataTypeList(double)")
-		_, err = ddb.RunScript("select * from t1;")
-		So(err, ShouldBeNil)
-		status := mtt.GetStatus()
-		So(len(tb), ShouldEqual, status.UnSentRows+status.SentRows+status.FailedRows)
-		unwrittenData := mtt.GetUnwrittenData()
-		So(unwrittenData[0][0].Value(), ShouldEqual, int32(16))
-		So(unwrittenData[0][1].Value(), ShouldEqual, int32(0))
+		err = mtt.Insert([]int32{1, 2, 3}, []float32{1.1, 2.2, 3.3})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "the type of input must be []float64 when datatype is DtDouble")
 		_, err = ddb.RunScript("undef(`t1,SHARED)")
 		So(err, ShouldBeNil)
 	})
@@ -2494,7 +2445,7 @@ func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      1,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "uuidv",
 			Database:       "",
 			TableName:      "t1",
@@ -2504,17 +2455,23 @@ func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 		}
 		mtt, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
-		tb := make([][]model.DataType, 0)
+		tb := make([][]interface{}, 0)
+		_tb := make([]interface{}, 0)
+		c1 := make([]string, 0)
+		c2 := make([]string, 0)
+		c3 := make([]string, 0)
 		for i := 0; i < 3; i++ {
-			rowData := make([]model.DataType, 0)
-			dt1, _ := model.NewDataType(model.DtUUID, "00000000-0004-e72c-0000-000000007eb1")
-			rowData = append(rowData, dt1)
-			dt2, _ := model.NewDataType(model.DtIP, "192.168.100.20")
-			rowData = append(rowData, dt2)
-			dt3, _ := model.NewDataType(model.DtInt128, "e1671797c52e15f763380b45e841ec32")
-			rowData = append(rowData, dt3)
-			tb = append(tb, rowData)
+			dt1 := "00000000-0004-e72c-0000-000000007eb1"
+			c1 = append(c1, dt1)
+			dt2 := "192.168.100.20"
+			c2 = append(c2, dt2)
+			dt3 := "e1671797c52e15f763380b45e841ec32"
+			c3 = append(c3, dt3)
 		}
+		_tb = append(_tb, c1)
+		_tb = append(_tb, c2)
+		_tb = append(_tb, c3)
+		tb = append(tb, _tb)
 		err = mtt.InsertUnwrittenData(tb)
 		So(err, ShouldBeNil)
 		mtt.WaitForGoroutineCompletion()
@@ -2525,7 +2482,7 @@ func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 		So(reTable.GetColumnByName("int128v").String(), ShouldEqual, "vector<int128>([e1671797c52e15f763380b45e841ec32, e1671797c52e15f763380b45e841ec32, e1671797c52e15f763380b45e841ec32])")
 		So(reTable.GetColumnByName("ipaddrv").String(), ShouldEqual, "vector<ipaddr>([192.168.100.20, 192.168.100.20, 192.168.100.20])")
 		status := mtt.GetStatus()
-		So(len(tb), ShouldEqual, status.UnSentRows+status.SentRows)
+		So(len(c1), ShouldEqual, status.UnSentRows+status.SentRows)
 		_, err = ddb.RunScript("undef(`t1,SHARED)")
 		So(err, ShouldBeNil)
 	})
@@ -2543,7 +2500,7 @@ func TestMultiGoroutineTable_keytable(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "tradeDate",
 			Database:       "",
 			TableName:      "t1",
@@ -2587,9 +2544,9 @@ func TestMultiGoroutineTable_insert_dt_multipleThreadCount(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt := &mtw.Option{
-			GoroutineCount: 10,
+			GoroutineCount: 2,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "tradeDate",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -2621,9 +2578,9 @@ func TestMultiGoroutineTable_insert_tsdb_dt_multipleThreadCount(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt := &mtw.Option{
-			GoroutineCount: 10,
+			GoroutineCount: 2,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "tradeDate",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -2656,7 +2613,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThread_groutine(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "tradeDate",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -2708,7 +2665,7 @@ func TestMultiGoroutineTable_insert_dt_multipleThread_tsdb_groutine(t *testing.T
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "tradeDate",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -2760,7 +2717,7 @@ func TestMultiGoroutineTable_insert_dt_oneThread(t *testing.T) {
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "tradeDate",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -4084,8 +4041,8 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 		So(err, ShouldBeNil)
 		opt := &mtw.Option{
 			GoroutineCount: 2,
-			BatchSize:      10,
-			Throttle:       1,
+			BatchSize:      100000,
+			Throttle:       100,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -4097,22 +4054,30 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 		So(err, ShouldBeNil)
 		mtt2, err := mtw.NewMultiGoroutineTable(opt)
 		So(err, ShouldBeNil)
-		tb1 := make([][]model.DataType, 0)
-		tb2 := make([][]model.DataType, 0)
+		tb1 := make([][]interface{}, 0)
+		tb2 := make([][]interface{}, 0)
+		_tb1 := make([]interface{}, 0)
+		_tb2 := make([]interface{}, 0)
+		c11 := make([]int32, 0)
+		c12 := make([]float64, 0)
+		c21 := make([]int32, 0)
+		c22 := make([]float64, 0)
 		for i := 0; i < 1; i++ {
-			rowData1 := make([]model.DataType, 0)
-			rowData2 := make([]model.DataType, 0)
-			dt1, _ := model.NewDataType(model.DtInt, int32(1))
-			rowData1 = append(rowData1, dt1)
-			dt2, _ := model.NewDataType(model.DtDouble, float64(12.9))
-			rowData1 = append(rowData1, dt2)
-			dt3, _ := model.NewDataType(model.DtInt, int32(2))
-			rowData2 = append(rowData2, dt3)
-			dt4, _ := model.NewDataType(model.DtDouble, float64(22.9))
-			rowData2 = append(rowData2, dt4)
-			tb1 = append(tb1, rowData1)
-			tb2 = append(tb2, rowData2)
+			dt1 := int32(1)
+			c11 = append(c11, dt1)
+			dt2 := float64(12.9)
+			c12 = append(c12, dt2)
+			dt3 := int32(2)
+			c21 = append(c21, dt3)
+			dt4 := float64(22.9)
+			c22 = append(c22, dt4)
 		}
+		_tb1 = append(_tb1, c11)
+		_tb1 = append(_tb1, c12)
+		_tb2 = append(_tb2, c21)
+		_tb2 = append(_tb2, c22)
+		tb1 = append(tb1, _tb1)
+		tb2 = append(tb2, _tb2)
 		for i := 0; i < 10; i++ {
 			err = mtt1.InsertUnwrittenData(tb1)
 			AssertNil(err)
@@ -4183,9 +4148,9 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
+			GoroutineCount: 2,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt1",
@@ -4196,9 +4161,9 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
 		opt2 := &mtw.Option{
-			GoroutineCount: 10,
+			GoroutineCount: 2,
 			BatchSize:      30,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt2",
@@ -4209,9 +4174,9 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
 		So(err, ShouldBeNil)
 		opt3 := &mtw.Option{
-			GoroutineCount: 10,
+			GoroutineCount: 2,
 			BatchSize:      100,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt3",
@@ -4224,7 +4189,7 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 		opt4 := &mtw.Option{
 			GoroutineCount: 2,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt4",
@@ -4234,15 +4199,19 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 		}
 		mtt4, err := mtw.NewMultiGoroutineTable(opt4)
 		So(err, ShouldBeNil)
-		tb := make([][]model.DataType, 0)
+		tb := make([][]interface{}, 0)
+		_tb := make([]interface{}, 0)
+		c1 := make([]int32, 0)
+		c2 := make([]float64, 0)
 		for i := 0; i < 1; i++ {
-			rowData := make([]model.DataType, 0)
-			dt1, _ := model.NewDataType(model.DtInt, int32(16+i))
-			rowData = append(rowData, dt1)
-			dt2, _ := model.NewDataType(model.DtDouble, float64(22.9))
-			rowData = append(rowData, dt2)
-			tb = append(tb, rowData)
+			dt1 := int32(16 + i)
+			c1 = append(c1, dt1)
+			dt2 := float64(22.9)
+			c2 = append(c2, dt2)
 		}
+		_tb = append(_tb, c1)
+		_tb = append(_tb, c2)
+		tb = append(tb, _tb)
 		for i := 0; i < 10; i++ {
 			err = mtt1.InsertUnwrittenData(tb)
 			AssertNil(err)
@@ -4298,234 +4267,6 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 		So(err, ShouldBeNil)
 	})
 }
-
-func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_differentDatabase(t *testing.T) {
-	Convey("func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_differentDatabase", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
-		So(err, ShouldBeNil)
-		defer ddb.Close()
-		script1 := "\n" +
-			"Database = \"dfs://test_MultithreadedTableWriter1\"\n" +
-			"if(exists(Database)){\n" +
-			"\tdropDatabase(Database)\t\n" +
-			"}\n" +
-			"db=database(Database, VALUE, 1..5)\n" +
-			"t=table(1:0, `volume`valueTrade, [INT, DOUBLE])\n;share t as t1;" +
-			"\tcreatePartitionedTable(dbHandle=db, table=t, tableName=`pt1, partitionColumns=[\"volume\"]);\n"
-		_, err = ddb.RunScript(script1)
-		So(err, ShouldBeNil)
-		script2 := "\n" +
-			"Database = \"dfs://test_MultithreadedTableWriter2\"\n" +
-			"if(exists(Database)){\n" +
-			"\tdropDatabase(Database)\t\n" +
-			"}\n" +
-			"db=database(Database, VALUE, 1..5)\n" +
-			"t=table(1:0, `volume`valueTrade, [INT, DOUBLE])\n;share t as t1;" +
-			"\tcreatePartitionedTable(dbHandle=db, table=t, tableName=`pt1, partitionColumns=[\"volume\"]);\n"
-		_, err = ddb.RunScript(script2)
-		So(err, ShouldBeNil)
-		script3 := "\n" +
-			"Database = \"dfs://test_MultithreadedTableWriter3\"\n" +
-			"if(exists(Database)){\n" +
-			"\tdropDatabase(Database)\t\n" +
-			"}\n" +
-			"db=database(Database, VALUE, 1..5)\n" +
-			"t=table(1:0, `volume`valueTrade, [INT, DOUBLE])\n;share t as t1;" +
-			"\tcreatePartitionedTable(dbHandle=db, table=t, tableName=`pt1, partitionColumns=[\"volume\"]);\n"
-		_, err = ddb.RunScript(script3)
-		So(err, ShouldBeNil)
-		opt1 := &mtw.Option{
-			GoroutineCount: 20,
-			BatchSize:      10,
-			Throttle:       1,
-			PartitionCol:   "volume",
-			Database:       "dfs://test_MultithreadedTableWriter1",
-			TableName:      "pt1",
-			UserID:         setup.UserName,
-			Password:       setup.Password,
-			Address:        host12,
-		}
-		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
-		So(err, ShouldBeNil)
-		opt2 := &mtw.Option{
-			GoroutineCount: 10,
-			BatchSize:      30,
-			Throttle:       1,
-			PartitionCol:   "volume",
-			Database:       "dfs://test_MultithreadedTableWriter2",
-			TableName:      "pt1",
-			UserID:         setup.UserName,
-			Password:       setup.Password,
-			Address:        host12,
-		}
-		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
-		So(err, ShouldBeNil)
-		opt3 := &mtw.Option{
-			GoroutineCount: 10,
-			BatchSize:      100,
-			Throttle:       1,
-			PartitionCol:   "volume",
-			Database:       "dfs://test_MultithreadedTableWriter3",
-			TableName:      "pt1",
-			UserID:         setup.UserName,
-			Password:       setup.Password,
-			Address:        host12,
-		}
-		mtt3, err := mtw.NewMultiGoroutineTable(opt3)
-		So(err, ShouldBeNil)
-		tb := make([][]model.DataType, 0)
-		for i := 0; i < 1; i++ {
-			rowData := make([]model.DataType, 0)
-			dt1, _ := model.NewDataType(model.DtInt, int32(16+i))
-			rowData = append(rowData, dt1)
-			dt2, _ := model.NewDataType(model.DtDouble, float64(22.9))
-			rowData = append(rowData, dt2)
-			tb = append(tb, rowData)
-		}
-		for i := 0; i < 10; i++ {
-			err = mtt1.InsertUnwrittenData(tb)
-			AssertNil(err)
-			err = mtt2.InsertUnwrittenData(tb)
-			AssertNil(err)
-			err = mtt3.InsertUnwrittenData(tb)
-			AssertNil(err)
-		}
-		for j := 0; j < 10; j++ {
-			var intarr []int32
-			var floatarr1 []float64
-			for i := 0; i < 1; i++ {
-				floatarr1 = append(floatarr1, float64(22.9))
-				intarr = append(intarr, int32(16))
-			}
-			valueTrade, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr1)
-			volume, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr)
-			tmp := model.NewTable([]string{"volume", "valueTrade"},
-				[]*model.Vector{model.NewVector(volume), model.NewVector(valueTrade)})
-			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp})
-			AssertNil(err)
-		}
-		mtt1.WaitForGoroutineCompletion()
-		mtt2.WaitForGoroutineCompletion()
-		mtt3.WaitForGoroutineCompletion()
-		re1, err := ddb.RunScript("select * from loadTable('dfs://test_MultithreadedTableWriter1',`pt1) order by volume,valueTrade")
-		So(err, ShouldBeNil)
-		re2, err := ddb.RunScript("select * from loadTable('dfs://test_MultithreadedTableWriter2',`pt1) order by volume,valueTrade")
-		So(err, ShouldBeNil)
-		re3, err := ddb.RunScript("select * from loadTable('dfs://test_MultithreadedTableWriter3',`pt1) order by volume,valueTrade")
-		So(err, ShouldBeNil)
-		ex, err := ddb.RunScript("select * from t1 order by volume,valueTrade")
-		So(err, ShouldBeNil)
-		reTable1 := re1.(*model.Table)
-		reTable2 := re2.(*model.Table)
-		reTable3 := re3.(*model.Table)
-		exTable := ex.(*model.Table)
-		for i := 0; i < len(reTable1.GetColumnNames()); i++ {
-			So(reTable1.GetColumnByIndex(i).String(), ShouldEqual, exTable.GetColumnByIndex(i).String())
-			So(reTable2.GetColumnByIndex(i).String(), ShouldEqual, exTable.GetColumnByIndex(i).String())
-			So(reTable3.GetColumnByIndex(i).String(), ShouldEqual, exTable.GetColumnByIndex(i).String())
-		}
-		_, err = ddb.RunScript("undef(`t1, SHARED)")
-		So(err, ShouldBeNil)
-		_, err = ddb.RunScript("dropDatabase(\"dfs://test_MultithreadedTableWriter1\")")
-		So(err, ShouldBeNil)
-		_, err = ddb.RunScript("dropDatabase(\"dfs://test_MultithreadedTableWriter2\")")
-		So(err, ShouldBeNil)
-		_, err = ddb.RunScript("dropDatabase(\"dfs://test_MultithreadedTableWriter3\")")
-		So(err, ShouldBeNil)
-	})
-}
-
-func TestMultiGoroutineTable_insert_differentTable_status_isExiting(t *testing.T) {
-	Convey("func TestMultiGoroutineTable_insert_differentTable_status_isExiting", t, func() {
-		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
-		So(err, ShouldBeNil)
-		defer ddb.Close()
-		script := "tmp1=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, INT, DOUBLE])\n;share tmp1 as st1;" +
-			"tmp2=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, INT, DOUBLE])\n;share tmp2 as st2;" +
-			"tmp3=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, INT, DOUBLE])\n;share tmp3 as st3;"
-		_, err = ddb.RunScript(script)
-		So(err, ShouldBeNil)
-		opt1 := &mtw.Option{
-			GoroutineCount: 20,
-			BatchSize:      10,
-			Throttle:       1,
-			PartitionCol:   "volume",
-			Database:       "",
-			TableName:      "st1",
-			UserID:         setup.UserName,
-			Password:       setup.Password,
-			Address:        host12,
-		}
-		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
-		So(err, ShouldBeNil)
-		opt2 := &mtw.Option{
-			GoroutineCount: 10,
-			BatchSize:      30,
-			Throttle:       1,
-			PartitionCol:   "volume",
-			Database:       "",
-			TableName:      "st2",
-			UserID:         setup.UserName,
-			Password:       setup.Password,
-			Address:        host12,
-		}
-		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
-		So(err, ShouldBeNil)
-		opt3 := &mtw.Option{
-			GoroutineCount: 10,
-			BatchSize:      100,
-			Throttle:       1,
-			PartitionCol:   "volume",
-			Database:       "",
-			TableName:      "st3",
-			UserID:         setup.UserName,
-			Password:       setup.Password,
-			Address:        host12,
-		}
-		mtt3, err := mtw.NewMultiGoroutineTable(opt3)
-		So(err, ShouldBeNil)
-		n := 100
-		for i := 0; i < 10; i++ {
-			waitGroup.Add(1)
-			go threadinsertData(mtt1, n)
-			waitGroup.Add(1)
-			go threadinsertData(mtt2, n)
-			waitGroup.Add(1)
-			go threadinsertData(mtt3, n)
-			insertDataTotable(n, "st1")
-			insertDataTotable(n, "st2")
-			insertDataTotable(n, "st3")
-		}
-		waitGroup.Wait()
-		mtt1.WaitForGoroutineCompletion()
-		mtt2.WaitForGoroutineCompletion()
-		mtt3.WaitForGoroutineCompletion()
-		re1, err := ddb.RunScript("select * from tmp1 order by volume,valueTrade;")
-		So(err, ShouldBeNil)
-		re2, err := ddb.RunScript("select * from tmp2 order by volume,valueTrade;")
-		So(err, ShouldBeNil)
-		re3, err := ddb.RunScript("select * from tmp3 order by volume,valueTrade;")
-		So(err, ShouldBeNil)
-		ex, err := ddb.RunScript("select * from tmp1 order by volume,valueTrade;")
-		So(err, ShouldBeNil)
-		reTable1 := re1.(*model.Table)
-		reTable2 := re2.(*model.Table)
-		reTable3 := re3.(*model.Table)
-		exTable := ex.(*model.Table)
-		for i := 0; i < len(reTable1.GetColumnNames()); i++ {
-			So(reTable1.GetColumnByIndex(i).String(), ShouldEqual, exTable.GetColumnByIndex(i).String())
-			So(reTable2.GetColumnByIndex(i).String(), ShouldEqual, exTable.GetColumnByIndex(i).String())
-			So(reTable3.GetColumnByIndex(i).String(), ShouldEqual, exTable.GetColumnByIndex(i).String())
-		}
-		_, err = ddb.RunScript("undef(`st1, SHARED)")
-		So(err, ShouldBeNil)
-		_, err = ddb.RunScript("undef(`st2, SHARED)")
-		So(err, ShouldBeNil)
-		_, err = ddb.RunScript("undef(`st3, SHARED)")
-		So(err, ShouldBeNil)
-	})
-}
-
 func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_tsdb_keepDuplicates", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
@@ -4546,9 +4287,9 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
-			BatchSize:      10,
-			Throttle:       1,
+			GoroutineCount: 2,
+			BatchSize:      1000,
+			Throttle:       100,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt1",
@@ -4559,9 +4300,9 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 		mtt1, err := mtw.NewMultiGoroutineTable(opt1)
 		So(err, ShouldBeNil)
 		opt2 := &mtw.Option{
-			GoroutineCount: 10,
+			GoroutineCount: 2,
 			BatchSize:      30,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt2",
@@ -4572,9 +4313,9 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 		mtt2, err := mtw.NewMultiGoroutineTable(opt2)
 		So(err, ShouldBeNil)
 		opt3 := &mtw.Option{
-			GoroutineCount: 10,
+			GoroutineCount: 2,
 			BatchSize:      100,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt3",
@@ -4587,7 +4328,7 @@ func TestMultiGoroutineTable_insert_tsdb_keepDuplicates(t *testing.T) {
 		opt4 := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      100,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt4",
@@ -4659,9 +4400,9 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_1024(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
+			GoroutineCount: 2,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -4712,9 +4453,9 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_1048576(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
+			GoroutineCount: 2,
 			BatchSize:      10,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -4765,9 +4506,9 @@ func TestMultiGoroutineTable_insert_dfs_length_eq_3000000(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
-			BatchSize:      10,
-			Throttle:       1,
+			GoroutineCount: 2,
+			BatchSize:      10000,
+			Throttle:       100,
 			PartitionCol:   "volume",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt",
@@ -4805,18 +4546,20 @@ func TestMultiGoroutineTable_insert_streamTable_multipleThread(t *testing.T) {
 	Convey("func TestMultiGoroutineTable_insert_streamTable_multipleThread", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
+		t1 := "t1_" + generateRandomString(5)
+		t2 := "t2_" + generateRandomString(5)
 		defer ddb.Close()
-		script := "t=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share t as t1;" +
-			"tt=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share tt as t2;"
+		script := "t=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share t as " + t1 + ";" +
+			"tt=table(1:0, `sym`tradeDate`tradePrice`vwap`volume`valueTrade, [SYMBOL, DATETIME, DOUBLE, DOUBLE, INT, DOUBLE])\n;share tt as " + t2 + ";"
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
+			GoroutineCount: 2,
 			BatchSize:      10,
 			Throttle:       3,
 			PartitionCol:   "volume",
 			Database:       "",
-			TableName:      "t2",
+			TableName:      t2,
 			UserID:         setup.UserName,
 			Password:       setup.Password,
 			Address:        host12,
@@ -4827,20 +4570,20 @@ func TestMultiGoroutineTable_insert_streamTable_multipleThread(t *testing.T) {
 		waitGroup.Add(10)
 		for i := 0; i < 10; i++ {
 			go threadinsertData(mtt1, n)
-			insertDataTotable(n, "t1")
+			insertDataTotable(n, t1)
 		}
 		waitGroup.Wait()
 		mtt1.WaitForGoroutineCompletion()
-		re1, err := ddb.RunScript("select * from t2 order by sym,tradeDate,tradePrice,vwap,volume,valueTrade;")
+		re1, err := ddb.RunScript("select * from " + t2 + " order by sym,tradeDate,tradePrice,vwap,volume,valueTrade;")
 		So(err, ShouldBeNil)
-		ex, err := ddb.RunScript("select * from t1 order by sym,tradeDate,tradePrice,vwap,volume,valueTrade;")
+		ex, err := ddb.RunScript("select * from " + t1 + " order by sym,tradeDate,tradePrice,vwap,volume,valueTrade;")
 		So(err, ShouldBeNil)
 		reTable1 := re1.(*model.Table)
 		exTable := ex.(*model.Table)
 		for i := 0; i < len(reTable1.GetColumnNames()); i++ {
 			So(reTable1.GetColumnByIndex(i).String(), ShouldEqual, exTable.GetColumnByIndex(i).String())
 		}
-		_, err = ddb.RunScript("undef(`t1, SHARED)")
+		_, err = ddb.RunScript("undef(`" + t1 + "`" + t2 + ", SHARED)")
 		So(err, ShouldBeNil)
 	})
 }
@@ -4857,9 +4600,9 @@ func TestMultiGoroutineTable_insert_streamtable_200cols(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
+			GoroutineCount: 2,
 			BatchSize:      10000,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "sym",
 			Database:       "",
 			TableName:      "trades",
@@ -4927,9 +4670,9 @@ func TestMultiGoroutineTable_insert_dfstable_200cols(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
+			GoroutineCount: 2,
 			BatchSize:      1000,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "tradeDate",
 			Database:       "dfs://test_MultithreadedTableWriter",
 			TableName:      "pt1",
@@ -4997,9 +4740,9 @@ func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 10,
+			GoroutineCount: 2,
 			BatchSize:      1000,
-			Throttle:       1,
+			Throttle:       1000,
 			PartitionCol:   "id",
 			Database:       "dfs://test_mtw_concurrentWrite_FailedData",
 			TableName:      "pt",
@@ -5019,7 +4762,13 @@ func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write
 		re, err := ddb.RunScript("(exec count(*) from loadTable(Database, `pt) where val = 1)[0]")
 		So(err, ShouldBeNil)
 		reTable := re.(*model.Scalar)
-		So(failedData+len(UnwrittenData)+int(reTable.Value().(int32)), ShouldEqual, 10000)
+		unwrittenLength := 0
+		for _, v := range UnwrittenData {
+			unwrittenLength += len(v[0].([]int32))
+			// unwrittenLength += len(v[1].([]float64))
+			// unwrittenLength += len(v[2].([]int32))
+		}
+		So(failedData+unwrittenLength+int(reTable.Value().(int32)), ShouldEqual, 10000)
 		_, err = ddb.RunScript("dropDatabase(\"dfs://test_mtw_concurrentWrite_FailedData\")")
 		So(err, ShouldBeNil)
 	})
@@ -5035,9 +4784,9 @@ func TestMultiGoroutineTable_insert_streamTable_eq_1024(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
-			BatchSize:      10,
-			Throttle:       1,
+			GoroutineCount: 2,
+			BatchSize:      100000,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "",
 			TableName:      "t2",
@@ -5079,9 +4828,9 @@ func TestMultiGoroutineTable_insert_streamTable_eq_1048576(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
-			BatchSize:      10,
-			Throttle:       1,
+			GoroutineCount: 2,
+			BatchSize:      100000,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "",
 			TableName:      "t2",
@@ -5125,9 +4874,9 @@ func TestMultiGoroutineTable_insert_streamTable_eq_3000000(t *testing.T) {
 		_, err = ddb.RunScript(script)
 		So(err, ShouldBeNil)
 		opt1 := &mtw.Option{
-			GoroutineCount: 20,
-			BatchSize:      10,
-			Throttle:       1,
+			GoroutineCount: 2,
+			BatchSize:      100000,
+			Throttle:       1000,
 			PartitionCol:   "volume",
 			Database:       "",
 			TableName:      "t2",

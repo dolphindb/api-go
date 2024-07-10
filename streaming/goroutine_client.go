@@ -59,7 +59,6 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 		return err
 	}
 
-	fmt.Println("real subscribe")
 	queue, err := t.subscribeInternal(req)
 	if err != nil {
 		return err

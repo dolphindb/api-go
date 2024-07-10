@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/model"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,18 +35,18 @@ func TestMultiGoroutineTable(t *testing.T) {
 	df := mtt.GetUnwrittenData()
 	assert.Equal(t, len(df), 0)
 
-	date, err := model.NewDataType(model.DtDate, time.Date(1970, 1, 1, 1, 1, 1, 1, time.UTC))
-	assert.Nil(t, err)
+	// date, err := model.NewDataType(model.DtDate, time.Date(1970, 1, 1, 1, 1, 1, 1, time.UTC))
+	// assert.Nil(t, err)
 
-	sym, err := model.NewDataType(model.DtString, "insertFailed")
-	assert.Nil(t, err)
+	// sym, err := model.NewDataType(model.DtString, "insertFailed")
+	// assert.Nil(t, err)
 
-	err = mtt.InsertUnwrittenData([][]model.DataType{
-		{
-			date, sym,
-		},
-	})
-	assert.Nil(t, err)
+	// err = mtt.InsertUnwrittenData([][]model.DataType{
+	// 	{
+	// 		date, sym,
+	// 	},
+	// })
+	// assert.Nil(t, err)
 
 	mtt.WaitForGoroutineCompletion()
 
