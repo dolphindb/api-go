@@ -237,7 +237,7 @@ func main() {
 通过配置 BehaviorOptions 可以配置行为标识。可配置行为标识如下：
 
 - Priority：指定本任务优先级,可选范围为 0~8，默认为 8。
-- Parallelism：指定本任务并行度,可选范围为 0~64，默认为 8。
+- Parallelism：指定本任务并行度,可选范围为 0~64，默认为 64。
 - FetchSize: 指定分块返回的块大小。
 - LoadBalance: 指定是否开启负载均衡。
 - EnableHighAvailability: 指定是否开启高可用。
@@ -1868,14 +1868,14 @@ NewTableFromStruct(obj interface{}) (*Table, error)
 
 入参说明：
 
-obj 可以为任意结构体对象，但是该结构体字段类型需要为数组，且字段带有以 `dolphindb` 开头的特定 tag，如 `dolphindb:"column:name,type:string"`。
+obj 可以为任意结构体对象，但是该结构体字段类型需要为数组，且字段带有以 `dolphindb` 开头的特定 tag，如 `dolphindb:"column:name;type:string"`。
 其中，column 后为列名，type 后为列数据类型(通过 model.GetDataTypeString 获取)。字段类型需要跟列数据类型匹配。
 
 示例：
 
 ```go
 type Example struct {
-    Name []string `dolphindb:"column:name,type:string"`
+    Name []string `dolphindb:"column:name;type:string"`
 }
 
 func main() {

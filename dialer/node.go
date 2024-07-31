@@ -280,7 +280,7 @@ func (c *conn) handleGetClusterPerfError(n *node, err error) error {
 }
 
 func (c *conn) connectNode(n *node) (bool, error) {
-	// fmt.Println("Connect to ", n.address)
+	fmt.Println("Connect to ", n.address)
 	for !c.isClosed {
 		err := c.connect(n.address)
 		if err != nil {

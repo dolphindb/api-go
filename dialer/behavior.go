@@ -59,7 +59,7 @@ func (f *BehaviorOptions) GetPriority() int {
 // GetParallelism gets the parallelism of the task.
 func (f *BehaviorOptions) GetParallelism() int {
 	if f.Parallelism == nil {
-		return 2
+		return 64
 	}
 	return *f.Parallelism
 }

@@ -442,3 +442,83 @@ func TestConnectionHighAvailability(t *testing.T) {
 	})
 
 }
+
+func TestConnectionParallel(t *testing.T) {
+	t.Parallel()
+	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, "admin", "123456")
+	AssertNil(err)
+	db.RunScript("login(`admin,`123456);try{createUser(`test1, `123456)}catch(ex){};go;setMaxJobParallelism(`test1, 10);")
+	Convey("TestConnectionParallel_lt_MaxJobParallelism", t, func() {
+
+		priority := 4
+		parallel := 1
+		opt := &dialer.BehaviorOptions{
+			Priority:    &priority,
+			Parallelism: &parallel,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		conn.Connect()
+		loginReq := &api.LoginRequest{
+			UserID:   "test1",
+			Password: "123456",
+		}
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+		res, _ := conn.RunScript("getConsoleJobs()")
+		Println(res)
+		So(res.(*model.Table).GetColumnByName("parallelism").Get(0).Value().(int32), ShouldEqual, 1)
+		So(res.(*model.Table).GetColumnByName("priority").Get(0).Value().(int32), ShouldEqual, 4)
+
+		conn.Close()
+		So(conn.IsClosed(), ShouldBeTrue)
+	})
+
+	Convey("TestConnectionParallel_gt_MaxJobParallelism", t, func() {
+
+		priority := 4
+		parallel := 11
+		opt := &dialer.BehaviorOptions{
+			Priority:    &priority,
+			Parallelism: &parallel,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		conn.Connect()
+		loginReq := &api.LoginRequest{
+			UserID:   "test1",
+			Password: "123456",
+		}
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+		res, _ := conn.RunScript("getConsoleJobs()")
+		Println(res)
+		So(res.(*model.Table).GetColumnByName("parallelism").Get(0).Value().(int32), ShouldEqual, 10)
+		So(res.(*model.Table).GetColumnByName("priority").Get(0).Value().(int32), ShouldEqual, 4)
+
+		conn.Close()
+		So(conn.IsClosed(), ShouldBeTrue)
+	})
+
+	Convey("TestConnectionParallel_default", t, func() {
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, nil)
+		So(err, ShouldBeNil)
+		conn.Connect()
+		loginReq := &api.LoginRequest{
+			UserID:   "test1",
+			Password: "123456",
+		}
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+		res, _ := conn.RunScript("getConsoleJobs()")
+		Println(res)
+		So(res.(*model.Table).GetColumnByName("parallelism").Get(0).Value().(int32), ShouldEqual, 10)
+		So(res.(*model.Table).GetColumnByName("priority").Get(0).Value().(int32), ShouldEqual, 4)
+
+		conn.Close()
+		So(conn.IsClosed(), ShouldBeTrue)
+	})
+
+	db.Close()
+	AssertEqual(db.IsClosed(), true)
+}
