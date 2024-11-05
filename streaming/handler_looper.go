@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type handlerLopper struct {
-	queue   *UnboundedChan
-	handler MessageHandler
-	batchHandler MessageBatchHandler
+	queue           *UnboundedChan
+	handler         MessageHandler
+	batchHandler    MessageBatchHandler
 	MsgDeserializer *StreamDeserializer
 
 	msgAsTable bool
-	batchSize *int
-	throttle  *int
-	exit      chan bool
+	batchSize  *int
+	throttle   *int
+	exit       chan bool
 	affirmExit chan bool
 }
 
@@ -73,7 +73,7 @@ func mergeIMessage(msg []IMessage) (IMessage, error) {
 	colNum := len(firstMsg.nameToIndex)
 	colNames := make([]string, colNum)
 	colValues := make([](*model.Vector), colNum)
-	for k,v := range firstMsg.nameToIndex {
+	for k, v := range firstMsg.nameToIndex {
 		colNames[v] = k
 		val := firstMsg.GetValue(v)
 		valType := val.(*model.Scalar).DataType
@@ -84,7 +84,7 @@ func mergeIMessage(msg []IMessage) (IMessage, error) {
 
 	for i := 1; i < len(msg); i++ {
 		inMsg := msg[i].(*Message)
-		for k,v := range inMsg.nameToIndex {
+		for k, v := range inMsg.nameToIndex {
 			colNames[v] = k
 			val := inMsg.GetValue(v)
 			valType := val.(*model.Scalar).DataType
@@ -95,10 +95,10 @@ func mergeIMessage(msg []IMessage) (IMessage, error) {
 		}
 	}
 	table := model.NewTable(colNames, colValues)
-	ret := &TableMessage {
+	ret := &TableMessage{
 		offset: firstMsg.offset,
-		topic: firstMsg.topic,
-		sym: firstMsg.sym,
+		topic:  firstMsg.topic,
+		sym:    firstMsg.sym,
 
 		msg: table,
 	}
@@ -110,7 +110,7 @@ func (h *handlerLopper) handleMessage() {
 	if len(msg) == 0 {
 		return
 	}
-	if(h.msgAsTable) {
+	if h.msgAsTable {
 		ret, err := mergeIMessage(msg)
 		if err != nil {
 			fmt.Printf("merge msg to table failed: %s\n", err.Error())
@@ -118,8 +118,8 @@ func (h *handlerLopper) handleMessage() {
 		if !h.isStopped() {
 			h.handler.DoEvent(ret)
 		}
-	} else if (h.batchSize != nil && *h.batchSize >= 1) {
-		if(h.MsgDeserializer != nil) {
+	} else if h.batchSize != nil && *h.batchSize >= 1 {
+		if h.MsgDeserializer != nil {
 			outMsg := make([]IMessage, 0)
 			for _, v := range msg {
 				ret, err := h.MsgDeserializer.Parse(v)
@@ -139,7 +139,7 @@ func (h *handlerLopper) handleMessage() {
 		}
 	} else {
 		for _, v := range msg {
-			if(h.MsgDeserializer != nil) {
+			if h.MsgDeserializer != nil {
 				ret, err := h.MsgDeserializer.Parse(v)
 				if err != nil {
 					fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())
@@ -202,8 +202,7 @@ func batchPoll(queue *UnboundedChan, batchSize int, throttle int) []IMessage {
 		}
 	}
 
-
-	return msg;
+	return msg
 }
 
 // func poll(queue *UnboundedChan, batchSize int, throttle int) []IMessage {

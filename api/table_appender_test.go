@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/model"
 	"github.com/stretchr/testify/assert"
 )
 

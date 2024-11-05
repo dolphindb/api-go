@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 )
 
 func (d *dataType) Render(w *protocol.Writer, bo protocol.ByteOrder) error {

@@ -1,8 +1,8 @@
 package model
 
 import (
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/errors"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/errors"
 )
 
 // DataForm interface declares functions to handle DataForm data.
@@ -39,7 +39,7 @@ func newCategory(dataForm, datatype byte) *Category {
 }
 
 func (cg *Category) render(w *protocol.Writer) error {
-	return w.Write(protocol.ByteSliceFromInt16Slice([]int16{int16(cg.DataForm) << 8 + int16(cg.DataType)}))
+	return w.Write(protocol.ByteSliceFromInt16Slice([]int16{int16(cg.DataForm)<<8 + int16(cg.DataType)}))
 }
 
 func parseCategory(r protocol.Reader, bo protocol.ByteOrder) (*Category, error) {
@@ -47,7 +47,7 @@ func parseCategory(r protocol.Reader, bo protocol.ByteOrder) (*Category, error) 
 	if err != nil {
 		return nil, errors.ReadDataTypeAndDataFormError(err.Error())
 	}
-	return newCategory(byte(c >> 8), byte(c << 8 >> 8)), nil
+	return newCategory(byte(c>>8), byte(c<<8>>8)), nil
 }
 
 // ParseDataForm parses the raw bytes in r with bo and return a DataForm object.

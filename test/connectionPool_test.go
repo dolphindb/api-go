@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -108,8 +108,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				PoolSize:    2,
 				LoadBalance: false,
 			}
-			_, err := api.NewDBConnectionPool(opt)
+			pool, err := api.NewDBConnectionPool(opt)
 			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
 		})
 		Convey("Test_function_DBConnectionPool_address_nil_exception \n", func() {
 			opt := &api.PoolOption{
@@ -119,8 +120,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				PoolSize:    2,
 				LoadBalance: false,
 			}
-			_, err := api.NewDBConnectionPool(opt)
+			pool, err := api.NewDBConnectionPool(opt)
 			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
 		})
 		Convey("Test_function_DBConnectionPool_wrong_userName_exception \n", func() {
 			opt := &api.PoolOption{
@@ -130,8 +132,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				PoolSize:    2,
 				LoadBalance: false,
 			}
-			_, err := api.NewDBConnectionPool(opt)
+			pool, err := api.NewDBConnectionPool(opt)
 			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
 		})
 		Convey("Test_function_DBConnectionPool_userName_null_exception \n", func() {
 			opt := &api.PoolOption{
@@ -141,8 +144,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				PoolSize:    2,
 				LoadBalance: false,
 			}
-			_, err := api.NewDBConnectionPool(opt)
+			pool, err := api.NewDBConnectionPool(opt)
 			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
 		})
 		Convey("Test_function_DBConnectionPool_wrong_Password_exception \n", func() {
 			opt := &api.PoolOption{
@@ -152,8 +156,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				PoolSize:    2,
 				LoadBalance: false,
 			}
-			_, err := api.NewDBConnectionPool(opt)
+			pool, err := api.NewDBConnectionPool(opt)
 			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
 		})
 		Convey("Test_function_DBConnectionPool_wrong_Password_special_symbol_exception \n", func() {
 			opt := &api.PoolOption{
@@ -163,8 +168,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				PoolSize:    2,
 				LoadBalance: false,
 			}
-			_, err := api.NewDBConnectionPool(opt)
+			pool, err := api.NewDBConnectionPool(opt)
 			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
 		})
 		Convey("Test_function_DBConnectionPool_PoolSize_less_than_0_exception", func() {
 			opt := &api.PoolOption{
@@ -174,8 +180,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				PoolSize:    -1,
 				LoadBalance: false,
 			}
-			_, err := api.NewDBConnectionPool(opt)
+			pool, err := api.NewDBConnectionPool(opt)
 			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
 		})
 		Convey("Test_function_DBConnectionPool_SetLoadBalanceAddress_LoadBalance_false_exception", func() {
 			OriginConnectionNum := GetOriginConnNum()
@@ -291,7 +298,6 @@ func TestDBConnectionPool_SetLoadBalanceAddress(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_hash_string(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_hash_string", t, func() {
 		_, err := globalConn.RunScript("t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
@@ -349,7 +355,6 @@ func TestDBConnectionPool_hash_hash_string(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_hash_symbol", t, func() {
 		_, err := globalConn.RunScript("t = table(timestamp(1..10) as datev,string(1..10) as sym)\n" +
@@ -365,7 +370,7 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
-			LoadBalance: true,
+			LoadBalance: false,
 		}
 		pool, err := api.NewDBConnectionPool(opt)
 		So(err, ShouldBeNil)
@@ -407,7 +412,6 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_hash_int(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_hash_int", t, func() {
 		_, err := globalConn.RunScript("t = table(timestamp(1..10) as datev,1..10 as sym)\n" +
@@ -423,7 +427,7 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 			UserID:      setup.UserName,
 			Password:    setup.Password,
 			PoolSize:    3,
-			LoadBalance: true,
+			LoadBalance: false,
 		}
 		pool, err := api.NewDBConnectionPool(opt)
 		So(err, ShouldBeNil)
@@ -465,7 +469,6 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_hash_datetime", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -527,7 +530,6 @@ func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_hash_date(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_hash_date", t, func() {
 		_, err := globalConn.RunScript("t = table(date(1..10) as datev,symbol(string(1..10)) as sym)\n" +
@@ -588,7 +590,6 @@ func TestDBConnectionPool_range_hash_date(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_range_int(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_range_int", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -650,7 +651,6 @@ func TestDBConnectionPool_range_range_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_range_int(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_range_int", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -712,7 +712,6 @@ func TestDBConnectionPool_value_range_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_range_month(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_range_month", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -774,7 +773,6 @@ func TestDBConnectionPool_range_range_month(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_range_date(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_range_date", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -836,7 +834,6 @@ func TestDBConnectionPool_hash_range_date(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_range_datetime", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -898,7 +895,6 @@ func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
 }
 
 func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_hash_value_symbol", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -960,7 +956,6 @@ func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_value_date(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_value_date", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -1022,7 +1017,6 @@ func TestDBConnectionPool_value_value_date(t *testing.T) {
 }
 
 func TestDBConnectionPool_value_value_month(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_value_value_month", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -1084,7 +1078,6 @@ func TestDBConnectionPool_value_value_month(t *testing.T) {
 }
 
 func TestDBConnectionPool_range_value_int(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_range_value_int", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -1146,7 +1139,6 @@ func TestDBConnectionPool_range_value_int(t *testing.T) {
 }
 
 func TestDBConnectionPool_loadBalance_false(t *testing.T) {
-	t.Parallel()
 	dbname := generateRandomString(8)
 	Convey("TestDBConnectionPool_loadBalance_false", t, func() {
 		_, err := globalConn.RunScript("\n" +
@@ -1208,7 +1200,6 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 }
 
 func TestPartitionedTableAppender(t *testing.T) {
-	t.Parallel()
 	Convey("Test_function_PartitionedTableAppender_prepare", t, func() {
 		Convey("Test_function_PartitionedTableAppender_range_int", func() {
 			dbname := generateRandomString(8)
@@ -1258,6 +1249,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(resultPrice, ShouldResemble, model.NewVector(price))
 			err = pool.Close()
 			So(err, ShouldBeNil)
+			globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		})
 		Convey("Test_function_PartitionedTableAppender_value_symbol", func() {
 			dbname := generateRandomString(8)
@@ -1307,6 +1299,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(resultPrice, ShouldResemble, model.NewVector(price))
 			err = pool.Close()
 			So(err, ShouldBeNil)
+			globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		})
 		Convey("Test_function_PartitionedTableAppender_hash_symbol", func() {
 			dbname := generateRandomString(8)
@@ -1356,6 +1349,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(resultPrice, ShouldResemble, model.NewVector(price))
 			err = pool.Close()
 			So(err, ShouldBeNil)
+			globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		})
 		Convey("Test_function_PartitionedTableAppender_list_symbol", func() {
 			dbname := generateRandomString(8)
@@ -1405,6 +1399,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(resultPrice, ShouldResemble, model.NewVector(price))
 			err = pool.Close()
 			So(err, ShouldBeNil)
+			globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		})
 		Convey("Test_function_PartitionedTableAppender_compo_value_list_symbol", func() {
 			dbname := generateRandomString(8)
@@ -1455,6 +1450,7 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(resultPrice, ShouldResemble, model.NewVector(price))
 			err = pool.Close()
 			So(err, ShouldBeNil)
+			globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 		})
 
 		Convey("Test_function_PartitionedTableAppender_arraVector", func() {
@@ -1531,12 +1527,12 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			_, err = globalConn.RunScript(`undef('origin_tab', SHARED)`)
 			So(err, ShouldBeNil)
+			globalConn.RunScript("dropDatabase('" + dbpath + "')")
 		})
 	})
 }
 
 func TestDBConnectionPool_task(t *testing.T) {
-	t.Parallel()
 	Convey("TestDBConnectionPool_task_equal_PoolSize", t, func() {
 		dbname := generateRandomString(8)
 		_, err := globalConn.RunScript("db_path = \"dfs://" + dbname + "\";\n" +
@@ -1584,6 +1580,7 @@ func TestDBConnectionPool_task(t *testing.T) {
 		So(err, ShouldBeNil)
 		closed = pool.IsClosed()
 		So(closed, ShouldBeTrue)
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 	})
 	Convey("TestDBConnectionPool_task_large_than_PoolSize", t, func() {
 		dbname := generateRandomString(8)
@@ -1632,19 +1629,18 @@ func TestDBConnectionPool_task(t *testing.T) {
 		So(err, ShouldBeNil)
 		closed = pool.IsClosed()
 		So(closed, ShouldBeTrue)
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 	})
 }
 
 func TestTableAppender(t *testing.T) {
-	t.Parallel()
 	Convey("Test_function_TableAppender_prepare", t, func() {
 		Convey("Test_function_TableAppender_range_int", func() {
-			_, err := globalConn.RunScript(`
-        t = table(100:0, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])
-        `)
+			tb := "test_akldwjgof"
+			_, err := globalConn.RunScript(tb + `= table(100:0, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])`)
 			So(err, ShouldBeNil)
 			appenderOpt := &api.TableAppenderOption{
-				TableName: "t",
+				TableName: tb,
 				Conn:      globalConn,
 			}
 			appender := api.NewTableAppender(appenderOpt)
@@ -1660,7 +1656,7 @@ func TestTableAppender(t *testing.T) {
 			// fmt.Println(newtable)
 			_, err = appender.Append(newtable)
 			So(err, ShouldBeNil)
-			re, err := globalConn.RunScript("t")
+			re, err := globalConn.RunScript(tb)
 			So(err, ShouldBeNil)
 			resultTable := re.(*model.Table)
 			resultSym := resultTable.GetColumnByName("sym").Data.Value()
@@ -1731,7 +1727,7 @@ func TestTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			IsClose = appender.IsClosed()
 			So(IsClose, ShouldBeTrue)
-			globalConnx.Close()
+			So(globalConnx.IsClosed(), ShouldBeTrue)
 		})
 		Convey("Test_function_TableAppender_dfsTable", func() {
 			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, setup.UserName, setup.Password)
@@ -1779,16 +1775,17 @@ func TestTableAppender(t *testing.T) {
 			So(resultDatev, ShouldResemble, model.NewVector(datev))
 			resultPrice := resultTable.GetColumnByName("price")
 			So(resultPrice, ShouldResemble, model.NewVector(price))
+			_, err = globalConnx.RunScript("dropDatabase('" + DfsDBPath + "')")
+			So(err, ShouldBeNil)
 			err = pool.Close()
 			So(err, ShouldBeNil)
-			err = globalConnx.Close()
-			So(err, ShouldBeNil)
+			globalConnx.Close()
+			So(globalConnx.IsClosed(), ShouldBeTrue)
 		})
 	})
 }
 
 func TestConnnectionPoolHighAvailability(t *testing.T) {
-	t.Parallel()
 	SkipConvey("TestConnnectionPoolHighAvailability", t, func() {
 		opt := &api.PoolOption{
 			Address:                setup.Address4,
@@ -1862,7 +1859,6 @@ func TestConnnectionPoolHighAvailability(t *testing.T) {
 }
 
 func TestConnnectionPooltimeOut(t *testing.T) {
-	t.Parallel()
 	Convey("TestConnnectionPooltimeOut_timeoutOption", t, func() {
 		opt := &api.PoolOption{
 			Address:  setup.Address4,
@@ -1908,10 +1904,10 @@ func TestConnnectionPooltimeOut(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			succeed := false
 			for {
-				if tasks[i].IsSuccess(){
+				if tasks[i].IsSuccess() {
 					succeed = true
 					break
-				}else{
+				} else {
 					time.Sleep(3 * time.Second)
 					break
 				}
@@ -1919,7 +1915,7 @@ func TestConnnectionPooltimeOut(t *testing.T) {
 			if succeed {
 				re := tasks[i].GetResult()
 				So(re.(*model.Scalar).Value().(int32), ShouldEqual, int32(2))
-			}else{
+			} else {
 				threadErr := tasks[i].GetError().Error()
 				So(threadErr, ShouldContainSubstring, "timeout")
 			}
@@ -1937,6 +1933,5 @@ func TestConnnectionPooltimeOut(t *testing.T) {
 		_, err := api.NewDBConnectionPool(opt)
 		So(err.Error(), ShouldContainSubstring, "Timeout must be equal or greater than 0")
 	})
-
 
 }

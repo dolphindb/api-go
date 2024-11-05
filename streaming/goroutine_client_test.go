@@ -7,29 +7,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/example/util"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/model"
 	"github.com/stretchr/testify/assert"
 )
 
 var failedAction = "failedAction"
 
 var scripts = "st1 = streamTable(100:0, `timestampv`sym`blob,[TIMESTAMP,SYMBOL,BLOB]);" +
-			"share st1 as outTables;" +
-			"n = 3;" +
-			"table1 = table(100:0, `datetimev`timestampv`sym`price1`price2, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE, DOUBLE]);" +
-			"share table1 as pt1;" +
-			"table2 = table(100:0, `datetimev`timestampv`sym`price1, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE]);" +
-			"share table2 as pt2;" +
-			"tableInsert(table1, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n), rand(100,n)+rand(1.0, n));" +
-			"tableInsert(table2, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n));" +
-			"d = dict(['msg1','msg2'], [table1, table2]);" +
-			"replay(inputTables=d, outputTables=`outTables, dateColumn=`timestampv, timeColumn=`timestampv);"
+	"share st1 as outTables;" +
+	"n = 3;" +
+	"table1 = table(100:0, `datetimev`timestampv`sym`price1`price2, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE, DOUBLE]);" +
+	"share table1 as pt1;" +
+	"table2 = table(100:0, `datetimev`timestampv`sym`price1, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE]);" +
+	"share table2 as pt2;" +
+	"tableInsert(table1, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n), rand(100,n)+rand(1.0, n));" +
+	"tableInsert(table2, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n));" +
+	"d = dict(['msg1','msg2'], [table1, table2]);" +
+	"replay(inputTables=d, outputTables=`outTables, dateColumn=`timestampv, timeColumn=`timestampv);"
 
 type basicHandler struct {
 	times int
-	msgs []IMessage
+	msgs  []IMessage
 }
 
 func (s *basicHandler) DoEvent(msg IMessage) {
@@ -48,22 +48,22 @@ func (s *batchHandler) DoEvent(msg []IMessage) {
 }
 
 func TestBasicGoroutineClient(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)
+	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
 	client := NewGoroutineClient("localhost", 8848)
@@ -78,13 +78,13 @@ func TestBasicGoroutineClient(t *testing.T) {
 		Handler:    &sh,
 		Offset:     0,
 		Reconnect:  true,
-		Throttle: &throttle,
+		Throttle:   &throttle,
 	}
 
 	err = client.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(1)*time.Second)
+	time.Sleep(time.Duration(1) * time.Second)
 	assert.Equal(t, 6, sh.times)
 	for _, v := range sh.msgs {
 		assert.Equal(t, model.DtBlob, v.GetValueByName("blob").GetDataType())
@@ -94,22 +94,22 @@ func TestBasicGoroutineClient(t *testing.T) {
 }
 
 func TestMsgAsTableGoroutineClient(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)
+	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
 	client := NewGoroutineClient("localhost", 8848)
@@ -123,41 +123,41 @@ func TestMsgAsTableGoroutineClient(t *testing.T) {
 		MsgAsTable: true,
 		Handler:    &sh,
 		Offset:     0,
-		BatchSize: &batch,
+		BatchSize:  &batch,
 		Reconnect:  true,
 	}
 
 	err = client.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(1)*time.Second)
+	time.Sleep(time.Duration(1) * time.Second)
 	assert.Equal(t, 1, sh.times)
 	tbl := sh.msgs[0]
 	assert.Equal(t, 6, tbl.Size())
 	symVec := tbl.GetValueByName("sym").(*model.Vector).GetRawValue()
-	for _,v := range symVec {
-		assert.True(t, v=="msg1" || v=="msg2")
+	for _, v := range symVec {
+		assert.True(t, v == "msg1" || v == "msg2")
 	}
 	assert.Equal(t, model.DfVector, tbl.GetValueByName("blob").GetDataForm())
 }
 
 func TestBatchGoroutineClient(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)
+	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
 	client := NewGoroutineClient("localhost", 8848)
@@ -165,20 +165,20 @@ func TestBatchGoroutineClient(t *testing.T) {
 	sh := batchHandler{}
 	throttle := 1
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
-		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
+		Address:      "localhost:8848",
+		TableName:    "outTables",
+		ActionName:   "action1",
+		MsgAsTable:   false,
+		BatchHandler: &sh,
+		Offset:       0,
+		Reconnect:    true,
 	}
 	req.SetBatchSize(10).SetThrottle(float32(throttle))
 
 	err = client.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(1)*time.Second)
+	time.Sleep(time.Duration(1) * time.Second)
 	assert.Equal(t, 1, sh.times)
 	assert.Equal(t, 6, sh.lines)
 }
@@ -189,14 +189,14 @@ func TestErrMsgAsTableWithNoBatch(t *testing.T) {
 	sh := batchHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: true,
-		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
-		Throttle: &throttle,
+		Address:      "localhost:8848",
+		TableName:    "outTables",
+		ActionName:   "action1",
+		MsgAsTable:   true,
+		BatchHandler: &sh,
+		Offset:       0,
+		Reconnect:    true,
+		Throttle:     &throttle,
 	}
 	req.SetBatchSize(10)
 
@@ -210,14 +210,14 @@ func TestErrBasicWithBatch(t *testing.T) {
 	sh := batchHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
-		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
-		Throttle: &throttle,
+		Address:      "localhost:8848",
+		TableName:    "outTables",
+		ActionName:   "action1",
+		MsgAsTable:   false,
+		BatchHandler: &sh,
+		Offset:       0,
+		Reconnect:    true,
+		Throttle:     &throttle,
 	}
 
 	err := client.Subscribe(req)
@@ -237,7 +237,7 @@ func TestErrBasicWithNoBatch(t *testing.T) {
 		Handler:    &sh,
 		Offset:     0,
 		Reconnect:  true,
-		Throttle: &throttle,
+		Throttle:   &throttle,
 	}
 	req.SetBatchSize(10)
 
@@ -348,8 +348,6 @@ func TestUnsubscribeInDoEvent(t *testing.T) {
 	<-ch
 	fmt.Println("TestUnsubscribeInDoEvent test finish ")
 }
-
-
 
 var arrayVectorStreamScript = "st1 = streamTable(100:0, `arrayInt`timestampv`sym,[INT[],TIMESTAMP,SYMBOL]);" +
 	"share st1 as outTables;" +

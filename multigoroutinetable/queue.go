@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type queue struct {

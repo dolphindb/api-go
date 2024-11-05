@@ -4,50 +4,33 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 var host10 = getRandomClusterAddress()
+
 func TestLoadTableBySQL(t *testing.T) {
 	t.Parallel()
 	Convey("Test LoadTableBySQL prepare", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host10, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		Convey("Drop all Databases", func() {
-			DfsDBPath := "dfs://" + generateRandomString(8)
-			dbPaths := []string{DfsDBPath, DiskDBPath}
-			for _, dbPath := range dbPaths {
-				script := `
-				if(existsDatabase("` + dbPath + `")){
-						dropDatabase("` + dbPath + `")
-				}
-				if(exists("` + dbPath + `")){
-					rmdir("` + dbPath + `", true)
-				}
-				`
-				_, err = ddb.RunScript(script)
-				So(err, ShouldBeNil)
-				re, err := ddb.RunScript(`existsDatabase("` + dbPath + `")`)
-				So(err, ShouldBeNil)
-				isExitsDatabase := re.(*model.Scalar).DataType.Value()
-				So(isExitsDatabase, ShouldBeFalse)
-			}
-		})
 		Convey("Test_LoadTableBySQL_dfs_dimension:", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
-			re1, err := ExistsDatabase(ddb, DfsDBPath)
+			re1, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
 			CreateDfsDimensiondb(DfsDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DfsDBPath))
 			_, err = LoadTableBySQL(ddb, "[2010.01.05, 2010.01.15, 2010.01.19]", "select * from loadTable('"+DfsDBPath+"','"+TbName1+"') where date in %s", DfsDBPath, TbName1)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_LoadTableBySQL_dfs_range:", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
 			CreateDfsRangedb(DfsDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DfsDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -57,16 +40,17 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re1, ShouldBeTrue)
 			err = DropDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
-			re2, err := ExistsDatabase(ddb, DfsDBPath)
+			re2, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re2, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_hash:", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
-			re1, err := ExistsDatabase(ddb, DfsDBPath)
+			re1, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
 			CreateDfsHashdb(DfsDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DfsDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -76,16 +60,17 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re2, ShouldBeTrue)
 			err = DropDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
-			re3, err := ExistsDatabase(ddb, DfsDBPath)
+			re3, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_value:", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
-			re1, err := ExistsDatabase(ddb, DfsDBPath)
+			re1, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
 			CreateDfsValuedb(DfsDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DfsDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -95,16 +80,17 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re2, ShouldBeTrue)
 			err = DropDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
-			re3, err := ExistsDatabase(ddb, DfsDBPath)
+			re3, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_list:", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
-			re1, err := ExistsDatabase(ddb, DfsDBPath)
+			re1, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
 			CreateDfsListdb(DfsDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DfsDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -114,16 +100,17 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re2, ShouldBeTrue)
 			err = DropDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
-			re3, err := ExistsDatabase(ddb, DfsDBPath)
+			re3, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_dfs_compo:", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
-			re1, err := ExistsDatabase(ddb, DfsDBPath)
+			re1, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
 			CreateDfsCompoRangeRangedb(DfsDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DfsDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -133,17 +120,19 @@ func TestLoadTableBySQL(t *testing.T) {
 			So(re2, ShouldBeTrue)
 			err = DropDatabase(ddb, DfsDBPath)
 			So(err, ShouldBeNil)
-			re3, err := ExistsDatabase(ddb, DfsDBPath)
+			re3, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re3, ShouldBeFalse)
 		})
 		Convey("Test_LoadTableBySQL_disk_unpartitioned:", func() {
 			CreateDiskUnpartitioneddb(DiskDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DiskDBPath))
 			_, err := LoadTableBySQL(ddb, "[2010.01.05, 2010.01.15, 2010.01.19]", "select * from loadTable('"+DiskDBPath+"','"+TbName1+"') where date in %s", DiskDBPath, TbName1)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("Test_LoadTableBySQL_disk_range:", func() {
 			CreateDiskRangedb(DiskDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DiskDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DiskDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -154,6 +143,7 @@ func TestLoadTableBySQL(t *testing.T) {
 		})
 		Convey("Test_LoadTableBySQL_disk_hash:", func() {
 			CreateDiskHashdb(DiskDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DiskDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DiskDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -164,6 +154,7 @@ func TestLoadTableBySQL(t *testing.T) {
 		})
 		Convey("Test_LoadTableBySQL_disk_value:", func() {
 			CreateDiskValuedb(DiskDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DiskDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DiskDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -174,6 +165,7 @@ func TestLoadTableBySQL(t *testing.T) {
 		})
 		Convey("Test_LoadTableBySQL_disk_list:", func() {
 			CreateDiskListdb(DiskDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DiskDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DiskDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)
@@ -184,6 +176,7 @@ func TestLoadTableBySQL(t *testing.T) {
 		})
 		Convey("Test_LoadTableBySQL_disk_compo_range_range:", func() {
 			CreateDiskCompoRangeRangedb(DiskDBPath, TbName1, TbName2)
+			defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DiskDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DiskDBPath + `", "` + TbName1 + `") where date in [2010.01.05, 2010.01.15, 2010.01.19]`)
 			So(err, ShouldBeNil)
 			exTmp := tmp.(*model.Table)

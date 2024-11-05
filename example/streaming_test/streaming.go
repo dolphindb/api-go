@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/example/apis"
-	"github.com/dolphindb/api-go/example/util"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/streaming"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/example/apis"
+	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/streaming"
 )
 
 var streamConn dialer.Conn

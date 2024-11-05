@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type messageParser struct {
@@ -21,9 +21,10 @@ type messageParser struct {
 
 	topic            string
 	topicNameToIndex map[string]map[string]int
-	firstColType	 model.DataTypeByte
+	firstColType     model.DataTypeByte
 	isReversed       bool
 }
+
 func closeUnboundedChan(q *UnboundedChan) {
 	close(q.In)
 	// y := 0
@@ -39,7 +40,7 @@ func closeUnboundedChan(q *UnboundedChan) {
 }
 
 func (m *messageParser) run() {
-	err := m.parse();
+	err := m.parse()
 
 	// TODO concern more than one topic
 	if IsClosed(m.topic) {
@@ -81,7 +82,7 @@ func (m *messageParser) parseHeader(r protocol.Reader, bo protocol.ByteOrder) (u
 
 func (m *messageParser) parse() error {
 	var r protocol.Reader
-	if(m.isReversed) {
+	if m.isReversed {
 		r = m.Conn.(dialer.Conn).GetReader()
 	} else {
 		r = protocol.NewReader(m.Conn)
@@ -154,10 +155,10 @@ func (m *messageParser) parseTable(tb *model.Table) {
 }
 
 func (m *messageParser) isTupleMsg(firstElement model.DataForm) bool {
-	if (firstElement.GetDataForm() == model.DfScalar) || (firstElement.GetDataType() == m.firstColType - 64) {
-		return true;
+	if (firstElement.GetDataForm() == model.DfScalar) || (firstElement.GetDataType() == m.firstColType-64) {
+		return true
 	}
-	return false;
+	return false
 }
 
 func (m *messageParser) parseVector(msgID uint64, vct *model.Vector) {

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolphindb/api-go/domain"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/domain"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // PartitionedTableAppender is used to append tables into a partitioned table.

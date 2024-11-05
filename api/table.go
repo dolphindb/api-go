@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // Table is the client of table script.

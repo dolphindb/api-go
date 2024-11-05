@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 const (
@@ -109,6 +109,9 @@ func NewConn(ctx context.Context, addr string, behaviorOpt *BehaviorOptions) (Co
 	if !behaviorOpt.EnableHighAvailability && len(behaviorOpt.HighAvailabilitySites) != 0 {
 		fmt.Println("Warn: HighAvailabilitySites is not empty but EnableHighAvailability is false")
 	}
+	if behaviorOpt.Priority != nil && (*behaviorOpt.Priority < 0 || *behaviorOpt.Priority > 8) {
+		return nil, errors.New("the job priority must be between 0 and 8")
+	}
 	return &conn{
 		behaviorOpt:            behaviorOpt,
 		addr:                   addr,
@@ -144,9 +147,10 @@ func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, erro
 	return conn, err
 }
 
-func (c *conn) GetReader() protocol.Reader  {
+func (c *conn) GetReader() protocol.Reader {
 	return c.reader
 }
+
 // Add an init script which will be run after you call connect
 // func (c *conn) AddInitScript(script string) {
 // 	if c.initScripts == nil {
@@ -236,9 +240,8 @@ func (c *conn) Connect() error {
 		return err
 	} else {
 		if c.reconnect {
-			c.nodePool = &nodePool{
-				nodes: []*node{{address: c.addr}},
-			}
+			c.nodePool = &nodePool{}
+			c.nodePool.add(&node{address: c.addr})
 			return c.switchDatanode(&node{address: ""})
 		} else {
 			ok, err := c.connectNode(&node{address: c.addr})
@@ -421,7 +424,7 @@ func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataFo
 		}
 
 		if c.behaviorOpt.GetFetchSize() > 0 && c.behaviorOpt.GetFetchSize() < 8192 {
-			return nil, nil, fmt.Errorf("fetchSize %d must be greater than 8192", c.behaviorOpt.GetFetchSize())
+			return nil, nil, fmt.Errorf("fetchSize %d must be equal or greater than 8192", c.behaviorOpt.GetFetchSize())
 		}
 	}
 

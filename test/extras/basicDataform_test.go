@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/model"
 
 	. "github.com/smartystreets/goconvey/convey"
 )

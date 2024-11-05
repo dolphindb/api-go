@@ -3,7 +3,7 @@ package apis
 import (
 	"fmt"
 
-	"github.com/dolphindb/api-go/api"
+	"github.com/dolphindb/api-go/v3/api"
 )
 
 // Login checks whether the Login api is valid.

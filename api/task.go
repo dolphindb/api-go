@@ -1,6 +1,6 @@
 package api
 
-import "github.com/dolphindb/api-go/model"
+import "github.com/dolphindb/api-go/v3/model"
 
 // Task is the unit of work that is executed in the DBConnectionPool.
 type Task struct {

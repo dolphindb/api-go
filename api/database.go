@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // Database is used to call table api based on the name of db.

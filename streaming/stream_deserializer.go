@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type StreamDeserializer struct {
@@ -144,7 +144,7 @@ func (sd *StreamDeserializer) Parse(msg IMessage) (*Message, error) {
 		return nil, fmt.Errorf("the filter %s does not exist", sym)
 	}
 
-	md:= sd.msgDeserializerMap[sym]
+	md := sd.msgDeserializerMap[sym]
 
 	vct, err := md.parse(blob)
 	if err != nil {
@@ -152,10 +152,10 @@ func (sd *StreamDeserializer) Parse(msg IMessage) (*Message, error) {
 	}
 
 	return &Message{
-		offset: msg.GetOffset(),
-		topic:  msg.GetTopic(),
-		msg:    vct,
-		sym:    sym,
+		offset:      msg.GetOffset(),
+		topic:       msg.GetTopic(),
+		msg:         vct,
+		sym:         sym,
 		nameToIndex: md.nameToIndex,
 	}, nil
 }

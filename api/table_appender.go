@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // TableAppender is used to append tables into another.

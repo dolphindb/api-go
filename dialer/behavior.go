@@ -15,13 +15,13 @@ type BehaviorOptions struct {
 	LoadBalance bool
 
 	// Whether to enable high availability.
-	// If true, when the address is unrearched, another address in HighAvailabilitySites will be connected.
+	// If true, when the address is unreached, another address in HighAvailabilitySites will be connected.
 	EnableHighAvailability bool
 
 	// Available only when EnableHighAvailability is true.
 	HighAvailabilitySites []string
 
-	// If true, the address will be reconncted util the server is ready.
+	// If true, the address will be reconnected util the server is ready.
 	Reconnect bool
 
 	// IsReverseStreaming specifies whether the job is a reverse stream subscription

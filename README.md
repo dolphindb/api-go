@@ -1,7 +1,7 @@
 <h1 align="center">DolphinDB Go API</h1>
 
-[![GitHub release](https://img.shields.io/github/release/dolphindb/api-go.svg?style=flat-square)](https://github.com/dolphindb/api-go/releases/latest)
-[![PkgGoDev](https://img.shields.io/badge/go.dev-docs-007d9c?style=flat-square&logo=go&logoColor=white)](https://pkg.go.dev/github.com/dolphindb/api-go)
+[![GitHub release](https://img.shields.io/github/release/dolphindb/api-go.svg?style=flat-square)](https://github.com/dolphindb/api-go/v3/releases/latest)
+[![PkgGoDev](https://img.shields.io/badge/go.dev-docs-007d9c?style=flat-square&logo=go&logoColor=white)](https://pkg.go.dev/github.com/dolphindb/api-go/v3)
 
 欢迎使用 DolphinDB Go API。您可以使用 Go API 连接 DolphinDB 数据库，进行建库建表，以及读取、写入数据等操作。
 
@@ -172,7 +172,7 @@ Go API 需要运行在 Go 1.15 或以上版本的环境。注意，Go API 只支
 使用 `go get` 下载安装 `Go API`。
 
 ```sh
-go get -u github.com/dolphindb/api-go
+go get -u github.com/dolphindb/api-go/v3
 ```
 
 ## 3. DolphinDB 基本用法
@@ -196,7 +196,7 @@ package main
 import (
     "context"
 
-    "github.com/dolphindb/api-go/api"
+    "github.com/dolphindb/api-go/v3/api"
 )
 
 func main() {
@@ -256,7 +256,7 @@ package main
 import (
     "context"
 
-    "github.com/dolphindb/api-go/api"
+    "github.com/dolphindb/api-go/v3/api"
 )
 
 func main() {
@@ -287,7 +287,7 @@ package main
 import (
     "context"
 
-    "github.com/dolphindb/api-go/api"
+    "github.com/dolphindb/api-go/v3/api"
 )
 
 func main() {
@@ -346,7 +346,7 @@ package main
 import (
    "fmt"
 
-   "github.com/dolphindb/api-go/model"
+   "github.com/dolphindb/api-go/v3/model"
 )
 
 // new a bool datatype variable
@@ -552,8 +552,8 @@ import (
     "context"
     "fmt"
 
-    "github.com/dolphindb/api-go/api"
-    "github.com/dolphindb/api-go/model"
+    "github.com/dolphindb/api-go/v3/api"
+    "github.com/dolphindb/api-go/v3/model"
 )
 
 func main() {

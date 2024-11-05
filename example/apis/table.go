@@ -3,7 +3,7 @@ package apis
 import (
 	"fmt"
 
-	"github.com/dolphindb/api-go/api"
+	"github.com/dolphindb/api-go/v3/api"
 )
 
 // ExistsTable checks whether the ExistsTable api is valid.

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-		"time"
+	"time"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/domain"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/domain"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // MultiGoroutineTable is used to insert data into a table with multiple goroutines.

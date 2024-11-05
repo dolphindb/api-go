@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/example/util"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/model"
 	"github.com/stretchr/testify/assert"
 )
 
 type sampleHandler struct {
-	sd StreamDeserializer
+	sd   StreamDeserializer
 	msgs []IMessage
 }
 
@@ -24,29 +24,29 @@ func (s *sampleHandler) DoEvent(msg IMessage) {
 }
 
 func TestStreamDeserializerInHandler(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)  //script defined in goroutine_client_test.go
+	_, err = db.RunScript(scripts) //script defined in goroutine_client_test.go
 	util.AssertNil(err)
 
 	sdMap := make(map[string][2]string)
 	sdMap["msg1"] = [2]string{"", "pt1"}
 	sdMap["msg2"] = [2]string{"", "pt2"}
 
-	opt := StreamDeserializerOption {
+	opt := StreamDeserializerOption{
 		TableNames: sdMap,
 		Conn:       db,
 	}
@@ -65,13 +65,13 @@ func TestStreamDeserializerInHandler(t *testing.T) {
 		Handler:    &sh,
 		Offset:     0,
 		Reconnect:  true,
-		Throttle: &throttle,
+		Throttle:   &throttle,
 	}
 
 	err = client.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(2)*time.Second)
+	time.Sleep(time.Duration(2) * time.Second)
 	assert.Equal(t, 6, len(sh.msgs))
 
 	msg1StrVec := make([]interface{}, 0)
@@ -115,29 +115,29 @@ func (s *basicHandlerWithoutStreamDeserializer) DoEvent(msg IMessage) {
 }
 
 func TestPassInStreamDeserializer(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)  //script defined in goroutine_client_test.go
+	_, err = db.RunScript(scripts) //script defined in goroutine_client_test.go
 	util.AssertNil(err)
 
 	sdMap := make(map[string][2]string)
 	sdMap["msg1"] = [2]string{"", "pt1"}
 	sdMap["msg2"] = [2]string{"", "pt2"}
 
-	opt := StreamDeserializerOption {
+	opt := StreamDeserializerOption{
 		TableNames: sdMap,
 		Conn:       db,
 	}
@@ -149,21 +149,21 @@ func TestPassInStreamDeserializer(t *testing.T) {
 	sh := basicHandlerWithoutStreamDeserializer{make([]IMessage, 0)}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
-		Handler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
-		Throttle: 	&throttle,
-		MsgDeserializer:  sd,
+		Address:         "localhost:8848",
+		TableName:       "outTables",
+		ActionName:      "action1",
+		MsgAsTable:      false,
+		Handler:         &sh,
+		Offset:          0,
+		Reconnect:       true,
+		Throttle:        &throttle,
+		MsgDeserializer: sd,
 	}
 
 	err = client.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(1)*time.Second)
+	time.Sleep(time.Duration(1) * time.Second)
 	assert.Equal(t, len(sh.msgs), 6)
 	msg1StrVec := make([]interface{}, 0)
 	msg1Value := []interface{}{"a", "b", "c"}
@@ -197,7 +197,6 @@ func TestPassInStreamDeserializer(t *testing.T) {
 	assert.Equal(t, msg2Value, msg2StrVec)
 }
 
-
 type batchHandlerWithoutStreamDeserializer struct {
 	msgs []IMessage
 }
@@ -207,29 +206,29 @@ func (s *batchHandlerWithoutStreamDeserializer) DoEvent(msg []IMessage) {
 }
 
 func TestPassInStreamDeserializerInBatch(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)  //script defined in goroutine_client_test.go
+	_, err = db.RunScript(scripts) //script defined in goroutine_client_test.go
 	util.AssertNil(err)
 
 	sdMap := make(map[string][2]string)
 	sdMap["msg1"] = [2]string{"", "pt1"}
 	sdMap["msg2"] = [2]string{"", "pt2"}
 
-	opt := StreamDeserializerOption {
+	opt := StreamDeserializerOption{
 		TableNames: sdMap,
 		Conn:       db,
 	}
@@ -242,22 +241,22 @@ func TestPassInStreamDeserializerInBatch(t *testing.T) {
 	throttle := float32(1)
 	batch := 2
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
+		Address:         "localhost:8848",
+		TableName:       "outTables",
+		ActionName:      "action1",
+		MsgAsTable:      false,
 		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
-		Throttle: 	&throttle,
-		BatchSize: &batch,
-		MsgDeserializer:  sd,
+		Offset:          0,
+		Reconnect:       true,
+		Throttle:        &throttle,
+		BatchSize:       &batch,
+		MsgDeserializer: sd,
 	}
 
 	err = client.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(2)*time.Second)
+	time.Sleep(time.Duration(2) * time.Second)
 	assert.Equal(t, len(sh.msgs), 6)
 	msg1StrVec := make([]interface{}, 0)
 	msg1Value := []interface{}{"a", "b", "c"}
@@ -291,10 +290,9 @@ func TestPassInStreamDeserializerInBatch(t *testing.T) {
 	assert.Equal(t, msg2Value, msg2StrVec)
 }
 
-
 type poolDeserializerHandler struct {
 	times int
-	msgs []IMessage
+	msgs  []IMessage
 }
 
 func (s *poolDeserializerHandler) DoEvent(msg IMessage) {
@@ -303,31 +301,30 @@ func (s *poolDeserializerHandler) DoEvent(msg IMessage) {
 	s.msgs = append(s.msgs, msg)
 }
 
-
 func TestPoolStreamDeserializer(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)
+	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
 	sdMap := make(map[string][2]string)
 	sdMap["msg1"] = [2]string{"", "pt1"}
 	sdMap["msg2"] = [2]string{"", "pt2"}
 
-	opt := StreamDeserializerOption {
+	opt := StreamDeserializerOption{
 		TableNames: sdMap,
 		Conn:       db,
 	}
@@ -338,22 +335,22 @@ func TestPoolStreamDeserializer(t *testing.T) {
 	sh := poolDeserializerHandler{}
 	throttle := float32(0.000)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
-		Handler:    &sh,
-		Offset:     0,
+		Address:         "localhost:8848",
+		TableName:       "outTables",
+		ActionName:      "action1",
+		MsgAsTable:      false,
+		Handler:         &sh,
+		Offset:          0,
 		MsgDeserializer: sd,
-		Reconnect:  true,
-		Throttle: &throttle,
+		Reconnect:       true,
+		Throttle:        &throttle,
 	}
 	req.SetBatchSize(0)
 
 	err = tpc.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(3)*time.Second)
+	time.Sleep(time.Duration(3) * time.Second)
 
 	assert.Equal(t, len(sh.msgs), 6)
 	msg1StrVec := make([]interface{}, 0)
@@ -387,7 +384,6 @@ func TestPoolStreamDeserializer(t *testing.T) {
 	assert.Equal(t, msg1Value, msg1StrVec)
 	assert.Equal(t, msg2Value, msg2StrVec)
 }
-
 
 var arrayVectorReplayScript = "st1 = streamTable(100:0, `timestampv`sym`blob,[TIMESTAMP,SYMBOL,BLOB]);" +
 	"share st1 as outTables;" +
@@ -406,10 +402,10 @@ var arrayVectorReplayScript = "st1 = streamTable(100:0, `timestampv`sym`blob,[TI
 var endScript = "tableInsert(outTables, table([2012.01.01T01:21:23] as timestampv, [`end] as sym, [`blob] as blob));"
 
 type replayHandle struct {
-	sd   StreamDeserializer
+	sd    StreamDeserializer
 	msgs1 []IMessage
 	msgs2 []IMessage
-	ch 	 chan bool
+	ch    chan bool
 }
 
 func (s *replayHandle) DoEvent(msgs []IMessage) {
@@ -418,12 +414,12 @@ func (s *replayHandle) DoEvent(msgs []IMessage) {
 		fmt.Println(msg.GetValue(1))
 		if msg.GetValue(1).(*model.Scalar).DataType.String() == "end" {
 			fmt.Println("DoEvent: got to end")
-			s.ch <- true;
+			s.ch <- true
 			return
 		}
 		ret, err := s.sd.Parse(msg)
 		util.AssertNil(err)
-		if(msg.GetValue(1).(*model.Scalar).DataType.String() == "msg1") {
+		if msg.GetValue(1).(*model.Scalar).DataType.String() == "msg1" {
 			fmt.Println(ret.GetValue(3), ret.GetValue(3), ret.GetValue(4), " ")
 			arrV := ret.GetValue(3)
 			fmt.Println(arrV.GetDataType(), arrV.GetDataTypeString())
@@ -452,7 +448,6 @@ func TestStreamDeserializerReplayParam(t *testing.T) {
 	_, err = db.RunScript(arrayVectorReplayScript) //script defined in goroutine_client_test.go
 	util.AssertNil(err)
 
-
 	sdMap := make(map[string][2]string)
 	sdMap["msg1"] = [2]string{"", "pt1"}
 	sdMap["msg2"] = [2]string{"", "pt2"}
@@ -470,30 +465,29 @@ func TestStreamDeserializerReplayParam(t *testing.T) {
 	batchSize := 10
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
-		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
-		Throttle:   &throttle,
-		BatchSize:  &batchSize,
+		Address:      "localhost:8848",
+		TableName:    "outTables",
+		ActionName:   "action1",
+		MsgAsTable:   false,
+		BatchHandler: &sh,
+		Offset:       0,
+		Reconnect:    true,
+		Throttle:     &throttle,
+		BatchSize:    &batchSize,
 	}
 	err = client.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(3)*time.Second)
+	time.Sleep(time.Duration(3) * time.Second)
 
 	_, err = db.RunScript(endScript) //script defined in goroutine_client_test.go
 	util.AssertNil(err)
 
-	<- sh.ch
+	<-sh.ch
 
 	assert.Equal(t, 300, len(sh.msgs1))
 	assert.Equal(t, 300, len(sh.msgs2))
 }
-
 
 func TestStreamBug(t *testing.T) {
 	host := "localhost:8848"

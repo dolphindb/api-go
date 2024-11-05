@@ -3,24 +3,24 @@ package streaming
 import (
 	"bytes"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type msgDeserializer struct {
-	colTypes []model.DataTypeByte
+	colTypes    []model.DataTypeByte
 	nameToIndex map[string]int
 }
 
 func newMsgDeserializer(colNames []string, colTypes []model.DataTypeByte) *msgDeserializer {
 	// init nameToIndex
 	nameToIndex := make(map[string]int, len(colNames))
-	for k,v := range colNames {
+	for k, v := range colNames {
 		nameToIndex[v] = k
 	}
 	md := &msgDeserializer{
 		nameToIndex: nameToIndex,
-		colTypes: make([]model.DataTypeByte, len(colTypes)),
+		colTypes:    make([]model.DataTypeByte, len(colTypes)),
 	}
 
 	copy(md.colTypes, colTypes)
@@ -33,7 +33,7 @@ func (md *msgDeserializer) parse(data []byte) (*model.Vector, error) {
 
 	scalarList := make([]model.DataForm, len(md.colTypes))
 	for k, v := range md.colTypes {
-		if(v >= 64) {
+		if v >= 64 {
 			vct, err := model.ParseArrayVector(rd, v, protocol.LittleEndian)
 			if err != nil {
 				return nil, err

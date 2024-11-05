@@ -3,9 +3,9 @@ package script
 import (
 	"fmt"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/example/util"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // CheckFunction checks whether the RunFunc is valid.

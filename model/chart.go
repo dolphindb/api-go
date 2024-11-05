@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 )
 
 // ChartType is a map storing the mapping relationship.

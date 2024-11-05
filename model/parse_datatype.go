@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 )
 
 func parseDate(raw interface{}) time.Time {

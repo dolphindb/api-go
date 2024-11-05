@@ -7,6 +7,12 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+var API_VERSION = "3.00.0.1"
+
+func GetAPIVersion() string {
+	return API_VERSION
+}
+
 func generateDBName() string {
 	u1 := uuid.NewV4()
 	return fmt.Sprintf("db_%s", u1.String()[:8])

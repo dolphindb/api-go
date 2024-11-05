@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/example/util"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/model"
 	"github.com/stretchr/testify/assert"
 )
 
 type poolHandler struct {
 	times int
-	msgs []IMessage
+	msgs  []IMessage
 }
 
 func (s *poolHandler) DoEvent(msg IMessage) {
@@ -24,22 +24,22 @@ func (s *poolHandler) DoEvent(msg IMessage) {
 }
 
 func TestBasicGoroutinePooledClient(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)
+	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
 	tpc := NewGoroutinePooledClient(localhost, 8848)
@@ -53,13 +53,13 @@ func TestBasicGoroutinePooledClient(t *testing.T) {
 		Handler:    &sh,
 		Offset:     0,
 		Reconnect:  true,
-		Throttle: &throttle,
+		Throttle:   &throttle,
 	}
 
 	err = tpc.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(1)*time.Second)
+	time.Sleep(time.Duration(1) * time.Second)
 	assert.Equal(t, 6, sh.times)
 	for _, v := range sh.msgs {
 		assert.Equal(t, model.DtBlob, v.GetValueByName("blob").GetDataType())
@@ -72,7 +72,7 @@ func TestBasicGoroutinePooledClient(t *testing.T) {
 type batchPoolHandler struct {
 	lines int
 	times int
-	msgs []IMessage
+	msgs  []IMessage
 }
 
 func (s *batchPoolHandler) DoEvent(msg []IMessage) {
@@ -83,34 +83,34 @@ func (s *batchPoolHandler) DoEvent(msg []IMessage) {
 }
 
 func TestBatchGoroutinePooledClient(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)
+	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
 	tpc := NewGoroutinePooledClient(localhost, 8848)
 	sh := batchPoolHandler{}
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
-		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
+		Address:      "localhost:8848",
+		TableName:    "outTables",
+		ActionName:   "action1",
+		MsgAsTable:   false,
+		BatchHandler: &sh,
+		Offset:       0,
+		Reconnect:    true,
 	}
 	// req.SetThrottle(100)
 	req.SetBatchSize(6)
@@ -118,29 +118,29 @@ func TestBatchGoroutinePooledClient(t *testing.T) {
 	err = tpc.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(3)*time.Second)
+	time.Sleep(time.Duration(3) * time.Second)
 	assert.Equal(t, 6, sh.lines)
 	assert.Equal(t, 1, sh.times)
 	tpc.Close()
 }
 
 func TestBatchMsgAsTableGoroutinePooledClient(t *testing.T) {
-	host := "localhost:8848";
+	host := "localhost:8848"
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
-    loginReq := &api.LoginRequest{
-        UserID:   "admin",
-        Password: "123456",
-    }
+	loginReq := &api.LoginRequest{
+		UserID:   "admin",
+		Password: "123456",
+	}
 
 	err = db.Connect()
 	util.AssertNil(err)
 
-    err = db.Login(loginReq)
+	err = db.Login(loginReq)
 	util.AssertNil(err)
 
-	_,err = db.RunScript(scripts)
+	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
 	tpc := NewGoroutinePooledClient(localhost, 8848)
@@ -154,14 +154,14 @@ func TestBatchMsgAsTableGoroutinePooledClient(t *testing.T) {
 		Handler:    &sh,
 		Offset:     0,
 		Reconnect:  true,
-		Throttle: &throttle,
+		Throttle:   &throttle,
 	}
 	req.SetBatchSize(2)
 
 	err = tpc.Subscribe(req)
 	util.AssertNil(err)
 
-	time.Sleep(time.Duration(3)*time.Second)
+	time.Sleep(time.Duration(3) * time.Second)
 	assert.Equal(t, 3, sh.times)
 	tbl := sh.msgs[0]
 	assert.Equal(t, 2, tbl.Size())
@@ -176,14 +176,14 @@ func TestBatchHandlerErrGoroutinePooledClient(t *testing.T) {
 	sh := batchPoolHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: false,
-		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
-		Throttle: &throttle,
+		Address:      "localhost:8848",
+		TableName:    "outTables",
+		ActionName:   "action1",
+		MsgAsTable:   false,
+		BatchHandler: &sh,
+		Offset:       0,
+		Reconnect:    true,
+		Throttle:     &throttle,
 	}
 
 	err := tpc.Subscribe(req)
@@ -194,14 +194,14 @@ func TestBatchHandlerMsgAsTableErrGoroutinePooledClient(t *testing.T) {
 	sh := batchPoolHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
-		TableName:  "outTables",
-		ActionName: "action1",
-		MsgAsTable: true,
-		BatchHandler:    &sh,
-		Offset:     0,
-		Reconnect:  true,
-		Throttle: &throttle,
+		Address:      "localhost:8848",
+		TableName:    "outTables",
+		ActionName:   "action1",
+		MsgAsTable:   true,
+		BatchHandler: &sh,
+		Offset:       0,
+		Reconnect:    true,
+		Throttle:     &throttle,
 	}
 	req.SetBatchSize(10)
 	req.SetThrottle(1000)
@@ -222,7 +222,7 @@ func TestBatchHandlerNilErrGoroutinePooledClient(t *testing.T) {
 		Handler:    &sh,
 		Offset:     0,
 		Reconnect:  true,
-		Throttle: &throttle,
+		Throttle:   &throttle,
 	}
 	req.SetBatchSize(10)
 

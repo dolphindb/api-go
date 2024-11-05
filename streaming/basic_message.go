@@ -3,7 +3,7 @@ package streaming
 import (
 	"strings"
 
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // IMessage is the interface of subscription messages.
@@ -70,10 +70,11 @@ func (m *Message) GetValueByName(name string) model.DataForm {
 func (m *Message) Size() int {
 	return m.msg.Rows()
 }
+
 type TableMessage struct {
-	offset      int64
-	topic       string
-	sym         string
+	offset int64
+	topic  string
+	sym    string
 
 	msg *model.Table
 }

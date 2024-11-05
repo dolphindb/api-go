@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -113,6 +113,7 @@ func TestNewSimpleDolphinDBClient(t *testing.T) {
 		Convey("Test NewSimpleDolphinDB login", func() {
 			db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
+			defer db.Close()
 			dbName := `dfs://` + generateRandomString(10)
 			re, err := db.RunScript(
 				`dbName='` + dbName + `'
@@ -126,14 +127,17 @@ func TestNewSimpleDolphinDBClient(t *testing.T) {
 			result := s.DataType.Value()
 			ex := "DB[" + dbName + "]"
 			So(result, ShouldEqual, ex)
+			db.DropDatabase(&api.DropDatabaseRequest{Directory: dbName})
 		})
 
 		Convey("Test NewSimpleDolphinDB logout", func() {
 			db, _ := api.NewSimpleDolphinDBClient(context.TODO(), host3, setup.UserName, setup.Password)
 			err := db.Logout()
 			So(err, ShouldBeNil)
+			defer db.Close()
+			dbName := `dfs://` + generateRandomString(10)
 			re, err := db.RunScript(`
-			dbName="dfs://` + generateRandomString(10) + `"
+			dbName="` + dbName + `"
 			if(existsDatabase(dbName)){
 				dropDatabase(dbName)
 			}
@@ -141,6 +145,7 @@ func TestNewSimpleDolphinDBClient(t *testing.T) {
 			result := fmt.Errorf("\n error is %w", err)
 			So(re, ShouldBeNil)
 			So(result, ShouldNotBeNil)
+			db.DropDatabase(&api.DropDatabaseRequest{Directory: dbName})
 		})
 	})
 }
@@ -444,13 +449,12 @@ func TestConnectionHighAvailability(t *testing.T) {
 }
 
 func TestConnectionParallel(t *testing.T) {
-	t.Parallel()
 	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, "admin", "123456")
 	AssertNil(err)
-	db.RunScript("login(`admin,`123456);try{createUser(`test1, `123456)}catch(ex){};go;setMaxJobParallelism(`test1, 10);")
+	db.RunScript("login(`admin,`123456);try{createUser(`test1, `123456)}catch(ex){};go;setMaxJobParallelism(`test1, 10);setMaxJobPriority(`test1, 6);")
 	Convey("TestConnectionParallel_lt_MaxJobParallelism", t, func() {
 
-		priority := 4
+		priority := 0
 		parallel := 1
 		opt := &dialer.BehaviorOptions{
 			Priority:    &priority,
@@ -468,7 +472,7 @@ func TestConnectionParallel(t *testing.T) {
 		res, _ := conn.RunScript("getConsoleJobs()")
 		Println(res)
 		So(res.(*model.Table).GetColumnByName("parallelism").Get(0).Value().(int32), ShouldEqual, 1)
-		So(res.(*model.Table).GetColumnByName("priority").Get(0).Value().(int32), ShouldEqual, 4)
+		So(res.(*model.Table).GetColumnByName("priority").Get(0).Value().(int32), ShouldEqual, 0)
 
 		conn.Close()
 		So(conn.IsClosed(), ShouldBeTrue)
@@ -476,7 +480,7 @@ func TestConnectionParallel(t *testing.T) {
 
 	Convey("TestConnectionParallel_gt_MaxJobParallelism", t, func() {
 
-		priority := 4
+		priority := 8
 		parallel := 11
 		opt := &dialer.BehaviorOptions{
 			Priority:    &priority,
@@ -494,7 +498,7 @@ func TestConnectionParallel(t *testing.T) {
 		res, _ := conn.RunScript("getConsoleJobs()")
 		Println(res)
 		So(res.(*model.Table).GetColumnByName("parallelism").Get(0).Value().(int32), ShouldEqual, 10)
-		So(res.(*model.Table).GetColumnByName("priority").Get(0).Value().(int32), ShouldEqual, 4)
+		So(res.(*model.Table).GetColumnByName("priority").Get(0).Value().(int32), ShouldEqual, 6)
 
 		conn.Close()
 		So(conn.IsClosed(), ShouldBeTrue)
@@ -518,7 +522,133 @@ func TestConnectionParallel(t *testing.T) {
 		conn.Close()
 		So(conn.IsClosed(), ShouldBeTrue)
 	})
+	Convey("TestConnection_priority_10", t, func() {
+		priority := 10
+		opt := &dialer.BehaviorOptions{
+			Priority: &priority,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldNotBeNil)
+		result := fmt.Errorf("\n exception error is %w", err)
+		fmt.Println(result.Error())
+		expectedErrMsg := "the job priority must be between 0 and 8"
+		So(result.Error(), ShouldContainSubstring, expectedErrMsg)
+		if conn != nil {
+			defer conn.Close() // 确保关闭连接
+		}
+
+	})
 
 	db.Close()
 	AssertEqual(db.IsClosed(), true)
+}
+
+func TestConnectionFetchSize(t *testing.T) {
+	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, "admin", "123456")
+	AssertNil(err)
+	Convey("Test_BehaviorOptions_FetchSize_Invalid", t, func() {
+
+		FetchSize := 8191
+		opt := &dialer.BehaviorOptions{
+			FetchSize: &FetchSize,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		err = conn.Connect()
+		So(err, ShouldNotBeNil) // 确保连接返回了错误
+		result := fmt.Errorf("\n exception error is %w", err)
+		fmt.Println(result.Error())
+		So(result, ShouldNotBeNil)
+		conn.Close()
+		So(conn.IsClosed(), ShouldBeTrue)
+	})
+
+	Convey("Test_BehaviorOptions_FetchSize_8192", t, func() {
+
+		FetchSize := 8192
+		opt := &dialer.BehaviorOptions{
+			FetchSize: &FetchSize,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		err = conn.Connect()
+		So(err, ShouldBeNil)
+	})
+
+	db.Close()
+	AssertEqual(db.IsClosed(), true)
+}
+
+func TestConnectionIsClearSessionMemory(t *testing.T) {
+	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, "admin", "123456")
+	AssertNil(err)
+	Convey("Test_BehaviorOptions_IsClearSessionMemory_true", t, func() {
+
+		opt := &dialer.BehaviorOptions{
+			IsClearSessionMemory: true,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		conn.Connect()
+		conn.RunScript("pt=table(1..3 as id);")
+		_, err1 := conn.RunScript("select * from pt;")
+		So(err1, ShouldNotBeNil)
+		conn.Close()
+		So(conn.IsClosed(), ShouldBeTrue)
+	})
+
+	Convey("Test_BehaviorOptions_IsClearSessionMemory_false", t, func() {
+
+		opt := &dialer.BehaviorOptions{
+			IsClearSessionMemory: false,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		conn.Connect()
+		conn.RunScript("pt=table(1..3 as id);")
+		res, _ := conn.RunScript("select * from pt;")
+		So(res.Rows(), ShouldEqual, 3)
+		conn.Close()
+		So(conn.IsClosed(), ShouldBeTrue)
+	})
+
+	db.Close()
+	AssertEqual(db.IsClosed(), true)
+}
+
+func TestBehaviorOptions(t *testing.T) {
+	Convey("Test_BehaviorOptions_Reconnect_true", t, func() {
+		opt := &dialer.BehaviorOptions{
+			Reconnect: true,
+		}
+		connCtl, _ := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		So(connCtl.IsConnected(), ShouldBeTrue)
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		conn.Connect()
+		loginReq := &api.LoginRequest{
+			UserID:   "admin",
+			Password: "123456",
+		}
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+		nodeName, _ := conn.RunScript("getNodeAlias()")
+		connCtl.RunScript("stopDataNode(`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		time.Sleep(2 * time.Second)
+		connCtl.RunScript("startDataNode(`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		time.Sleep(2 * time.Second)
+		res, _ := conn.RunScript("1+1")
+		So(res.(*model.Scalar).Value().(int32), ShouldEqual, 2)
+		conn.Close()
+		connCtl.Close()
+	})
+
+	Convey("Test_BehaviorOptions_Reconnect_false", t, func() {
+		opt := &dialer.BehaviorOptions{
+			Reconnect: false,
+		}
+		conn, err := api.NewDolphinDBClient(context.TODO(), "192.168.0.69:3111", opt)
+		err = conn.Connect()
+		So(err, ShouldNotBeNil)
+	})
 }

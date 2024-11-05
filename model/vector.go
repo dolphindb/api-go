@@ -6,7 +6,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 	"github.com/shopspring/decimal"
 )
 
@@ -188,20 +188,21 @@ func (vct *Vector) Get(ind int) DataType {
 func (arrayVector *ArrayVector) formNewLength() []int32 {
 	ret := make([]int32, 0)
 	if arrayVector.unit == 1 {
-		mid := protocol.Int8SliceFromByteSlice(arrayVector.lengths);
-		for _,v := range mid {
+		mid := protocol.Int8SliceFromByteSlice(arrayVector.lengths)
+		for _, v := range mid {
 			ret = append(ret, int32(v))
 		}
 		return ret
 	} else if arrayVector.unit == 2 {
-		mid := protocol.Int16SliceFromByteSlice(arrayVector.lengths);
-		for _,v := range mid {
+		mid := protocol.Int16SliceFromByteSlice(arrayVector.lengths)
+		for _, v := range mid {
 			ret = append(ret, int32(v))
 		}
 		return ret
 	}
-    return protocol.Int32SliceFromByteSlice(arrayVector.lengths);
+	return protocol.Int32SliceFromByteSlice(arrayVector.lengths)
 }
+
 // GetVectorValue returns the element of the ArrayVector based on the ind.
 func (vct *Vector) GetVectorValue(ind int) *Vector {
 	if ind >= vct.Rows() {
@@ -232,7 +233,7 @@ func (vct *Vector) GetVectorValue(ind int) *Vector {
 
 // AppendVectorValue appends the vector to arrayVector.
 func (vct *Vector) AppendVectorValue(data *Vector) (err error) {
-	if(vct.category.DataType != data.GetDataType() + 64) {
+	if vct.category.DataType != data.GetDataType()+64 {
 		return fmt.Errorf("mismatched type, expect %s actual %s", GetDataTypeString(vct.category.DataType-64), data.GetDataTypeString())
 	}
 	arrayVec := NewArrayVector([]*Vector{data})
@@ -489,7 +490,7 @@ func (vct *Vector) GetSubvector(indexes []int) *Vector {
 
 func (vct *Vector) getArrayVectorSubVector(indexes []int) *Vector {
 	rawVec := make([]*Vector, 0, len(indexes))
-	for _,v := range indexes {
+	for _, v := range indexes {
 		rawVec = append(rawVec, vct.GetVectorValue(v))
 	}
 	newData := NewArrayVector(rawVec)

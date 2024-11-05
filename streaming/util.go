@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 func getReconnectTimestamp(site string) int64 {
@@ -68,9 +68,9 @@ func dispatch(msg IMessage) {
 		}
 
 		sitesRaw, ok := trueTopicToSites.Load(topic)
-		if(ok && sitesRaw != nil) {
+		if ok && sitesRaw != nil {
 			sites := sitesRaw.([]*site)
-			for _,s := range sites {
+			for _, s := range sites {
 				s.msgID += 1
 			}
 		}
@@ -118,7 +118,7 @@ func flushToQueue() {
 
 		sites := make([]*site, 0)
 		sitesRaw, ok := trueTopicToSites.Load(topic)
-		if(ok && sitesRaw != nil) {
+		if ok && sitesRaw != nil {
 			sites = sitesRaw.([]*site)
 		}
 
@@ -126,7 +126,7 @@ func flushToQueue() {
 		if ok && raw != nil {
 			q := raw.(*UnboundedChan)
 			for _, m := range val {
-				for _,s := range sites {
+				for _, s := range sites {
 					s.msgID += 1
 				}
 				q.In <- m

@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 )
 
 // Table is a DataForm.

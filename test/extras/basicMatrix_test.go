@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 
 	. "github.com/smartystreets/goconvey/convey"
 )

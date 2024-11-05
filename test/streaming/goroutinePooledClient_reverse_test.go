@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/streaming"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/streaming"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -410,7 +410,7 @@ func TestNewGoroutinePooledClient_tableName_handler_offset_reconnect_success_r(t
 		time.Sleep(2 * time.Second)
 		_, err = gpcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host2, ":")[1] + ",'" + st + "')")
 		So(err, ShouldBeNil)
-
+		time.Sleep(2 * time.Second)
 		_, err = gpcConn_r.RunScript("n=500;t=table(1..n+500 as tag,now()+1..n+500 as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)

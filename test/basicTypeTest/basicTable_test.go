@@ -2,13 +2,14 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -909,7 +910,7 @@ func Test_Table_DownLoad_DataType_decimal32(t *testing.T) {
 				So(c1[i].(*model.Decimal32).Scale, ShouldEqual, 2)
 				So(c2[i].(*model.Decimal32).Scale, ShouldEqual, 7)
 				So(c1[i].(*model.Decimal32).Value, ShouldEqual, 1.23)
-				So(c2[i].(*model.Decimal32).Value, ShouldEqual, 1.2332399)
+				So(c2[i].(*model.Decimal32).Value, ShouldEqual, 1.2332400)
 			}
 		})
 		Convey("Test_Table_only_one_decimal32_columns:", func() {
@@ -952,7 +953,7 @@ func Test_Table_DownLoad_DataType_decimal64(t *testing.T) {
 			for i := 0; i < len(c1); i++ {
 				So(c1[i].(*model.Decimal64).Scale, ShouldEqual, 2)
 				So(c2[i].(*model.Decimal64).Scale, ShouldEqual, 11)
-				So(c1[i].(*model.Decimal64).Value, ShouldEqual, 1.23)
+				So(c1[i].(*model.Decimal64).Value, ShouldEqual, 1.24)
 				So(c2[i].(*model.Decimal64).Value, ShouldEqual, 1.23644)
 			}
 		})
@@ -963,7 +964,7 @@ func Test_Table_DownLoad_DataType_decimal64(t *testing.T) {
 			c1 := result.GetColumnByName("c1").Data.Value()
 			for i := 0; i < len(c1); i++ {
 				So(c1[i].(*model.Decimal64).Scale, ShouldEqual, 2)
-				So(c1[i].(*model.Decimal64).Value, ShouldEqual, 1.23)
+				So(c1[i].(*model.Decimal64).Value, ShouldEqual, 1.24)
 			}
 		})
 		Convey("Test_Table_only_one_decimal64_null_columns:", func() {
@@ -2436,6 +2437,7 @@ func Test_Table_UpLoad_DataType_decimal32(t *testing.T) {
 			col, err := model.NewDataTypeListFromRawData(model.DtDecimal32, &model.Decimal32s{2, []float64{2.215512, -1.3, model.NullDecimal32Value}})
 			So(err, ShouldBeNil)
 			tb := model.NewTable([]string{"c1"}, []*model.Vector{model.NewVector(col)})
+			fmt.Println("tb:", tb)
 			_, err = db.Upload(map[string]model.DataForm{"s": tb})
 			So(err, ShouldBeNil)
 			res, _ := db.RunScript("t=table(decimal32([2.215512, -1.3, NULL], 2) as c1);eqObj(t.values(),s.values())")

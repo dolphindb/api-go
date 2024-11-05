@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -808,7 +808,7 @@ func Test_Pair_DownLoad_decimal32(t *testing.T) {
 				decimal32Val := val[i].(*model.Decimal32)
 				So(decimal32Val.Scale, ShouldEqual, 2)
 			}
-			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.15")
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.16")
 			So(result.Vector.Data.StringList()[1], ShouldEqual, "1.40")
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 37)
@@ -840,7 +840,7 @@ func Test_Pair_DownLoad_decimal32(t *testing.T) {
 				decimal32Val := val[i].(*model.Decimal32)
 				So(decimal32Val.Scale, ShouldEqual, 2)
 			}
-			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.15")
+			So(result.Vector.Data.StringList()[0], ShouldEqual, "-3.16")
 			So(result.Vector.Data.StringList()[1], ShouldEqual, "")
 			reType := result.GetDataType()
 			So(reType, ShouldEqual, 37)

@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 var host11 = getRandomClusterAddress()
+
 func TestLoadTest(t *testing.T) {
 	t.Parallel()
 	Convey("test_loadText_prepare", t, func() {
@@ -28,7 +29,7 @@ func TestLoadTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			ex := tmp.(*model.Table)
 			So(err, ShouldBeNil)
-			re, err := LoadTextFileName(ddb, data)
+			re, err := ddb.LoadText(new(api.LoadTextRequest).SetFileName(data))
 			So(err, ShouldBeNil)
 			result := CompareTablesDataformTable(ex, re)
 			So(result, ShouldBeTrue)
@@ -37,7 +38,7 @@ func TestLoadTest(t *testing.T) {
 			tmp, err := ddb.RunScript("select * from loadText(\"" + data + "\", ';')")
 			ex := tmp.(*model.Table)
 			So(err, ShouldBeNil)
-			re, err := LoadTextDelimiter(ddb, data, ";")
+			re, err := ddb.LoadText(new(api.LoadTextRequest).SetFileName(data).SetDelimiter(";"))
 			So(err, ShouldBeNil)
 			result := CompareTablesDataformTable(ex, re)
 			So(result, ShouldBeTrue)

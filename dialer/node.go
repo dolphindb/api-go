@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type node struct {

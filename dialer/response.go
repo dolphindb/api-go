@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/errors"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/errors"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type responseHeader struct {

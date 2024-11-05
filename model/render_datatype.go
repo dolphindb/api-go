@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 )
 
 var originalTime = time.Date(1970, time.Month(1), 1, 0, 0, 0, 0, time.UTC)

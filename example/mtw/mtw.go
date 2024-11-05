@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/example/apis"
-	"github.com/dolphindb/api-go/example/util"
-	"github.com/dolphindb/api-go/model"
-	mtw "github.com/dolphindb/api-go/multigoroutinetable"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/example/apis"
+	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/model"
+	mtw "github.com/dolphindb/api-go/v3/multigoroutinetable"
 )
 
 // MultiGoroutineTable checks whether the MultiGoroutineTable is valid when inserts to memory table.

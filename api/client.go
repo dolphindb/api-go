@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // DolphinDB interface declares functions to communicate with the dolphindb server.

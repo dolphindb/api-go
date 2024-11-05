@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 )
 
 func parseDictionary(r protocol.Reader, bo protocol.ByteOrder, c *Category) (*Dictionary, error) {
@@ -232,7 +232,7 @@ func readVectorData(r protocol.Reader, bo protocol.ByteOrder, dv *Vector) error 
 
 func ParseArrayVector(r protocol.Reader, t DataTypeByte, bo protocol.ByteOrder) (*Vector, error) {
 	vct := &Vector{
-		category:  &Category{DataForm: DfVector,DataType: t},
+		category: &Category{DataForm: DfVector, DataType: t},
 		RowCount: 1,
 	}
 	err := parseArrayVector(r, bo, vct)

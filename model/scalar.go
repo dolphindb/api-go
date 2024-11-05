@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/dolphindb/api-go/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
 )
 
 // Scalar is a DataForm.

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 // DBConnectionPool is the client which helps you to handle tasks with connections.
@@ -20,7 +20,7 @@ type DBConnectionPool struct {
 	loadBalanceAddresses []string
 
 	connections chan dialer.Conn
-	timeout time.Duration
+	timeout     time.Duration
 }
 
 // PoolOption helps you to configure DBConnectionPool by calling NewDBConnectionPool.
@@ -123,6 +123,7 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 func (d *DBConnectionPool) RefreshTimeout(t time.Duration) {
 	d.timeout = t
 }
+
 // Execute executes all task by connections with DBConnectionPool.
 func (d *DBConnectionPool) Execute(tasks []*Task) error {
 	wg := sync.WaitGroup{}

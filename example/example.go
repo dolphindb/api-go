@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/example/apis"
-	"github.com/dolphindb/api-go/example/streaming_test"
-	"github.com/dolphindb/api-go/example/util"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/example/apis"
+	"github.com/dolphindb/api-go/v3/example/streaming_test"
+	"github.com/dolphindb/api-go/v3/example/util"
 )
 
 func main() {

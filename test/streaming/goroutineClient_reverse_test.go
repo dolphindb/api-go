@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/streaming"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/streaming"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -205,7 +205,7 @@ func TestGoroutineClient_tableName_handler_offset_reconnect_success_r(t *testing
 		_, err = gcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host, ":")[1] + ",'" + st + "')")
 		So(err, ShouldBeNil)
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(12 * time.Second)
 		res, _ := gcConn_r.RunScript("res = select * from " + receive + " order by tag;ex = select * from " + st + " order by tag;each(eqObj, ex.values(), res.values())")
 		for _, val := range res.(*model.Vector).Data.Value() {
 			So(val, ShouldBeTrue)

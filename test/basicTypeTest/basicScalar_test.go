@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/dialer/protocol"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -1394,7 +1394,7 @@ func Test_Scalar_DownLoad_Datatype_decimal32(t *testing.T) {
 			decimal32Val := &model.Decimal32s{Scale: 2, Value: []float64{2.36510}}
 
 			So(re.(*model.Decimal32).Scale, ShouldEqual, decimal32Val.Scale)
-			So(result.String(), ShouldEqual, "decimal32(2.36)")
+			So(result.String(), ShouldEqual, "decimal32(2.37)")
 			So(reType, ShouldEqual, 37)
 			reTypeString := result.GetDataTypeString()
 			So(reTypeString, ShouldEqual, "decimal32")
@@ -1440,7 +1440,7 @@ func Test_Scalar_DownLoad_Datatype_decimal64(t *testing.T) {
 			decimal64Val := &model.Decimal64s{Scale: 4, Value: []float64{2.36510}}
 
 			So(re.(*model.Decimal64).Scale, ShouldEqual, decimal64Val.Scale)
-			So(result.String(), ShouldEqual, "decimal64(2.3651)")
+			So(result.String(), ShouldEqual, "decimal64(2.3652)")
 			So(reType, ShouldEqual, 38)
 			reTypeString := result.GetDataTypeString()
 			So(reTypeString, ShouldEqual, "decimal64")
@@ -1465,7 +1465,7 @@ func Test_Scalar_DownLoad_Datatype_decimal64(t *testing.T) {
 			decimal64Val := &model.Decimal64s{Scale: 11, Value: []float64{2.3}}
 
 			So(re.(*model.Decimal64).Scale, ShouldEqual, decimal64Val.Scale)
-			So(result.String(), ShouldEqual, "decimal64(2.29999999999)")
+			So(result.String(), ShouldEqual, "decimal64(2.30000000000)")
 			So(reType, ShouldEqual, 38)
 			reTypeString := result.GetDataTypeString()
 			So(reTypeString, ShouldEqual, "decimal64")
@@ -2345,6 +2345,7 @@ func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
 		So(err, ShouldBeNil)
 		Convey("Test_scalar_decimal32_scale_lt_digits:", func() {
 			dc32 := &model.Decimal32{Scale: 2, Value: -0.369545}
+
 			dt, err := model.NewDataType(model.DtDecimal32, dc32)
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
@@ -2354,12 +2355,12 @@ func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
 		})
 		Convey("Test_scalar_decimal32_scale_gt_digits:", func() {
-			dc32 := &model.Decimal32{Scale: 8, Value: -0.36}
+			dc32 := &model.Decimal32{Scale: 8, Value: -0.37}
 			dt, err := model.NewDataType(model.DtDecimal32, dc32)
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
 			db.Upload(map[string]model.DataForm{"s": s})
-			res, err := db.RunScript("eqObj(s, decimal32(-0.36, 8))")
+			res, err := db.RunScript("eqObj(s, decimal32(-0.37, 8))")
 			So(err, ShouldBeNil)
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
 		})

@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolphindb/api-go/dialer"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/model"
 )
 
 type subscriber struct {
@@ -141,8 +141,6 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*UnboundedChan, e
 	return q, retErr
 }
 
-
-
 func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
 	var conn dialer.Conn
 	var err error
@@ -242,14 +240,14 @@ func isLater(ori, raw string) bool {
 
 func (s *subscriber) getConn() (net.Conn, bool) {
 	select {
-		case tc, ok := <-s.connList.Out:
-			if ok {
-				return tc.(dialer.Conn), true
-			} else {
-				return nil, false
-			}
-		default:
+	case tc, ok := <-s.connList.Out:
+		if ok {
+			return tc.(dialer.Conn), true
+		} else {
 			return nil, false
+		}
+	default:
+		return nil, false
 	}
 }
 

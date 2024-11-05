@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/test/setup"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -859,7 +859,7 @@ func Test_Dictionary_DownLoad_decimal32(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_dictionary_decimal32_not_null:", func() {
-			s, err := db.RunScript("x=`a`b`c`d`e;y=take(0.99999,5)$DECIMAL32(2);z=dict(x,y);z")
+			s, err := db.RunScript("x=`a`b`c`d`e;y=take(0.98999,5)$DECIMAL32(2);z=dict(x,y);z")
 			So(err, ShouldBeNil)
 			result := s.(*model.Dictionary)
 			key := []string{"a", "b", "c", "d"}
@@ -900,7 +900,7 @@ func Test_Dictionary_DownLoad_decimal64(t *testing.T) {
 			So(err, ShouldBeNil)
 			result := s.(*model.Dictionary)
 			key := []string{"a", "b", "c", "d"}
-			val := &model.Decimal64s{11, []float64{0.99999456485, 0.99999456485, 0.99999456485}}
+			val := &model.Decimal64s{11, []float64{0.99999456486, 0.99999456486, 0.99999456486}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
 				zx := get.Value().(*model.Decimal64)
