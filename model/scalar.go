@@ -63,7 +63,14 @@ func (s *Scalar) IsNull() bool {
 
 // Render serializes the DataForm with bo and input it into w.
 func (s *Scalar) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
-	if err := s.category.render(w); err != nil {
+	ca := &Category{
+		DataForm: DfScalar,
+		DataType: s.DataType.DataType(),
+	}
+	if ca.DataType == DtCode || ca.DataType == DtFunction || ca.DataType == DtHandle {
+		ca.DataType = DtString
+	}
+	if err := ca.render(w); err != nil {
 		return err
 	}
 

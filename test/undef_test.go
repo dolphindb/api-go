@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/dolphindb/api-go/v3/api"
@@ -38,7 +37,7 @@ func TestUndef(t *testing.T) {
 			_, err = ddb.RunScript("x=1")
 			So(err, ShouldBeNil)
 			undefReq := new(api.UndefRequest).
-				SetObj("`x").SetObjType("VAR")
+				SetObj("x").SetObjType("VAR")
 			err = ddb.Undef(undefReq)
 			So(err, ShouldBeNil)
 			_, err := ddb.RunScript("x")
@@ -48,7 +47,7 @@ func TestUndef(t *testing.T) {
 			_, err = ddb.RunScript("x=1;")
 			So(err, ShouldBeNil)
 			undefReq := new(api.UndefRequest).
-				SetObj("`x")
+				SetObj("x")
 			err = ddb.Undef(undefReq)
 			So(err, ShouldBeNil)
 			_, err = ddb.RunScript("x")
@@ -58,24 +57,10 @@ func TestUndef(t *testing.T) {
 			_, err = ddb.RunScript("def f(a){return a+1}")
 			So(err, ShouldBeNil)
 			undefReq := new(api.UndefRequest).
-				SetObj("`f").SetObjType("DEF")
+				SetObj("f").SetObjType("DEF")
 			err = ddb.Undef(undefReq)
 			So(err, ShouldBeNil)
 			_, err = ddb.RunScript("f")
-			So(err, ShouldNotBeNil)
-		})
-
-		Convey("Test_func_undef_varible_data_list", func() {
-			_, err = ddb.RunScript("x=1;y=short(10)")
-			So(err, ShouldBeNil)
-			undefReq := new(api.UndefRequest).
-				SetObj("`x`y")
-			err = ddb.Undef(undefReq)
-			So(err, ShouldBeNil)
-			res, err := ddb.RunScript("x")
-			fmt.Println(res)
-			So(err, ShouldNotBeNil)
-			_, err = ddb.RunScript("y")
 			So(err, ShouldNotBeNil)
 		})
 	})

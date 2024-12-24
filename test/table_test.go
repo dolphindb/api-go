@@ -101,7 +101,7 @@ func TestTableDataType(t *testing.T) {
 					re := redecimal32.Data.Value()
 					Println(re[0])
 
-					tmp, _ := model.NewDataType(model.DtDecimal32, &model.Decimal32{Scale: 3, Value: 1.235})
+					tmp, _ := model.NewDataType(model.DtDecimal32, &model.Decimal32{Scale: 3, Value: 1.236})
 					Println(tmp.Value())
 					for i := 0; i < redecimal32.Rows(); i++ {
 						So(re[i], ShouldResemble, tmp.Value())
@@ -420,7 +420,7 @@ func TestTableDataType(t *testing.T) {
 				}
 				redecimal32 := memTable.GetColumnByName(memTable.GetColumnNames()[0])
 				So(redecimal32.GetDataType(), ShouldEqual, model.DtDecimal32)
-				So(redecimal32.String(), ShouldEqual, "vector<decimal32>([0.236])")
+				So(redecimal32.String(), ShouldEqual, "vector<decimal32>([0.237])")
 				redecimal64 := memTable.GetColumnByName(memTable.GetColumnNames()[1])
 				So(redecimal64.GetDataType(), ShouldEqual, model.DtDecimal64)
 				So(redecimal64.String(), ShouldEqual, "vector<decimal64>([0.456])")
@@ -817,7 +817,7 @@ func TestTableUpload(t *testing.T) {
 				fmt.Println(tb.GetRowJSON(i))
 			}
 			ex0 := `{"sym":"1","int":"0","double":"","bool":"","date":"","deci32":"0.00","deci64":"0.01000000000"}`
-			ex1 := `{"sym":"2","int":"-1","double":"2.331245","bool":"true","date":"1969.12.31","deci32":"-23.35","deci64":"-23.35546620000"}`
+			ex1 := `{"sym":"2","int":"-1","double":"2.331245","bool":"true","date":"1969.12.31","deci32":"-23.36","deci64":"-23.35546620000"}`
 			ex2 := `{"sym":"","int":"","double":"-235.1235666","bool":"false","date":"1970.01.01","deci32":"","deci64":""}`
 
 			So(ex0, ShouldEqual, tb.GetRowJSON(0))
@@ -841,8 +841,8 @@ func TestTableDataType_arrayVector(t *testing.T) {
 					longv = array(LONG[], 0, 10).append!([1..10, 2..5, [], [2, NULL, 20]])
 					charv = array(CHAR[], 0, 10).append!([1..10, 2..5, [], [2, NULL, 20]])
 					boolv = array(BOOL[], 0, 10).append!([[true, false], [true], [], [true, false, NULL]])
-					decimal32v = array(DECIMAL32(4)[], 0, 10).append!([[-2.3645, -2.346], [0.231], [], [2.2356, 1.2356, NULL]])
-					decimal64v = array(DECIMAL64(4)[], 0, 10).append!([[-2.3645, -2.346], [0.54897513], [], [2.2356, 1.2356, NULL]])
+					decimal32v = array(DECIMAL32(4)[], 0, 10).append!([[-2.3644, -2.346], [0.231], [], [2.2356, 1.2356, NULL]])
+					decimal64v = array(DECIMAL64(4)[], 0, 10).append!([[-2.3644, -2.346], [0.54897513], [], [2.2356, 1.2356, NULL]])
 					m = table(intv,longv,shortv,charv,boolv,decimal32v,decimal64v);
 					t.append!(m); t`)
 				So(err, ShouldBeNil)
@@ -910,17 +910,17 @@ func TestTableDataType_arrayVector(t *testing.T) {
 					So(redecimal32.GetVectorValue(0).String(), ShouldEqual, "vector<decimal32>([-2.364, -2.346])")
 					So(redecimal32.GetVectorValue(1).String(), ShouldEqual, "vector<decimal32>([0.231])")
 					So(redecimal32.GetVectorValue(2).String(), ShouldEqual, "vector<decimal32>([])")
-					So(redecimal32.GetVectorValue(3).String(), ShouldEqual, "vector<decimal32>([2.235, 1.235, ])")
+					So(redecimal32.GetVectorValue(3).String(), ShouldEqual, "vector<decimal32>([2.236, 1.236, ])")
 				})
 				Convey("Test table decimal64 type:", func() {
 					redecimal64 := memTable.GetColumnByName(memTable.GetColumnNames()[6])
 					So(redecimal64.GetDataType(), ShouldEqual, model.DtDecimal64+64)
 					So(redecimal64.GetDataForm(), ShouldResemble, model.DfVector)
 					So(redecimal64.Rows(), ShouldEqual, 4)
-					So(redecimal64.GetVectorValue(0).String(), ShouldEqual, "vector<decimal64>([-2.3645, -2.3460])")
-					So(redecimal64.GetVectorValue(1).String(), ShouldEqual, "vector<decimal64>([0.5489])")
+					So(redecimal64.GetVectorValue(0).String(), ShouldEqual, "vector<decimal64>([-2.3644, -2.3460])")
+					So(redecimal64.GetVectorValue(1).String(), ShouldEqual, "vector<decimal64>([0.5490])")
 					So(redecimal64.GetVectorValue(2).String(), ShouldEqual, "vector<decimal64>([])")
-					So(redecimal64.GetVectorValue(3).String(), ShouldEqual, "vector<decimal64>([2.2355, 1.2356, ])")
+					So(redecimal64.GetVectorValue(3).String(), ShouldEqual, "vector<decimal64>([2.2356, 1.2356, ])")
 				})
 			})
 

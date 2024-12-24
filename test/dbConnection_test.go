@@ -617,9 +617,13 @@ func TestConnectionIsClearSessionMemory(t *testing.T) {
 }
 
 func TestBehaviorOptions(t *testing.T) {
+	timeout := time.Second
 	Convey("Test_BehaviorOptions_Reconnect_true", t, func() {
+		reconnNum := 1
 		opt := &dialer.BehaviorOptions{
 			Reconnect: true,
+			TryReconnectNums: &reconnNum,
+			Timeout: timeout,
 		}
 		connCtl, _ := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
 		So(connCtl.IsConnected(), ShouldBeTrue)
@@ -633,12 +637,50 @@ func TestBehaviorOptions(t *testing.T) {
 		err = conn.Login(loginReq)
 		So(err, ShouldBeNil)
 		nodeName, _ := conn.RunScript("getNodeAlias()")
-		connCtl.RunScript("stopDataNode(`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		connCtl.RunScript("stopDataNode(`" + nodeName.(*model.Scalar).Value().(string) + "); assert not (exec state from getClusterPerf() where name=`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		fmt.Println(nodeName.(*model.Scalar).Value().(string) + " stopped successfully")
 		time.Sleep(2 * time.Second)
-		connCtl.RunScript("startDataNode(`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		connCtl.RunScript("startDataNode(`" + nodeName.(*model.Scalar).Value().(string) + "); assert (exec state from getClusterPerf() where name=`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		fmt.Println(nodeName.(*model.Scalar).Value().(string) + " started successfully")
 		time.Sleep(2 * time.Second)
 		res, _ := conn.RunScript("1+1")
 		So(res.(*model.Scalar).Value().(int32), ShouldEqual, 2)
+		conn.Close()
+		connCtl.Close()
+	})
+
+	Convey("Test_BehaviorOptions_Reconnect_true_reconnNum", t, func() {
+		reconnNum := 1
+		opt := &dialer.BehaviorOptions{
+			Reconnect:        true,
+			TryReconnectNums: &reconnNum,
+			Timeout:          timeout,
+		}
+		connCtl, _ := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		So(connCtl.IsConnected(), ShouldBeTrue)
+		conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		So(err, ShouldBeNil)
+		conn.Connect()
+		loginReq := &api.LoginRequest{
+			UserID:   "admin",
+			Password: "123456",
+		}
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+		nodeName, _ := conn.RunScript("getNodeAlias()")
+		connCtl.RunScript("stopDataNode(`" + nodeName.(*model.Scalar).Value().(string) + "); assert not (exec state from getClusterPerf() where name=`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		fmt.Println(nodeName.(*model.Scalar).Value().(string) + " stopped successfully")
+		go func() {
+			res, err := conn.RunScript("1+1")
+			Convey("Test_BehaviorOptions_Reconnect_true_reconnNum_res", t, func() {
+				So(err, ShouldNotBeNil)
+				So(res, ShouldBeNil)
+			})
+		}()
+		time.Sleep(5 * time.Second)
+		connCtl.RunScript("startDataNode(`" + nodeName.(*model.Scalar).Value().(string) + "); assert (exec state from getClusterPerf() where name=`" + nodeName.(*model.Scalar).Value().(string) + ")")
+		fmt.Println(nodeName.(*model.Scalar).Value().(string) + " started successfully")
+		time.Sleep(2 * time.Second)
 		conn.Close()
 		connCtl.Close()
 	})
@@ -647,8 +689,54 @@ func TestBehaviorOptions(t *testing.T) {
 		opt := &dialer.BehaviorOptions{
 			Reconnect: false,
 		}
-		conn, err := api.NewDolphinDBClient(context.TODO(), "192.168.0.69:3111", opt)
-		err = conn.Connect()
+		conn, _ := api.NewDolphinDBClient(context.TODO(), "192.168.0.69:3111", opt)
+		err := conn.Connect()
 		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Test_BehaviorOptions_timeout_reached", t, func() {
+		timeout := time.Second * 2
+		opt := &dialer.BehaviorOptions{
+			Timeout: timeout,
+		}
+		conn, _ := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		defer conn.Close()
+		err := conn.Connect()
+		So(err, ShouldBeNil)
+		start := time.Now()
+		_, err = conn.RunScript("sleep(3000)")
+		So(err, ShouldNotBeNil)
+		end := time.Now()
+		So(end.Sub(start).Seconds(), ShouldBeGreaterThanOrEqualTo, 2)
+		So(end.Sub(start).Seconds(), ShouldBeLessThan, 3)
+	})
+	Convey("Test_BehaviorOptions_timeout_not_reached", t, func() {
+		timeout := time.Second * 2
+		opt := &dialer.BehaviorOptions{
+			Timeout: timeout,
+		}
+		conn, _ := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		defer conn.Close()
+		err := conn.Connect()
+		So(err, ShouldBeNil)
+		start := time.Now()
+		_, err = conn.RunScript("sleep(1000)")
+		So(err, ShouldBeNil)
+		end := time.Now()
+		So(end.Sub(start).Seconds(), ShouldBeLessThan, 2)
+		So(end.Sub(start).Seconds(), ShouldBeGreaterThanOrEqualTo, 1)
+	})
+
+	Convey("Test_BehaviorOptions_usePython_true", t, func() {
+		opt := &dialer.BehaviorOptions{
+			UsePython: true,
+		}
+		conn, _ := api.NewDolphinDBClient(context.TODO(), host3, opt)
+		defer conn.Close()
+		err := conn.Connect()
+		So(err, ShouldBeNil)
+		res, err := conn.RunScript("import dolphindb as ddb;import pandas as pd; type([1,2,3])")
+		So(err, ShouldBeNil)
+		So(res.(*model.Scalar).Value().(string), ShouldEqual, "list")
 	})
 }

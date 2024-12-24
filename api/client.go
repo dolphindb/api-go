@@ -409,7 +409,7 @@ func (c *dolphindb) DropPartition(d *DropPartitionRequest) error {
 }
 
 func (c *dolphindb) Undef(u *UndefRequest) error {
-	s := u.Obj
+	s := "\"" + u.Obj + "\""
 	if u.ObjType != "" {
 		s += "," + u.ObjType
 	}

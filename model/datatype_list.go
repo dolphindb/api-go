@@ -1280,10 +1280,6 @@ func (d *dataTypeList) Sub(start, end int) DataTypeList {
 }
 
 func (d *dataTypeList) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
-	if d.Len() == 0 {
-		return nil
-	}
-
 	var err error
 	switch d.t {
 	case DtString, DtCode, DtFunction, DtHandle, DtDictionary, DtSymbol:

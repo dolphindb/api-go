@@ -14,10 +14,10 @@ import (
 
 const (
 	IGNORE ErrorType = iota
-	UNKNOW
-	NEWLEADER
-	NODENOTAVAIL
-	NOINITIALIZED
+	UNKNOWN
+	NEW_LEADER
+	NODE_NOT_AVAIL
+	NO_INITIALIZED
 	UNEXPECT
 )
 
@@ -69,6 +69,10 @@ func generatorRequestFlag(opt *BehaviorOptions) int {
 		flag += 16
 	}
 
+	if opt.UsePython {
+		flag += 2048
+	}
+
 	if opt.IsReverseStreaming {
 		flag += 131072
 	}
@@ -106,4 +110,24 @@ func parseAddr(raw string) string {
 	}
 
 	return strings.Join(strs[:2], ":")
+}
+
+func Login(conn Conn, userID, password string) error {
+	args := make([]model.DataForm, 2)
+	user, err := model.NewDataType(model.DtString, userID)
+	if err != nil {
+		return err
+	}
+	pwd, err := model.NewDataType(model.DtString, password)
+	if err != nil {
+		return err
+	}
+
+	args[0] = model.NewScalar(user)
+	args[1] = model.NewScalar(pwd)
+	_, err = conn.RunFunc("login", args)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -884,6 +884,7 @@ func Test_Dictionary_DownLoad_decimal32(t *testing.T) {
 				zx := get.Value().(*model.Decimal32)
 				// fmt.Println(zx.Scale, zx.Value, val.Value)
 				So(zx.Scale, ShouldEqual, val.Scale)
+				So(zx.Value, ShouldEqual, val.Value[i])
 			}
 		})
 		So(db.Close(), ShouldBeNil)
@@ -921,6 +922,7 @@ func Test_Dictionary_DownLoad_decimal64(t *testing.T) {
 				zx := get.Value().(*model.Decimal64)
 				// fmt.Println(zx.Scale, zx.Value, val.Value[i])
 				So(zx.Scale, ShouldEqual, val.Scale)
+				So(zx.Value, ShouldEqual, val.Value[i])
 			}
 		})
 		So(db.Close(), ShouldBeNil)
@@ -971,6 +973,7 @@ func Test_Dictionary_DownLoad_decimal128(t *testing.T) {
 				zx := get.Value().(*model.Decimal128)
 				// fmt.Println(zx.Scale, zx.Value, val.Value)
 				So(zx.Scale, ShouldEqual, val.Scale)
+				So(zx.Value, ShouldEqual, val.Value[i])
 			}
 		})
 		So(db.Close(), ShouldBeNil)
@@ -1285,7 +1288,7 @@ func Test_Dictionary_UpLoad_string_and_decimal32(t *testing.T) {
 			result := res.(*model.Dictionary)
 			ty, _ := db.RunScript("typestr(s)")
 			key := []string{"v1", "v2", "v3"}
-			val := &model.Decimal32s{2, []float64{1.33, -2.30, model.NullDecimal32Value}}
+			val := &model.Decimal32s{2, []float64{1.34, -2.30, model.NullDecimal32Value}}
 			for i := 0; i < 3; i++ {
 				get, _ := result.Get(key[i])
 				zx := get.Value().(*model.Decimal32)
@@ -1297,7 +1300,7 @@ func Test_Dictionary_UpLoad_string_and_decimal32(t *testing.T) {
 				}
 				switch {
 				case i == 0:
-					So(get.String(), ShouldEqual, "1.33")
+					So(get.String(), ShouldEqual, "1.34")
 				case i == 1:
 					So(get.String(), ShouldEqual, "-2.30")
 				case i == 2:

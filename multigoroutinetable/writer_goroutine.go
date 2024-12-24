@@ -27,19 +27,18 @@ type writerGoroutine struct {
 }
 
 func newWriterGoroutine(goroutineIndex int, mtw *MultiGoroutineTable, conn dialer.Conn) *writerGoroutine {
-	batch := 65535
-	if mtw.batchSize > batch {
-		batch = mtw.batchSize
-	}
 	res := &writerGoroutine{
 		goroutineIndex: goroutineIndex,
 		Conn:           conn,
 		tableWriter:    mtw,
 		signal:         sync.NewCond(&sync.Mutex{}),
 		exit:           make(chan bool),
-		writeQueue:     newQueue(batch, mtw),
-		failedQueue:    newQueue(batch, mtw),
+		writeQueue:     newQueue(mtw.batchSize, mtw),
+		failedQueue:    newQueue(mtw.batchSize, mtw),
 	}
+
+	res.writeQueue.initBuf()
+	res.failedQueue.initBuf()
 
 	res.initScript()
 
@@ -54,17 +53,10 @@ func (w *writerGoroutine) run() {
 	w.exit = make(chan bool)
 
 	for !w.isExit() {
-		w.signal.L.Lock()
-		w.signal.Wait()
-		w.signal.L.Unlock()
-		if !w.isExit() && w.tableWriter.batchSize > 1 && w.tableWriter.throttle > 0 {
-			for !w.isExit() {
-				if w.writeQueue.len() < w.tableWriter.batchSize {
-					time.Sleep(time.Duration(w.tableWriter.throttle) * time.Millisecond)
-				}
-				w.writeAllData()
-			}
+		if w.writeQueue.len() < w.tableWriter.batchSize {
+			time.Sleep(time.Duration(w.tableWriter.throttle) * time.Millisecond)
 		}
+		w.writeAllData()
 	}
 
 	for !w.tableWriter.isExit() && w.writeAllData() {

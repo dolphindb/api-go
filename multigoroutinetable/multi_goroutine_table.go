@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/dialer"
@@ -361,19 +362,24 @@ func (mtt *MultiGoroutineTable) InsertUnwrittenData(records [][]interface{}) err
 // WaitForGoroutineCompletion waits for the data to be sent completely and exits the MultiGoroutineTable.
 // An error will be thrown if you call Insert or InsertUnwrittenData after the MultiGoroutineTable exits.
 func (mtt *MultiGoroutineTable) WaitForGoroutineCompletion() {
-	for _, v := range mtt.goroutines {
-		v.stop()
-		//nolint
-		for !v.isFinished {
-			// loop
-		}
+	var wg sync.WaitGroup
+	wg.Add(len(mtt.goroutines))
+	for _, w := range mtt.goroutines {
+		go func(v *writerGoroutine) {
+			v.stop()
+			for !v.isFinished {
+				time.Sleep(time.Millisecond)
+			}
 
-		if v.Conn != nil {
-			v.Conn.Close()
-		}
+			if v.Conn != nil {
+				v.Conn.Close()
+			}
 
-		v.Conn = nil
+			v.Conn = nil
+			wg.Done()
+		}(w)
 	}
+	wg.Wait()
 
 	mtt.hasError = true
 }
@@ -582,11 +588,14 @@ func initMultiGoroutineTable(opt *Option) (*MultiGoroutineTable, error) {
 	if err := validateOption(opt); err != nil {
 		return nil, err
 	}
-
+	batch := 65536
+	if opt.BatchSize > batch {
+		batch = opt.BatchSize
+	}
 	mtt := &MultiGoroutineTable{
 		database:   opt.Database,
 		tableName:  opt.TableName,
-		batchSize:  opt.BatchSize,
+		batchSize:  batch,
 		throttle:   opt.Throttle,
 		hasError:   false,
 		goroutines: make([]*writerGoroutine, opt.GoroutineCount),

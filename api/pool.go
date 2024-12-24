@@ -52,6 +52,12 @@ type PoolOption struct {
 
 	// refresh time of every connection
 	Timeout time.Duration
+
+	// whether to reconnect if not enable high availability
+	Reconnect bool
+
+	// try reconnect times
+	TryReconnectNums *int
 }
 
 // NewDBConnectionPool inits a DBConnectionPool object and configures it with opt, finally returns it.
@@ -99,6 +105,8 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 	bOpt := &dialer.BehaviorOptions{
 		EnableHighAvailability: opt.EnableHighAvailability,
 		HighAvailabilitySites:  opt.HighAvailabilitySites,
+		Reconnect:              opt.Reconnect,
+		TryReconnectNums:       opt.TryReconnectNums,
 	}
 	conn, err := dialer.NewConn(context.TODO(), addr, bOpt)
 	if err != nil {
@@ -112,7 +120,7 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 		return nil, err
 	}
 
-	_, err = conn.RunScript(fmt.Sprintf("login('%s','%s')", opt.UserID, opt.Password))
+	err = dialer.Login(conn, opt.UserID, opt.Password)
 	if err != nil {
 		return nil, err
 	}

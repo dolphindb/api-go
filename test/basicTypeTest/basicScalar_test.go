@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -2350,8 +2351,15 @@ func Test_Scalar_UpLoad_Datatype_decimal32(t *testing.T) {
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
 			db.Upload(map[string]model.DataForm{"s": s})
+			res1, err := db.RunScript("string(decimal32(-0.369545, 2))")
+			So(err, ShouldBeNil)
+			fmt.Println("res1", res1)
+			res1, err = db.RunScript("string(s)")
+			So(err, ShouldBeNil)
+			fmt.Println("res2", res1)
 			res, err := db.RunScript("eqObj(s, decimal32(-0.369545, 2))")
 			So(err, ShouldBeNil)
+			fmt.Println("res", res)
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
 		})
 		Convey("Test_scalar_decimal32_scale_gt_digits:", func() {
@@ -2390,6 +2398,14 @@ func Test_Scalar_UpLoad_Datatype_decimal64(t *testing.T) {
 			So(err, ShouldBeNil)
 			s := model.NewScalar(dt)
 			db.Upload(map[string]model.DataForm{"s": s})
+
+			res1, err := db.RunScript("string(decimal64(-0.369545, 11))")
+			So(err, ShouldBeNil)
+			fmt.Println("res1", res1)
+			res1, err = db.RunScript("string(s)")
+			So(err, ShouldBeNil)
+			fmt.Println("res2", res1)
+
 			res, err := db.RunScript("eqObj(s, decimal64(-0.369545, 11))")
 			So(err, ShouldBeNil)
 			So(res.(*model.Scalar).Value(), ShouldBeTrue)
@@ -2602,9 +2618,14 @@ func Test_Scalar_UpLoad_Datatype_code(t *testing.T) {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		Convey("Test_scalar_code:", func() {
+			code, err := db.RunScript("<1+2>")
+			So(err, ShouldBeNil)
+			fmt.Println("code", code)
+
 			dt, _ := model.NewDataType(model.DtCode, "<1+2>")
 			s := model.NewScalar(dt)
-			df, _ := db.Upload(map[string]model.DataForm{"s": s})
+			df, err := db.Upload(map[string]model.DataForm{"s": s})
+			So(err, ShouldBeNil)
 			res, err := db.RunScript("s")
 			ty, _ := db.RunScript("typestr(s)")
 			re := res.(*model.Scalar)

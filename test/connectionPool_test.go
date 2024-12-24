@@ -1797,7 +1797,7 @@ func TestConnnectionPoolHighAvailability(t *testing.T) {
 		}
 		poolHA, err := api.NewDBConnectionPool(opt)
 		AssertNil(err)
-		poolCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		connCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
 		AssertNil(err)
 		getnametask := api.Task{Script: "getNodeAlias()"}
 		tasks := []*api.Task{&getnametask}
@@ -1806,19 +1806,19 @@ func TestConnnectionPoolHighAvailability(t *testing.T) {
 		AssertNil(err)
 		origin_node := tasks[0].GetResult()
 		fmt.Println("now", origin_node.(*model.Scalar).Value().(string), "is connected, try to stop it")
-		poolCtl.RunScript("stopDataNode(`" + origin_node.(*model.Scalar).Value().(string) + ")")
+		connCtl.RunScript("stopDataNode(`" + origin_node.(*model.Scalar).Value().(string) + ")")
 		time.Sleep(2 * time.Second)
 		fmt.Println("stop success, check if the origin connection click to another node")
 		err = poolHA.Execute(tasks)
 		AssertNil(err)
 		So(tasks[0].GetResult().String(), ShouldNotEqual, origin_node.(*model.Scalar).Value().(string))
 		fmt.Println("check passed, restart the origin node")
-		_, err = poolCtl.RunScript(
+		_, err = connCtl.RunScript(
 			"nodes = exec name from getClusterPerf() where state!=1 and mode !=1;" +
 				"startDataNode(nodes);")
 		AssertNil(err)
 		time.Sleep(2 * time.Second)
-		poolCtl.Close()
+		connCtl.Close()
 		poolHA.Close()
 	})
 	// Convey("TestConnnectionHighAvailability exception", t, func() {
@@ -1858,8 +1858,8 @@ func TestConnnectionPoolHighAvailability(t *testing.T) {
 
 }
 
-func TestConnnectionPooltimeOut(t *testing.T) {
-	Convey("TestConnnectionPooltimeOut_timeoutOption", t, func() {
+func TestConnnectionPoolOption(t *testing.T) {
+	Convey("TestConnnectionPoolOption_timeoutOption", t, func() {
 		opt := &api.PoolOption{
 			Address:  setup.Address4,
 			UserID:   setup.UserName,
@@ -1879,7 +1879,7 @@ func TestConnnectionPooltimeOut(t *testing.T) {
 			So(threadErr, ShouldContainSubstring, "timeout")
 		}
 	})
-	Convey("TestConnnectionPooltimeOut_RefreshTimeout", t, func() {
+	Convey("TestConnnectionPoolOption_RefreshTimeout", t, func() {
 		opt := &api.PoolOption{
 			Address:  setup.Address4,
 			UserID:   setup.UserName,
@@ -1922,7 +1922,7 @@ func TestConnnectionPooltimeOut(t *testing.T) {
 		}
 	})
 
-	Convey("TestConnnectionPooltimeOut_exception", t, func() {
+	Convey("TestConnnectionPoolOption_exception", t, func() {
 		opt := &api.PoolOption{
 			Address:  setup.Address4,
 			UserID:   setup.UserName,
@@ -1934,4 +1934,89 @@ func TestConnnectionPooltimeOut(t *testing.T) {
 		So(err.Error(), ShouldContainSubstring, "Timeout must be equal or greater than 0")
 	})
 
+	Convey("TestConnnectionPoolOption_reconnect", t, func() {
+		reconnNum := 1
+		opt := &api.PoolOption{
+			Address:          host1,
+			UserID:           setup.UserName,
+			Password:         setup.Password,
+			PoolSize:         4,
+			Reconnect:        true,
+			TryReconnectNums: &reconnNum,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		defer pool.Close()
+		// stop one node
+		connCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		getnametask := api.Task{Script: "getNodeAlias()"}
+		tasks := []*api.Task{&getnametask}
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		origin_node := tasks[0].GetResult()
+		fmt.Println("now", origin_node.(*model.Scalar).Value().(string), "is connected, try to stop it")
+		_, err = connCtl.RunScript("stopDataNode(`" + origin_node.(*model.Scalar).Value().(string) + ");sleep(1000)")
+		So(err, ShouldBeNil)
+		fmt.Println("stop successfully")
+
+		time.Sleep(1 * time.Second)
+		_, err = connCtl.RunScript(
+			"startDataNode(exec name from getClusterPerf() where state!=1 and mode !=1);sleep(1000)")
+		So(err, ShouldBeNil)
+		fmt.Println("restart success, check if the connection is ok")
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		re := tasks[0].GetResult()
+		So(re.(*model.Scalar).Value().(string), ShouldEqual, origin_node.(*model.Scalar).Value().(string))
+		time.Sleep(2 * time.Second)
+	})
+
+	Convey("Test_BehaviorOptions_timeout_reached", t, func() {
+		timeout := time.Second * 2
+		opt := &api.PoolOption{
+			Timeout:  timeout,
+			Address:  host1,
+			UserID:   setup.UserName,
+			Password: setup.Password,
+			PoolSize: 10,
+		}
+
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		defer pool.Close()
+		tasks := make([]*api.Task, 1)
+		tasks[0] = &api.Task{Script: "sleep(30000);go;1+1"}
+		start := time.Now()
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		// fmt.Println("err: ",tasks[0].GetError().Error())
+		So(tasks[0].GetError().Error(), ShouldContainSubstring, "timeout")
+		end := time.Now()
+		So(end.Sub(start).Seconds(), ShouldBeGreaterThanOrEqualTo, 2)
+	})
+
+	Convey("Test_BehaviorOptions_timeout_not_reached", t, func() {
+		timeout := time.Second * 2
+		opt := &api.PoolOption{
+			Timeout:  timeout,
+			Address:  host1,
+			UserID:   setup.UserName,
+			Password: setup.Password,
+			PoolSize: 10,
+		}
+
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		defer pool.Close()
+		tasks := make([]*api.Task, 1)
+		tasks[0] = &api.Task{Script: "sleep(1000);go;1+1"}
+		start := time.Now()
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		end := time.Now()
+		So(end.Sub(start).Seconds(), ShouldBeLessThan, 2)
+		So(end.Sub(start).Seconds(), ShouldBeGreaterThanOrEqualTo, 1)
+		So(tasks[0].GetResult().(*model.Scalar).Value().(int32), ShouldEqual, int32(2))
+	})
 }

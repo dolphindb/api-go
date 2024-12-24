@@ -1,5 +1,7 @@
 package dialer
 
+import "time"
+
 // BehaviorOptions helps you configure behavior identity.
 // Refer to https://github.com/dolphindb/Tutorials_CN/blob/master/api_protocol.md#254-%E8%A1%8C%E4%B8%BA%E6%A0%87%E8%AF%86 for more details.
 type BehaviorOptions struct {
@@ -9,6 +11,8 @@ type BehaviorOptions struct {
 	Parallelism *int
 	// FetchSize specifies the fetchSize of the task
 	FetchSize *int
+	// Timeout specifies the timeout of the connection.
+	Timeout time.Duration
 
 	// Whether to enable load balancing.
 	// If true, connect to the address with the fewest connections.
@@ -28,6 +32,12 @@ type BehaviorOptions struct {
 	IsReverseStreaming bool
 	// IsClearSessionMemory specifies whether to clear session memory after the job
 	IsClearSessionMemory bool
+
+	// tryReconnectNums specifies the number of times to try reconnecting
+	TryReconnectNums *int
+
+	// UsePython specifies whether the session uses a Python parser
+	UsePython bool
 }
 
 // SetPriority sets the priority of the task.
@@ -45,6 +55,11 @@ func (f *BehaviorOptions) SetParallelism(p int) *BehaviorOptions {
 // SetFetchSize sets the fetchSize of the task.
 func (f *BehaviorOptions) SetFetchSize(fs int) *BehaviorOptions {
 	f.FetchSize = &fs
+	return f
+}
+
+func (f *BehaviorOptions) SetTryReconnectNums(n int) *BehaviorOptions {
+	f.TryReconnectNums = &n
 	return f
 }
 
@@ -70,4 +85,11 @@ func (f *BehaviorOptions) GetFetchSize() int {
 		return 0
 	}
 	return *f.FetchSize
+}
+
+func (f *BehaviorOptions) GetTryReconnectNums() int {
+	if f.TryReconnectNums == nil {
+		return 0
+	}
+	return *f.TryReconnectNums
 }

@@ -1,6 +1,8 @@
 package api
 
-import "fmt"
+import (
+	"github.com/dolphindb/api-go/v3/dialer"
+)
 
 // AccountAPI interface declares apis about account.
 type AccountAPI interface {
@@ -16,7 +18,7 @@ type AccountAPI interface {
 // Login dolphindb.
 // See DolphinDB function `login`: https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/CommandsReferences/l/login.html?highlight=login
 func (c *dolphindb) Login(l *LoginRequest) error {
-	_, err := c.RunScript(fmt.Sprintf("login('%s','%s')", l.UserID, l.Password))
+	err := dialer.Login(c, l.UserID, l.Password)
 	c.SetPassword(l.Password)
 	c.SetUserID(l.UserID)
 	return err

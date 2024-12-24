@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"testing"
+	"time"
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/model"
@@ -726,4 +728,26 @@ func getRandomClusterAddress() string {
 		panic(err)
 	}
 	return addressV[n.Int64()]
+}
+
+func runWithTimeout(t *testing.T, timeout time.Duration, f func()) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	done := make(chan bool)
+
+	// 在 goroutine 中运行测试逻辑
+	go func() {
+		f()
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// 测试成功
+	case <-ctx.Done():
+		if ctx.Err() == context.DeadlineExceeded {
+			t.Errorf("Test exceeded timeout of %v", timeout)
+		}
+	}
 }

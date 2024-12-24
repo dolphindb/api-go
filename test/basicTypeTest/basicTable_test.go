@@ -2968,3 +2968,25 @@ func Test_Table_UpLoad_big_array(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Table_UpLoad_empty_table(t *testing.T) {
+	t.Parallel()
+	var testTypes = []string{"BOOL", "CHAR", "SHORT", "INT", "LONG", "DATE", "MONTH", "TIME", "MINUTE", "SECOND", "DATETIME", "TIMESTAMP", "NANOTIME", "NANOTIMESTAMP", "DATEHOUR", "FLOAT", "DOUBLE", "STRING", "SYMBOL", "BLOB", "IPADDR", "UUID", "INT128", "DECIMAL32(8)", "DECIMAL64(15)", "DECIMAL128(28)",
+		"BOOL[]", "CHAR[]", "SHORT[]", "INT[]", "LONG[]", "DATE[]", "MONTH[]", "TIME[]", "MINUTE[]", "SECOND[]", "DATETIME[]", "TIMESTAMP[]", "NANOTIME[]", "NANOTIMESTAMP[]", "DATEHOUR[]", "FLOAT[]", "DOUBLE[]", "IPADDR[]", "UUID[]", "INT128[]", "DECIMAL32(8)[]", "DECIMAL64(15)[]", "DECIMAL128(25)[]"}
+	var dataTypes = []model.DataTypeByte{model.DtBool, model.DtChar, model.DtShort, model.DtInt, model.DtLong, model.DtDate, model.DtMonth, model.DtTime, model.DtMinute, model.DtSecond, model.DtDatetime, model.DtTimestamp, model.DtNanoTime, model.DtNanoTimestamp, model.DtDateHour, model.DtFloat, model.DtDouble, model.DtString, model.DtSymbol, model.DtBlob, model.DtIP, model.DtUUID, model.DtInt128, model.DtDecimal32, model.DtDecimal64, model.DtDecimal128,
+		model.DtBool + 128, model.DtChar + 128, model.DtShort + 128, model.DtInt + 128, model.DtLong + 128, model.DtDate + 128, model.DtMonth + 128, model.DtTime + 128, model.DtMinute + 128, model.DtSecond + 128, model.DtDatetime + 128, model.DtTimestamp + 128, model.DtNanoTime + 128, model.DtNanoTimestamp + 128, model.DtDateHour + 128, model.DtFloat + 128, model.DtDouble + 128, model.DtIP + 128, model.DtUUID + 128, model.DtInt128 + 128, model.DtDecimal32 + 128, model.DtDecimal64 + 128, model.DtDecimal128 + 128}
+
+	Convey("Test_Table_upload_empty_table", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		for i := 0; i < len(testTypes); i++ {
+			fmt.Println(`test type: ` + testTypes[i])
+			tb := model.NewTable([]string{"col"}, []*model.Vector{model.NewVector(model.NewEmptyDataTypeList(dataTypes[i], 0))})
+			_, err = db.Upload(map[string]model.DataForm{"asdkbvg": tb})
+			So(err, ShouldBeNil)
+			res, _ := db.RunScript("asdkbvg.rows()")
+			So(res.(*model.Scalar).Value(), ShouldEqual, 0)
+		}
+		So(db.Close(), ShouldBeNil)
+	})
+}

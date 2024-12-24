@@ -352,12 +352,17 @@ func contains(raw []string, s string) (int, bool) {
 	return 0, false
 }
 
+func Round(x float64) float64 {
+	return math.Round(x/1.0) * 1.0
+}
+
 func calculateDecimal32(scale int32, value float64) (float64, error) {
 	if value == NullDecimal32Value {
 		return value, nil
 	}
 	res := decimal.NewFromFloat(value).Mul(decimal.NewFromFloat(math.Pow10(int(scale))))
 	f, _ := res.Float64()
+	f = Round(f)
 	if f < NullDecimal32Value || f > maxDecimal32Value {
 		return 0, errors.New("Decimal math overflow")
 	}
@@ -372,6 +377,7 @@ func calculateDecimal64(scale int32, value float64) (float64, error) {
 
 	res := decimal.NewFromFloat(value).Mul(decimal.NewFromFloat(math.Pow10(int(scale))))
 	f, _ := res.Float64()
+	f = Round(f)
 	if f < NullDecimal64Value || f > maxDecimal64Value {
 		return 0, errors.New("Decimal math overflow")
 	}

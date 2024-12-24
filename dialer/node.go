@@ -1,7 +1,6 @@
 package dialer
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -45,16 +44,34 @@ func (n *nodePool) add(no *node) {
 	n.len++
 }
 
+func isIgnoreMsg(msg string) bool {
+	ignoreMsgs := []string{
+		"<ChunkInTransaction>",
+		"<DataNodeNotAvail>",
+		"<DataNodeNotReady>",
+		"<ControllerNotReady>",
+		"DFS is not enabled",
+	}
+	for _, m := range ignoreMsgs {
+		if strings.Contains(msg, m) {
+			return true
+		}
+	}
+	return false
+}
+
 func (n *nodePool) parseError(msg string, no *node) ErrorType {
 	switch {
+	case isIgnoreMsg(msg):
+		return IGNORE
 	case strings.Contains(msg, "<NotLeader>"):
 		return n.getNewLeader(msg, no)
 	case strings.Contains(msg, "<DataNodeNotAvail>"):
 		return n.handleNotAvailError(msg, no)
 	case strings.Contains(msg, "The datanode isn't initialized yet. Please try again later"):
-		return NOINITIALIZED
+		return NO_INITIALIZED
 	default:
-		return UNKNOW
+		return UNKNOWN
 	}
 }
 
@@ -67,7 +84,7 @@ func (n *nodePool) handleNotAvailError(msg string, no *node) ErrorType {
 	}
 
 	no.address = ""
-	return NODENOTAVAIL
+	return NODE_NOT_AVAIL
 }
 
 func (n *nodePool) getNewLeader(msg string, no *node) ErrorType {
@@ -80,39 +97,47 @@ func (n *nodePool) getNewLeader(msg string, no *node) ErrorType {
 
 	no.address = addr
 	fmt.Println("New leader is ", addr)
-	return NEWLEADER
+	return NEW_LEADER
+}
+
+func (c *conn) getRetryTimes() int {
+	if c.behaviorOpt == nil || (!c.behaviorOpt.Reconnect && !c.behaviorOpt.EnableHighAvailability) {
+		return 0
+	}
+
+	if c.behaviorOpt.TryReconnectNums == nil {
+		return math.MaxInt32 // HACK: mock for try forever
+	}
+
+	return *c.behaviorOpt.TryReconnectNums
 }
 
 func (c *conn) switchDatanode(n *node) (err error) {
+	retryTimes := c.getRetryTimes()
 	connected := false
-	for !connected {
-		if n.address != "" {
-			ok, err := c.connectNode(n)
-			if err != nil {
-				return err
+	for attempt := 0; attempt <= retryTimes; attempt++ {
+		if n != nil {
+			if connected, err = c.connectNode(n); connected {
+				return nil
 			}
-			if ok {
-				connected = true
-				break
+			n = nil
+		} else {
+			if connected, err = c.rangeConnectNode(); connected {
+				return nil
 			}
 		}
 
-		connected, err = c.rangeConnectNode(n)
-		if err != nil {
-			return err
-		}
-
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(time.Second)
 	}
 
-	return nil
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("failed to connect to %s", c.addr)
 }
 
-func (c *conn) rangeConnectNode(n *node) (bool, error) {
-	if c.nodePool.len == 0 {
-		return false, errors.New("Failed to connect to " + n.address)
-	}
-
+func (c *conn) rangeConnectNode() (bool, error) {
 	for i := c.nodePool.len - 1; i >= 0; i-- {
 		c.nodePool.lastInd = (c.nodePool.lastInd + 1) % c.nodePool.len
 		ok, err := c.connectNode(c.nodePool.nodes[c.nodePool.lastInd])
@@ -127,184 +152,25 @@ func (c *conn) rangeConnectNode(n *node) (bool, error) {
 	return false, nil
 }
 
-func (c *conn) getConnectedNode() (*node, error) {
-	for !c.isConnected {
-		for _, v := range c.nodePool.nodes {
-			ok, err := c.connectNode(v)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				return v, nil
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
+// return true, nil: success
+// return false, nil: not connected, need to retry
+// return false, err: failed
+func (c *conn) connectNode(n *node) (bool, error) {
+	fmt.Println("Connect to ", n.address)
+	err := c.connect(n.address)
+	if err == nil {
+		return true, nil
 	}
 
-	return nil, nil
-}
-
-func (c *conn) connectMinNode() (bool, error) {
-	connectedNode, table, err := c.getClusterPerf()
-	if err != nil {
+	if !c.isConnected {
+		fmt.Printf("Connect to %s failed: %s\n", n.address, err)
 		return false, err
 	}
 
-	if c.loadBalance {
-		err = c.connectLoadBalance(table, connectedNode)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	return true, nil
-}
-
-func (c *conn) connectLoadBalance(tb *model.Table, cn *node) error {
-	c.calculateNodeWeight(tb)
-	minNode := c.nodePool.nodes[0]
-	for _, v := range c.nodePool.nodes {
-		if v.weight < minNode.weight {
-			minNode = v
-		}
-	}
-
-	if minNode.address != cn.address {
-		fmt.Println("Connect to min load node: ", minNode.address)
-		c.Conn.Close()
-		err := c.switchDatanode(minNode)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *conn) calculateNodeWeight(tb *model.Table) {
-	colHost := tb.GetColumnByName("host")
-	colPort := tb.GetColumnByName("port")
-	colMode := tb.GetColumnByName("mode")
-	colMaxConnections := tb.GetColumnByName("maxConnections")
-	colConnectionNum := tb.GetColumnByName("connectionNum")
-	colWorkerNum := tb.GetColumnByName("workerNum")
-	colExecutorNum := tb.GetColumnByName("executorNum")
-	load := 0.0
-	for k, v := range colMode.Data.StringList() {
-		if v == "0" {
-			nodeHost := colHost.Data.ElementString(k)
-			nodePort := colPort.Data.ElementString(k)
-			var existNode *node
-			if c.highAvailabilitySites != nil {
-				for _, n := range c.nodePool.nodes {
-					if n.address == fmt.Sprintf("%s:%s", nodeHost, nodePort) {
-						existNode = n
-						break
-					}
-				}
-
-				if existNode == nil {
-					continue
-				}
-			}
-
-			if colExecutorNum.Data.ElementValue(k).(int32) < colMaxConnections.Data.ElementValue(k).(int32) {
-				load = float64(colConnectionNum.Data.ElementValue(k).(int32)+
-					colWorkerNum.Data.ElementValue(k).(int32)+colExecutorNum.Data.ElementValue(k).(int32)) / 3.0
-			} else {
-				load = math.MaxFloat64
-			}
-
-			if existNode != nil {
-				existNode.weight = load
-			} else {
-				c.nodePool.add(&node{address: fmt.Sprintf("%s:%s", nodeHost, nodePort), weight: load})
-			}
-		}
-	}
-}
-
-func (c *conn) getClusterPerf() (*node, *model.Table, error) {
-	var connectedNode *node
-	var table *model.Table
-	var err error
-	n := newNode("", 1)
-	for !c.isClosed {
-		connectedNode, err = c.getConnectedNode()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		df, err := c.RunScript("rpc(getControllerAlias(), getClusterPerf)")
-		if err != nil {
-			err = c.handleGetClusterPerfError(n, err)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			continue
-		}
-
-		table = df.(*model.Table)
-		break
-	}
-
-	if table == nil {
-		return nil, nil, errors.New("Run getClusterPerf() failed.")
-	}
-
-	return connectedNode, table, nil
-}
-
-func (c *conn) handleGetClusterPerfError(n *node, err error) error {
-	fmt.Println("ERROR getting other data nodes, error: ", err)
-	n1 := &node{}
-	if c.isConnected {
-		et := c.nodePool.parseError(err.Error(), n)
-		if et == IGNORE {
-			return nil
-		} else if et == NEWLEADER || et == NODENOTAVAIL {
-			err = c.switchDatanode(n1)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		err = c.switchDatanode(n1)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *conn) connectNode(n *node) (bool, error) {
-	fmt.Println("Connect to ", n.address)
-	for !c.isClosed {
-		err := c.connect(n.address)
-		if err != nil {
-			if c.isConnected {
-				node := newNode("", 0)
-				et := c.nodePool.parseError(err.Error(), node)
-				switch {
-				case et == IGNORE:
-					return true, nil
-				case et == NODENOTAVAIL, et == NOINITIALIZED:
-					return false, nil
-				case et != NEWLEADER:
-					return false, err
-				}
-			} else {
-				fmt.Printf("Connect to %s failed: %s\n", n.address, err)
-				return false, nil
-			}
-
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		return true, nil
+	node := newNode("", 0)
+	et := c.nodePool.parseError(err.Error(), node)
+	if et == UNEXPECT || et == UNKNOWN {
+		return false, err
 	}
 
 	return false, nil
@@ -344,3 +210,157 @@ func (c *conn) connected() bool {
 
 	return s.Value().(int32) == 2
 }
+
+// NOTE function for get lowest load node
+
+// func (c *conn) getConnectedNode() (*node, error) {
+// 	for !c.isConnected {
+// 		for _, v := range c.nodePool.nodes {
+// 			ok, err := c.connectNode(v)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			if ok {
+// 				return v, nil
+// 			}
+// 			time.Sleep(100 * time.Millisecond)
+// 		}
+// 	}
+
+// 	return nil, nil
+// }
+
+// func (c *conn) connectMinNode() error {
+// 	connectedNode, table, err := c.getClusterPerf()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if c.loadBalance {
+// 		err = c.connectLoadBalance(table, connectedNode)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
+// }
+
+// func (c *conn) connectLoadBalance(tb *model.Table, cn *node) error {
+// 	c.calculateNodeWeight(tb)
+// 	minNode := c.nodePool.nodes[0]
+// 	for _, v := range c.nodePool.nodes {
+// 		if v.weight < minNode.weight {
+// 			minNode = v
+// 		}
+// 	}
+
+// 	if minNode.address != cn.address {
+// 		fmt.Println("Connect to min load node: ", minNode.address)
+// 		c.Conn.Close()
+// 		err := c.switchDatanode(minNode)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
+// }
+
+// func (c *conn) calculateNodeWeight(tb *model.Table) {
+// 	colHost := tb.GetColumnByName("host")
+// 	colPort := tb.GetColumnByName("port")
+// 	colMode := tb.GetColumnByName("mode")
+// 	colMaxConnections := tb.GetColumnByName("maxConnections")
+// 	colConnectionNum := tb.GetColumnByName("connectionNum")
+// 	colWorkerNum := tb.GetColumnByName("workerNum")
+// 	colExecutorNum := tb.GetColumnByName("executorNum")
+// 	load := 0.0
+// 	for k, v := range colMode.Data.StringList() {
+// 		if v == "0" {
+// 			nodeHost := colHost.Data.ElementString(k)
+// 			nodePort := colPort.Data.ElementString(k)
+// 			var existNode *node
+// 			if c.highAvailabilitySites != nil {
+// 				for _, n := range c.nodePool.nodes {
+// 					if n.address == fmt.Sprintf("%s:%s", nodeHost, nodePort) {
+// 						existNode = n
+// 						break
+// 					}
+// 				}
+
+// 				if existNode == nil {
+// 					continue
+// 				}
+// 			}
+
+// 			if colExecutorNum.Data.ElementValue(k).(int32) < colMaxConnections.Data.ElementValue(k).(int32) {
+// 				load = float64(colConnectionNum.Data.ElementValue(k).(int32)+
+// 					colWorkerNum.Data.ElementValue(k).(int32)+colExecutorNum.Data.ElementValue(k).(int32)) / 3.0
+// 			} else {
+// 				load = math.MaxFloat64
+// 			}
+
+// 			if existNode != nil {
+// 				existNode.weight = load
+// 			} else {
+// 				c.nodePool.add(&node{address: fmt.Sprintf("%s:%s", nodeHost, nodePort), weight: load})
+// 			}
+// 		}
+// 	}
+// }
+
+// func (c *conn) getClusterPerf() (*node, *model.Table, error) {
+// 	var connectedNode *node
+// 	var table *model.Table
+// 	var err error
+// 	n := newNode("", 1)
+// 	for !c.isClosed {
+// 		connectedNode, err = c.getConnectedNode()
+// 		if err != nil {
+// 			return nil, nil, err
+// 		}
+
+// 		df, err := c.RunScript("rpc(getControllerAlias(), getClusterPerf)")
+// 		if err != nil {
+// 			err = c.handleGetClusterPerfError(n, err)
+// 			if err != nil {
+// 				return nil, nil, err
+// 			}
+
+// 			continue
+// 		}
+
+// 		table = df.(*model.Table)
+// 		break
+// 	}
+
+// 	if table == nil {
+// 		return nil, nil, errors.New("run getClusterPerf() failed")
+// 	}
+
+// 	return connectedNode, table, nil
+// }
+
+// func (c *conn) handleGetClusterPerfError(n *node, err error) error {
+// 	fmt.Println("ERROR getting other data nodes, error: ", err)
+// 	n1 := &node{}
+// 	if c.isConnected {
+// 		et := c.nodePool.parseError(err.Error(), n)
+// 		if et == IGNORE {
+// 			return nil
+// 		} else if et == NEW_LEADER || et == NODE_NOT_AVAIL {
+// 			err = c.switchDatanode(n1)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		}
+// 	} else {
+// 		err = c.switchDatanode(n1)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
+// }

@@ -112,10 +112,16 @@ func NewConn(ctx context.Context, addr string, behaviorOpt *BehaviorOptions) (Co
 	if behaviorOpt.Priority != nil && (*behaviorOpt.Priority < 0 || *behaviorOpt.Priority > 8) {
 		return nil, errors.New("the job priority must be between 0 and 8")
 	}
+	timeout := behaviorOpt.Timeout
+	if timeout == 0 {
+		timeout = defaultTimeout
+	} else if timeout < 0 {
+		return nil, errors.New("the Timeout must be non-negative")
+	}
 	return &conn{
 		behaviorOpt:            behaviorOpt,
 		addr:                   addr,
-		timeout:                defaultTimeout,
+		timeout:                timeout,
 		highAvailabilitySites:  behaviorOpt.HighAvailabilitySites,
 		enableHighAvailability: behaviorOpt.EnableHighAvailability,
 		loadBalance:            behaviorOpt.LoadBalance,
@@ -139,7 +145,7 @@ func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, erro
 		return nil, err
 	}
 
-	_, err = conn.RunScript(fmt.Sprintf("login('%s','%s')", userID, pwd))
+	err = Login(conn, userID, pwd)
 	if err != nil {
 		return nil, err
 	}
@@ -230,27 +236,22 @@ func (c *conn) Connect() error {
 		c.nodePool = &nodePool{
 			nodes: make([]*node, 0),
 		}
-
 		c.nodePool.add(&node{address: c.addr})
 		for _, v := range c.highAvailabilitySites {
 			c.nodePool.add(&node{address: v})
 		}
-
-		_, err := c.connectMinNode()
-		return err
+		return c.switchDatanode(nil)
+	} else if c.reconnect {
+		c.nodePool = &nodePool{}
+		c.nodePool.add(&node{address: c.addr})
+		return c.switchDatanode(nil)
 	} else {
-		if c.reconnect {
-			c.nodePool = &nodePool{}
-			c.nodePool.add(&node{address: c.addr})
-			return c.switchDatanode(&node{address: ""})
-		} else {
-			ok, err := c.connectNode(&node{address: c.addr})
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return fmt.Errorf("failed to connect to %s", c.addr)
-			}
+		ok, err := c.connectNode(&node{address: c.addr})
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("failed to connect to %s", c.addr)
 		}
 	}
 
@@ -275,10 +276,12 @@ func (c *conn) connect(addr string) error {
 
 	c.reader = protocol.NewReader(dc)
 	c.Conn = dc
-	h, _, err := c.run(&requestParams{
+
+	h, _, err := c.runInternal(&requestParams{
 		commandType: connectCmd,
 		Command:     generateConnectionCommand(),
 	})
+
 	if err != nil {
 		return err
 	}
@@ -287,7 +290,28 @@ func (c *conn) connect(addr string) error {
 	c.isClosed = false
 	c.refreshHeaderForResponse(h)
 	if c.userID != "" {
-		_, err = c.RunScript(fmt.Sprintf("login('%s','%s')", c.userID, c.password))
+		args := make([]model.DataForm, 2)
+		user, err := model.NewDataType(model.DtString, c.userID)
+		if err != nil {
+			return err
+		}
+		pwd, err := model.NewDataType(model.DtString, c.password)
+		if err != nil {
+			return err
+		}
+		args[0] = model.NewScalar(user)
+		args[1] = model.NewScalar(pwd)
+
+		bo := defaultByteOrder
+
+		_, _, err = c.run(&requestParams{
+			commandType: functionCmd,
+			Command:     generateFunctionCommand("login", bo, args),
+			SessionID:   []byte(c.GetSession()),
+			Args:        args,
+			ByteOrder:   bo,
+		})
+
 		if err != nil {
 			return err
 		}
@@ -389,25 +413,28 @@ func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 }
 
 func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, error) {
+	retryTimes := c.getRetryTimes()
 	if c.nodePool != nil && c.nodePool.len > 0 {
-		for {
+		for i := 0; i <= retryTimes; i++ { // at least try once
 			rh, df, err := c.runInternal(params)
 			if err != nil {
-				n := &node{}
+				n := c.nodePool.nodes[c.nodePool.lastInd]
 				if c.connected() {
 					et := c.nodePool.parseError(err.Error(), n)
-					if et == IGNORE {
-						return rh, df, nil
-					} else if et == UNKNOW {
-						return nil, nil, err
+					if et == IGNORE || et == NO_INITIALIZED {
+						continue
 					}
 				}
-				c.switchDatanode(n)
+				err := c.switchDatanode(nil)
+				if err != nil {
+					return nil, nil, err
+				}
 				continue
 			}
 
 			return rh, df, nil
 		}
+		return nil, nil, fmt.Errorf("failed to connect to %s after %d times of reconnecting", c.addr, retryTimes)
 	} else {
 		return c.runInternal(params)
 	}

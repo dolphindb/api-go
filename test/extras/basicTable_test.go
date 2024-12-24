@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
@@ -178,7 +179,10 @@ func Test_Table(t *testing.T) {
 
 		df, err = model.ParseDataForm(rd, protocol.BigEndian)
 		So(err, ShouldBeNil)
+		dataForm := df.GetDataForm()
+		fmt.Println("Data Form:", dataForm)
 		So(df.GetDataForm(), ShouldEqual, model.DfTable)
+
 		So(df.(*model.Table).Columns(), ShouldEqual, 32)
 	})
 }

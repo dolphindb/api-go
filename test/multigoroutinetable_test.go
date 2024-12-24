@@ -972,7 +972,7 @@ func TestMultiGoroutineTable_all_data_type(t *testing.T) {
 				{Scale: 6, Value: model.NullDecimal32Value},
 				{Scale: 6, Value: 0},
 				{Scale: 6, Value: -1.123},
-				{Scale: 6, Value: 3.123456},
+				{Scale: 6, Value: 3.123457},
 				{Scale: 6, Value: model.NullDecimal32Value}}
 			coldecimal64 := []*model.Decimal64{
 				{Scale: 12, Value: 10},

@@ -22,9 +22,15 @@ type queue struct {
 func newQueue(size int, tableWriter *MultiGoroutineTable) *queue {
 	return &queue{
 		buf:         make([][]interface{}, 0, size),
-		bufPool:     make(chan []interface{}, 10000),
+		bufPool:     make(chan []interface{}, 16),
 		lock:        sync.RWMutex{},
 		tableWriter: tableWriter,
+	}
+}
+
+func (q *queue) initBuf() {
+	for i := 0; i < 16; i++ {
+		q.bufPool <- q.makeQueueBuf(q.tableWriter.colTypes, q.tableWriter.batchSize)
 	}
 }
 
@@ -36,13 +42,12 @@ func (q *queue) addBatch(in []interface{}, length int) {
 	q.l += length
 }
 
+func (q *queue) makeBuf() []interface{} {
+	buf := <-q.bufPool
+	return buf
+}
+
 func (q *queue) makeQueueBuf(colTypes []int, batchSize int) []interface{} {
-	select {
-	case buf := <-q.bufPool:
-		return buf
-	default:
-		break
-	}
 	queueBuf := make([]interface{}, len(colTypes))
 	for k, v := range colTypes {
 		switch model.DataTypeByte(v) {
@@ -93,11 +98,12 @@ func (q *queue) add(in []interface{}) error {
 	if q.tableWriter.batchSize > batch {
 		batch = q.tableWriter.batchSize
 	}
-	if len(q.buf) == 0 {
-		q.buf = append(q.buf, q.makeQueueBuf(q.tableWriter.colTypes, batch))
-		q.lastLength = 0
-	} else if q.lastLength == batch {
-		q.buf = append(q.buf, q.makeQueueBuf(q.tableWriter.colTypes, batch))
+
+	if len(q.buf) == 0 || q.lastLength == batch {
+		q.lock.Unlock()
+		buf := q.makeBuf()
+		q.lock.Lock()
+		q.buf = append(q.buf, buf)
 		q.lastLength = 0
 	}
 
