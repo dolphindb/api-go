@@ -41,6 +41,9 @@ func (r *reconnectDetector) handleReconnectSites(site string) error {
 	ts := getReconnectTimestamp(site)
 	if time.Now().UnixNano()/1000000 >= ts+3000 {
 		s := getSiteByName(site)
+		if s == nil {
+			return nil
+		}
 		err := r.activeCloseConnection(s)
 		if err != nil {
 			fmt.Printf("Failed to reconnect closed connection: %s\n", err.Error())

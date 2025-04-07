@@ -52,14 +52,14 @@ func TestUtil(t *testing.T) {
 	b := IsClosed("topic")
 	assert.Equal(t, b, true)
 
-	sites := []*site{
+	sites := []*SubscribeRequest{
 		{
-			tableName: "util",
+			TableName: "util",
 			closed:    false,
 		},
 	}
 
-	trueTopicToSites.Store("topic", sites)
+	trueTopicToRequests.Store("topic", sites)
 
 	b = IsClosed("topic")
 	assert.Equal(t, b, false)

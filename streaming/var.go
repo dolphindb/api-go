@@ -12,8 +12,8 @@ var (
 	haTopicToTrueTopic = sync.Map{}
 	waitReconnectTopic = sync.Map{}
 
-	messageCache     = sync.Map{}
-	trueTopicToSites = sync.Map{}
-	queueMap         = sync.Map{}
-	reconnectTable   = sync.Map{}
+	messageCache        = sync.Map{}
+	trueTopicToRequests = sync.Map{}
+	queueMap            = sync.Map{}
+	reconnectTable      = sync.Map{}
 )

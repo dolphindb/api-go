@@ -72,6 +72,8 @@ func TestBasicGoroutineClient(t *testing.T) {
 	throttle := float32(1.1)
 	req := &SubscribeRequest{
 		Address:    "localhost:8848",
+		UserID:     "admin",
+		Password:   "123456",
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,

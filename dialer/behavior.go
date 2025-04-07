@@ -38,6 +38,9 @@ type BehaviorOptions struct {
 
 	// UsePython specifies whether the session uses a Python parser
 	UsePython bool
+
+	// if enable SCRAM login verify
+	EnableScram bool
 }
 
 // SetPriority sets the priority of the task.

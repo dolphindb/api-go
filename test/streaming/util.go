@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/api"
@@ -1159,12 +1160,12 @@ func (s *sdHandler_av) DoEvent(msg streaming.IMessage) {
 }
 
 func (s *sdBatchHandler_av) DoEvent(msgs []streaming.IMessage) {
+	s.lock.Lock()
 	for _, msg := range msgs {
 		ret, err := s.sd.Parse(msg)
 		AssertNil(err)
 		sym := ret.GetSym()
 
-		s.lock.Lock()
 		if sym == "msg1" {
 			s.msg1_total += 1
 			for i := 0; i < len(s.coltype1); i++ {
@@ -1176,7 +1177,6 @@ func (s *sdBatchHandler_av) DoEvent(msgs []streaming.IMessage) {
 					s.res1_data[i].AppendVectorValue(val.GetVectorValue(0))
 				}
 			}
-			// fmt.Println(s.res1_data)
 
 		} else if sym == "msg2" {
 			s.msg2_total += 1
@@ -1321,4 +1321,26 @@ func getRandomClusterAddress() string {
 		panic(err)
 	}
 	return addressV[n.Int64()]
+}
+
+func runWithTimeout(t *testing.T, timeout time.Duration, f func()) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	done := make(chan bool)
+
+	// 在 goroutine 中运行测试逻辑
+	go func() {
+		f()
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// 测试成功
+	case <-ctx.Done():
+		if ctx.Err() == context.DeadlineExceeded {
+			t.Errorf("Test exceeded timeout of %v", timeout)
+		}
+	}
 }

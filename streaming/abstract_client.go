@@ -6,8 +6,8 @@ import (
 
 // AbstractClient is the client interface for streaming subscription.
 type AbstractClient interface {
-	activeCloseConnection(si *site) error
-	doReconnect(si *site) bool
+	activeCloseConnection(req *SubscribeRequest) error
+	doReconnect(req *SubscribeRequest) bool
 	getSubscriber() *subscriber
 	getConn() (net.Conn, bool)
 

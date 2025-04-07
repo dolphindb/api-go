@@ -4324,3 +4324,40 @@ func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write
 		So(failedData+unwrittenLength+int(reTable.Value().(int32)), ShouldEqual, 10000)
 	})
 }
+
+
+func TestMultiGoroutineTable_SCRAM_user(t *testing.T){
+	Convey("TestMultiGoroutineTable_SCRAM_user", t, func() {
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		_, err = ddb.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
+		if err!= nil {
+			t.Skip("skip test because create SCRAM user failed")
+		}
+		ddb.Close()
+		conn_scram, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, "scramUser", "123456")
+		So(err, ShouldBeNil)
+		defer conn_scram.Close()
+		data, _ :=conn_scram.RunScript("t = table(1..1000 as c1, rand(100.00, 1000) as c2);share table(1:0, `c1`c2, [INT, DOUBLE]) as t2; t")
+		opt := &mtw.Option{
+			GoroutineCount: 1,
+			BatchSize:      100,
+			Throttle:       10,
+			TableName:      "t2",
+			UserID:         "scramUser",
+			Password:       "123456",
+			Address:        host12,
+		}
+		mtt, err := mtw.NewMultiGoroutineTable(opt)
+		So(err, ShouldBeNil)
+		for i := 0; i < data.Rows(); i++ {
+			err = mtt.Insert(data.(*model.Table).GetColumnByIndex(0).Get(i).Value().(int32), data.(*model.Table).GetColumnByIndex(1).Get(i).Value().(float64))
+			So(err, ShouldBeNil)
+		}
+		mtt.WaitForGoroutineCompletion()
+		res, _ := conn_scram.RunScript("res = select * from t2 order by c1;ex = select * from t order by c1;all(each(eqObj, res.values(), ex.values()))")
+		So(res.(*model.Scalar).Value().(bool), ShouldBeTrue)
+		conn_scram.RunScript("undef(`t2, SHARED)")
+		conn_scram.Close()
+	})
+}

@@ -3,7 +3,6 @@ package streaming
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -67,11 +66,11 @@ func dispatch(msg IMessage) {
 			continue
 		}
 
-		sitesRaw, ok := trueTopicToSites.Load(topic)
+		sitesRaw, ok := trueTopicToRequests.Load(topic)
 		if ok && sitesRaw != nil {
-			sites := sitesRaw.([]*site)
+			sites := sitesRaw.([]*SubscribeRequest)
 			for _, s := range sites {
-				s.msgID += 1
+				s.Offset += 1
 			}
 		}
 
@@ -116,18 +115,18 @@ func flushToQueue() {
 	messageCache.Range(func(topic, v interface{}) bool {
 		val := v.([]IMessage)
 
-		sites := make([]*site, 0)
-		sitesRaw, ok := trueTopicToSites.Load(topic)
-		if ok && sitesRaw != nil {
-			sites = sitesRaw.([]*site)
+		requests := make([]*SubscribeRequest, 0)
+		requestsRaw, ok := trueTopicToRequests.Load(topic)
+		if ok && requestsRaw != nil {
+			requests = requestsRaw.([]*SubscribeRequest)
 		}
 
 		raw, ok := queueMap.Load(topic)
 		if ok && raw != nil {
 			q := raw.(*UnboundedChan)
 			for _, m := range val {
-				for _, s := range sites {
-					s.msgID += 1
+				for _, s := range requests {
+					s.Offset += 1
 				}
 				q.In <- m
 			}
@@ -140,7 +139,7 @@ func flushToQueue() {
 
 func getAllTopicBySite(site string) []string {
 	res := make([]string, 0)
-	trueTopicToSites.Range(func(k, v interface{}) bool {
+	trueTopicToRequests.Range(func(k, v interface{}) bool {
 		key := k.(string)
 
 		s := key[0:strings.Index(key, "/")]
@@ -164,8 +163,11 @@ func getReconnectItemState(site string) int {
 	return 0
 }
 
-func newConnectedConn(address string) (dialer.Conn, error) {
-	conn, err := dialer.NewConn(context.TODO(), address, nil)
+func newConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
+	opt := &dialer.BehaviorOptions{
+		EnableScram: req.EnableScram,
+	}
+	conn, err := dialer.NewConn(context.TODO(), req.Address, opt)
 	if err != nil {
 		fmt.Printf("Failed to new a conn: %s\n", err.Error())
 		return nil, err
@@ -176,16 +178,24 @@ func newConnectedConn(address string) (dialer.Conn, error) {
 		fmt.Printf("Failed to connect to server: %s\n", err.Error())
 		return nil, err
 	}
+	if (req.UserID != "") && (req.Password != "") {
+		err = dialer.Login(conn, req.UserID, req.Password)
+		if err != nil {
+			fmt.Printf("Failed to login: %s\n", err.Error())
+			return nil, err
+		}
+	}
 
 	return conn, err
 }
 
-func newReverseStreamConnectedConn(address string) (dialer.Conn, error) {
+func newReverseStreamConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
 	opt := &dialer.BehaviorOptions{
 		IsReverseStreaming: true,
+		EnableScram:        req.EnableScram,
 	}
 
-	conn, err := dialer.NewConn(context.TODO(), address, opt)
+	conn, err := dialer.NewConn(context.TODO(), req.Address, opt)
 	if err != nil {
 		fmt.Printf("Failed to new a conn: %s\n", err.Error())
 		return nil, err
@@ -197,17 +207,25 @@ func newReverseStreamConnectedConn(address string) (dialer.Conn, error) {
 		return nil, err
 	}
 
+	if (req.UserID != "") && (req.Password != "") {
+		err = dialer.Login(conn, req.UserID, req.Password)
+		if err != nil {
+			fmt.Printf("Failed to login: %s\n", err.Error())
+			return nil, err
+		}
+	}
+
 	return conn, err
 }
 
-func getActiveSite(sites []*site) *site {
+func getActiveReq(sites []*SubscribeRequest) *SubscribeRequest {
 	ind := 0
 	siteNum := len(sites)
 	for ind < siteNum {
 		si := sites[ind]
 		ind = (ind + 1) % siteNum
 
-		conn, err := newConnectedConn(si.address)
+		conn, err := newConnectedConn(si)
 		if err != nil {
 			fmt.Printf("Failed to instantiate a connected conn: %s\n", err.Error())
 			continue
@@ -255,17 +273,17 @@ func setReconnectItem(topic string, v int) {
 	}
 }
 
-func getSiteByName(si string) *site {
+func getSiteByName(si string) *SubscribeRequest {
 	topics := getAllTopicBySite(si)
 	if len(topics) > 0 {
-		raw, ok := trueTopicToSites.Load(topics[0])
+		raw, ok := trueTopicToRequests.Load(topics[0])
 		if !ok {
 			return nil
 		}
 
-		sites := raw.([]*site)
+		sites := raw.([]*SubscribeRequest)
 		if len(sites) > 0 {
-			return getActiveSite(sites)
+			return getActiveReq(sites)
 		}
 	}
 
@@ -281,17 +299,17 @@ func IsClosed(topic string) bool {
 
 	topic = raw.(string)
 
-	raw, ok = trueTopicToSites.Load(topic)
+	raw, ok = trueTopicToRequests.Load(topic)
 	if !ok {
 		return true
 	}
 
-	sites := raw.([]*site)
-	if len(sites) == 0 {
+	requests := raw.([]*SubscribeRequest)
+	if len(requests) == 0 {
 		return true
 	}
 
-	return sites[0].closed
+	return requests[0].closed
 }
 
 func generatorGetSubscriptionTopicParams(tableName, actionName string) ([]model.DataForm, error) {
@@ -399,16 +417,4 @@ func generateStopPublishTableParams(s *SubscribeRequest, listenHost string, list
 	pubReq = append(pubReq, dfl...)
 
 	return pubReq, nil
-}
-
-func getVersionNum(ver string) int {
-	if str := strings.Split(ver, " "); len(str) >= 2 {
-		verStr := strings.ReplaceAll(str[0], ".", "")
-		verNum, err := strconv.Atoi(verStr)
-		if err == nil {
-			return verNum
-		}
-	}
-
-	return 0
 }

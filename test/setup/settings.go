@@ -12,10 +12,10 @@ func getPort(ports []int) (int, []int) {
 	return ports[randomIndex], append(ports[:randomIndex], ports[randomIndex+1:]...)
 }
 
-var ports = []int{20902, 20903, 20904, 20905}
-var IP = "127.0.0.1"
+var ports = []int{13002, 13003, 13004, 13005}
+var IP = "192.168.100.9"
 var Port, remainPorts = getPort(ports)
-var CtlPort = 20900
+var CtlPort = 13000
 
 var (
 	UserName        = "admin"
@@ -28,8 +28,8 @@ var (
 	LocalIP         = "127.0.0.1"
 	SubPort         = 13456
 	Reverse_subPort = 0
-	WORK_DIR        = "/home/codes/api-go/data"
-	DATA_DIR        = "/home/codes/api-go/data"
+	WORK_DIR        = "/hdd/hdd5/yzou/api_go_testing/codes/api-go/data"
+	DATA_DIR        = "/hdd/hdd5/yzou/api_go_testing/codes/api-go/data"
 )
 
 var HA_sites = []string{Address, Address2, Address3, Address4}

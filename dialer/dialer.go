@@ -69,7 +69,9 @@ type Conn interface {
 	// GetTCPConn returns the TCPConn
 	GetTCPConn() *net.TCPConn
 
+	// for inner use
 	GetReader() protocol.Reader
+	enableScram() bool
 }
 
 type conn struct {
@@ -289,32 +291,9 @@ func (c *conn) connect(addr string) error {
 	c.isConnected = true
 	c.isClosed = false
 	c.refreshHeaderForResponse(h)
+
 	if c.userID != "" {
-		args := make([]model.DataForm, 2)
-		user, err := model.NewDataType(model.DtString, c.userID)
-		if err != nil {
-			return err
-		}
-		pwd, err := model.NewDataType(model.DtString, c.password)
-		if err != nil {
-			return err
-		}
-		args[0] = model.NewScalar(user)
-		args[1] = model.NewScalar(pwd)
-
-		bo := defaultByteOrder
-
-		_, _, err = c.run(&requestParams{
-			commandType: functionCmd,
-			Command:     generateFunctionCommand("login", bo, args),
-			SessionID:   []byte(c.GetSession()),
-			Args:        args,
-			ByteOrder:   bo,
-		})
-
-		if err != nil {
-			return err
-		}
+		Login(c, c.userID, c.password)
 	}
 
 	return nil
@@ -425,6 +404,7 @@ func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, erro
 						continue
 					}
 				}
+				time.Sleep(300 * time.Millisecond)
 				err := c.switchDatanode(nil)
 				if err != nil {
 					return nil, nil, err
@@ -480,4 +460,8 @@ func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataFo
 
 func (c *conn) refreshHeaderForResponse(h *responseHeader) {
 	c.sessionID = h.sessionID
+}
+
+func (c *conn) enableScram() bool {
+	return c.behaviorOpt.EnableScram
 }

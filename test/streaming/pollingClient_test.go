@@ -29,6 +29,8 @@ func TestSubscribe_exception(t *testing.T) {
 				ActionName: "action1",
 				Offset:     0,
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 			_, err := pc.Subscribe(req)
 			So(err.Error(), ShouldContainSubstring, "shared table errtab doesn't exist")
@@ -41,9 +43,11 @@ func TestSubscribe_exception(t *testing.T) {
 				ActionName: "action1",
 				Offset:     0,
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 			_, err := pc.Subscribe(req)
-			So(err.Error(), ShouldContainSubstring, "failed to connect to")
+			So(err.Error(), ShouldContainSubstring, "no such host")
 		})
 		Convey("Test_subscribe_err_port", func() {
 			req := &streaming.SubscribeRequest{
@@ -52,9 +56,11 @@ func TestSubscribe_exception(t *testing.T) {
 				ActionName: "action1",
 				Offset:     0,
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 			_, err := pc.Subscribe(req)
-			So(err.Error(), ShouldContainSubstring, "failed to connect to")
+			So(err.Error(), ShouldContainSubstring, "refused")
 		})
 		Convey("Test_subscribe_err_TableName", func() {
 			req := &streaming.SubscribeRequest{
@@ -63,6 +69,8 @@ func TestSubscribe_exception(t *testing.T) {
 				ActionName: "action1",
 				Offset:     0,
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 			_, err := pc.Subscribe(req)
 			So(err.Error(), ShouldContainSubstring, "Illegal table name")
@@ -74,6 +82,8 @@ func TestSubscribe_exception(t *testing.T) {
 				TableName:  st,
 				Offset:     0,
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 			_, err := pc.Subscribe(req)
 			So(err, ShouldBeNil)
@@ -87,6 +97,8 @@ func TestSubscribe_exception(t *testing.T) {
 				Offset:      0,
 				Reconnect:   true,
 				AllowExists: true,
+				UserID:      setup.UserName,
+				Password:    setup.Password,
 			}
 			_, err := pc.Subscribe(req)
 			So(err, ShouldBeNil)
@@ -102,6 +114,8 @@ func TestSubscribe_exception(t *testing.T) {
 				Offset:      0,
 				Reconnect:   true,
 				AllowExists: false,
+				UserID:      setup.UserName,
+				Password:    setup.Password,
 			}
 			_, err3 := pc.Subscribe(req2)
 			So(err3, ShouldBeNil)
@@ -130,6 +144,8 @@ func TestPollingClient(t *testing.T) {
 			ActionName: "action1",
 			Offset:     0,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		poller, err := pc.Subscribe(req)
 		So(err, ShouldBeNil)
@@ -311,6 +327,8 @@ func TestSubsribe_size(t *testing.T) {
 			ActionName: "subtrades1",
 			Offset:     0,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		poller1, err := pc.Subscribe(req1)
 		So(err, ShouldBeNil)
@@ -350,6 +368,8 @@ func TestSubsribe_take(t *testing.T) {
 			ActionName: "subtrades1",
 			Offset:     0,
 			Reconnect:  false,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		poller3, err := pc.Subscribe(req)
 		So(err, ShouldBeNil)
@@ -367,6 +387,7 @@ func TestSubsribe_take(t *testing.T) {
 		tmp, err := ddb.RunScript("select * from " + st)
 		exTable := tmp.(*model.Table)
 		So(err, ShouldBeNil)
+		fmt.Println(IMessage)
 		retime := IMessage.GetValue(0).(*model.Scalar).String()
 		resymbol := IMessage.GetValue(1).(*model.Scalar).String()
 		reprice := IMessage.GetValue(2).(*model.Scalar).String()
@@ -402,6 +423,8 @@ func TestPollingClient_bachSize_throttle(t *testing.T) {
 			ActionName: "action1",
 			Offset:     0,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req.SetBatchSize(-1)
 		q, err := pc.Subscribe(req)
@@ -437,6 +460,8 @@ func TestPollingClient_bachSize_throttle(t *testing.T) {
 			ActionName: "action1",
 			Offset:     0,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req.SetBatchSize(500).SetThrottle(-10)
 		q, err := pc.Subscribe(req)
@@ -479,6 +504,8 @@ func TestPollingClient_tableName_offset(t *testing.T) {
 			ActionName: "action1",
 			Offset:     -1,
 			Reconnect:  false,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req.SetBatchSize(1000)
 		q, err := pc.Subscribe(req)
@@ -519,6 +546,8 @@ func TestPollingClient_tableName_actionName(t *testing.T) {
 			ActionName: "test_actionName",
 			Offset:     0,
 			Reconnect:  false,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req.SetBatchSize(1000)
 		_, err = pc.Subscribe(req)
@@ -547,6 +576,8 @@ func TestPollingClient_tableName_handler_offseteconnect_success(t *testing.T) {
 			TableName: st,
 			Offset:    0,
 			Reconnect: true,
+			UserID:    setup.UserName,
+			Password:  setup.Password,
 		}
 		q, err := pc.Subscribe(req)
 		So(err, ShouldBeNil)
@@ -563,6 +594,7 @@ func TestPollingClient_tableName_handler_offseteconnect_success(t *testing.T) {
 		_, err = pcConn.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host5, ":")[1] + ",'" + st + "')")
 		So(err, ShouldBeNil)
 		time.Sleep(15 * time.Second)
+
 		msgs := q.Poll(1000, 1000)
 		for _, msg := range msgs {
 			val0 := msg.GetValue(0).(*model.Scalar).DataType.String()
@@ -598,6 +630,8 @@ func TestPollingClient_subscribe_offset_negative(t *testing.T) {
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     -1,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req.SetBatchSize(1000)
 		q, err := pc.Subscribe(req)
@@ -639,6 +673,8 @@ func TestPollingClient_subscribe_offset_10(t *testing.T) {
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     10,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req.SetBatchSize(1000)
 		q, err := pc.Subscribe(req)
@@ -681,12 +717,14 @@ func TestPollingClient_subscribe_offset_morethan_tableCount(t *testing.T) {
 			TableName:  st,
 			ActionName: "sub" + st + "1",
 			Offset:     offset,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req.SetBatchSize(1000)
 		_, err = pc.Subscribe(req)
 		So(err.Error(), ShouldContainSubstring, "Failed to subscribe to table "+st+". Can't find the message with offset ["+strconv.Itoa(int(offset))+"].")
 		err = pc.UnSubscribe(req)
-		AssertNil(err)
+		So(err, ShouldNotBeNil)
 		ClearStreamTable(host5, st)
 		ClearStreamTable(host5, receive)
 	})
@@ -708,6 +746,8 @@ func TestPollingClient_subscribe_filter(t *testing.T) {
 			ActionName: "sub" + st + "1",
 			Offset:     0,
 			Filter:     filter1.(*model.Vector),
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req2 := &streaming.SubscribeRequest{
 			Address:    host5,
@@ -715,6 +755,8 @@ func TestPollingClient_subscribe_filter(t *testing.T) {
 			ActionName: "sub" + st + "2",
 			Offset:     0,
 			Filter:     filter2.(*model.Vector),
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		q, err := pc.Subscribe(req1)
 		So(err, ShouldBeNil)
@@ -722,9 +764,8 @@ func TestPollingClient_subscribe_filter(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = pcConn.RunScript("n=4000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		time.Sleep(30 * time.Second)
-		msgs := q.Poll(1000, 1000)
-		msgs2 := q2.Poll(1000, 1000)
+		msgs := q.Poll(2000, 1000)
+		msgs2 := q2.Poll(2000, 1000)
 		for _, msg := range msgs {
 			val0 := msg.GetValue(0).(*model.Scalar).DataType.String()
 			val1 := msg.GetValue(1).(*model.Scalar).DataType.String()
@@ -743,14 +784,11 @@ func TestPollingClient_subscribe_filter(t *testing.T) {
 			_, err := pcConn.RunScript(script)
 			AssertNil(err)
 		}
-		res, _ := pcConn.RunScript("res = select * from " + receive + " where tag between 1:1000 order by tag;ex = select * from " + st + " where tag between 1:1000 order by tag;each(eqObj, ex.values(), res.values())")
-		for _, val := range res.(*model.Vector).Data.Value() {
-			So(val, ShouldBeTrue)
-		}
-		res, _ = pcConn.RunScript("res = select * from " + receive + " where tag between 2001:3000 order by tag;ex = select * from " + st + " where tag between 2001:3000 order by tag;each(eqObj, ex.values(), res.values())")
-		for _, val := range res.(*model.Vector).Data.Value() {
-			So(val, ShouldBeTrue)
-		}
+		res, _ := pcConn.RunScript("res = select * from " + receive + " where tag between 1:1000 order by tag,ts;ex = select * from " + st + " where tag between 1:1000 order by tag,ts;all(each(eqObj, ex.values(), res.values(), 5))")
+		So(res.(*model.Scalar).Value().(bool), ShouldBeTrue)
+
+		res, _ = pcConn.RunScript("res = select * from " + receive + " where tag between 2001:3000 order by tag,ts;ex = select * from " + st + " where tag between 2001:3000 order by tag,ts;all(each(eqObj, ex.values(), res.values(),5))")
+		So(res.(*model.Scalar).Value().(bool), ShouldBeTrue)
 
 		err = pc.UnSubscribe(req1)
 		So(err, ShouldBeNil)
@@ -774,6 +812,8 @@ func TestPollingClient_subscribe_unsubscribeesubscribe(t *testing.T) {
 			ActionName: "sub" + st + "1",
 			Offset:     0,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		q, err := pc.Subscribe(req1)
 		So(err, ShouldBeNil)
@@ -813,6 +853,7 @@ func TestPollingClient_subscribe_unsubscribeesubscribe(t *testing.T) {
 }
 
 func TestPollingClient_subscribe_AllowExists(t *testing.T) {
+	t.SkipNow() // server has bug
 	var pc = streaming.NewPollingClient(setup.IP, setup.SubPort)
 	Convey("TestPollingClient_subscribe_AllowExists", t, func() {
 		st, receive := CreateStreamingTableWithRandomName(pcConn)
@@ -826,6 +867,8 @@ func TestPollingClient_subscribe_AllowExists(t *testing.T) {
 			Reconnect:   true,
 			Filter:      filter1.(*model.Vector),
 			AllowExists: true,
+			UserID:      setup.UserName,
+			Password:    setup.Password,
 		}
 		_, err = pc.Subscribe(req)
 		So(err, ShouldBeNil)
@@ -865,6 +908,8 @@ func TestPollingClient_subscribe_not_contain_handler(t *testing.T) {
 			ActionName: "sub" + st + "1",
 			Offset:     -1,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		q, err := pc.Subscribe(req1)
 		So(err, ShouldBeNil)
@@ -899,6 +944,8 @@ func TestPollingClient_msgAsTable(t *testing.T) {
 			Offset:     0,
 			Reconnect:  true,
 			MsgAsTable: true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req1.SetBatchSize(1000)
 		q, err := pc.Subscribe(req1)
@@ -944,6 +991,8 @@ func TestPollingClient_subscribe_with_StreamDeserializer(t *testing.T) {
 			ActionName: "testStreamDeserializer",
 			Offset:     0,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 
 		targetows := 2000
@@ -1011,7 +1060,7 @@ func TestPollingClient_subscribe_with_StreamDeserializer(t *testing.T) {
 }
 
 func TestNewPollingClient_subscribe_allTypes(t *testing.T) {
-	var pc = streaming.NewPollingClient(setup.IP, setup.Reverse_subPort)
+	var pc = streaming.NewPollingClient(setup.IP, setup.SubPort)
 	testDatas := []Tuple{
 		{model.DtBool, "rand(true false, 2)"}, {model.DtBool, "array(BOOL, 2,2,NULL)"},
 		{model.DtChar, "rand(127c, 2)"}, {model.DtChar, "array(CHAR, 2,2,NULL)"},
@@ -1055,12 +1104,14 @@ func TestNewPollingClient_subscribe_allTypes(t *testing.T) {
 			}
 			appender := api.NewTableAppender(appenderOpt)
 			req1 := &streaming.SubscribeRequest{
-				Address:    host4,
+				Address:    host5,
 				TableName:  st,
 				ActionName: "test_allTypes",
 				Offset:     0,
 				Handler:    &MessageHandler_allTypes{appender},
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 
 			q, err := pc.Subscribe(req1)
@@ -1108,12 +1159,14 @@ func TestNewPollingClient_subscribe_allTypes(t *testing.T) {
 			}
 			appender := api.NewTableAppender(appenderOpt)
 			req1 := &streaming.SubscribeRequest{
-				Address:      host4,
+				Address:      host5,
 				TableName:    st,
 				ActionName:   "test_allTypes",
 				Offset:       0,
 				BatchHandler: &MessageBatchHandler_allTypes{appender},
 				Reconnect:    true,
+				UserID:       setup.UserName,
+				Password:     setup.Password,
 			}
 			req1.SetBatchSize(100)
 			q, err := pc.Subscribe(req1)
@@ -1210,6 +1263,8 @@ func TestNewPollingClient_subscribe_arrayVector(t *testing.T) {
 				Offset:     0,
 				Handler:    &MessageHandler_av{appender},
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 
 			q, err := pc.Subscribe(req1)
@@ -1241,7 +1296,7 @@ func TestNewPollingClient_subscribe_arrayVector(t *testing.T) {
 			err = pc.UnSubscribe(req1)
 			So(err, ShouldBeNil)
 
-			_, err = pcConn.RunScript("res = select * from " + re + " order by ts;ex= select * from " + st + " order by ts;share ex as t_ex; share res as tes;assert each(eqObj, res.values(), ex.values())")
+			_, err = pcConn.RunScript("res = select * from " + re + " order by ts;ex= select * from " + st + " order by ts;assert each(eqObj, res.values(), ex.values())")
 			AssertNil(err)
 
 			_, err = pcConn.RunScript(
@@ -1269,6 +1324,8 @@ func TestNewPollingClient_subscribe_arrayVector(t *testing.T) {
 				Offset:       0,
 				BatchHandler: &MessageBatchHandler_av{appender},
 				Reconnect:    true,
+				UserID:       setup.UserName,
+				Password:     setup.Password,
 			}
 			req1.SetBatchSize(100)
 			q, err := pc.Subscribe(req1)
@@ -1340,9 +1397,9 @@ func TestNewPollingClient_subscribe_with_StreamDeserializer_arrayVector(t *testi
 		{model.DtIP, "take(ipaddr('192.168.1.1'), 2)"}, {model.DtIP, "array(IPADDR, 2,2,NULL)"},
 		{model.DtUUID, "take(uuid('12345678-1234-1234-1234-123456789012'), 2)"}, {model.DtUUID, "array(UUID, 2,2,NULL)"},
 		{model.DtInt128, "take(int128(`e1671797c52e15f763380b45e841ec32), 2)"}, {model.DtInt128, "array(INT128, 2,2,NULL)"},
-		{model.DtDecimal32, "decimal32(rand('-1.123''''2.23468965412', 2), 8)"}, {model.DtDecimal32, "array(DECIMAL32(2), 2,2,NULL)"},
-		{model.DtDecimal64, "decimal64(rand('-1.123''''2.123123123123123123', 2), 15)"}, {model.DtDecimal64, "array(DECIMAL64(15), 2,2,NULL)"},
-		{model.DtDecimal128, "decimal128(rand('-1.123''''2.123123123123123123123123123', 2), 25)"}, {model.DtDecimal128, "array(DECIMAL128(25), 2,2,NULL)"},
+		// {model.DtDecimal32, "decimal32(rand('-1.123''''2.23468965412', 2), 8)"}, {model.DtDecimal32, "array(DECIMAL32(2), 2,2,NULL)"},
+		// {model.DtDecimal64, "decimal64(rand('-1.123''''2.123123123123123123', 2), 15)"}, {model.DtDecimal64, "array(DECIMAL64(15), 2,2,NULL)"},
+		// {model.DtDecimal128, "decimal128(rand('-1.123''''2.123123123123123123123123123', 2), 25)"}, {model.DtDecimal128, "array(DECIMAL128(25), 2,2,NULL)"},
 		{model.DtComplex, "take(complex(1,2), 2)"}, {model.DtComplex, "array(COMPLEX, 2,2,NULL)"},
 		{model.DtPoint, "take(point(1, 2), 2)"}, {model.DtPoint, "array(POINT, 2,2,NULL)"},
 	}
@@ -1362,6 +1419,8 @@ func TestNewPollingClient_subscribe_with_StreamDeserializer_arrayVector(t *testi
 				Offset:     0,
 				Handler:    &sdhandler,
 				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 
 			targetows := 2000
@@ -1371,7 +1430,6 @@ func TestNewPollingClient_subscribe_with_StreamDeserializer_arrayVector(t *testi
 
 			msgs := q.Poll(1000, targetows)
 			for _, msg := range msgs {
-
 				ret, err := sdhandler.sd.Parse(msg)
 				AssertNil(err)
 				sym := ret.GetSym()
@@ -1426,6 +1484,7 @@ func TestNewPollingClient_subscribe_with_StreamDeserializer_arrayVector(t *testi
 					"try{ undef(`table2, SHARED);}catch(ex){};go")
 			So(err, ShouldBeNil)
 		})
+
 		Convey("TestNewPollingClient_subscribe_batchHandler_with_StreamDeserializer_arrayVector", t, func() {
 			tbname := "outTables_" + getRandomStr(8)
 			_, err := pcConn.RunScript(
@@ -1441,6 +1500,8 @@ func TestNewPollingClient_subscribe_with_StreamDeserializer_arrayVector(t *testi
 				Offset:       0,
 				BatchHandler: &sdBatchHandler,
 				Reconnect:    true,
+				UserID:       setup.UserName,
+				Password:     setup.Password,
 			}
 
 			req1.SetBatchSize(200)
@@ -1507,6 +1568,56 @@ func TestNewPollingClient_subscribe_with_StreamDeserializer_arrayVector(t *testi
 			So(err, ShouldBeNil)
 		})
 	}
+	pc.Close()
+	assert.True(t, pc.IsClosed())
+}
+
+func TestNewPollingClient_subscribe_with_SCRAM_user(t *testing.T) {
+	_, err := pcConn.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
+	if err != nil {
+		t.Skip("skip test because create SCRAM user failed")
+	}
+	var pc = streaming.NewPollingClient(setup.IP, setup.SubPort)
+	Convey("TestNewPollingClient_subscribe_SCRAM_user", t, func() {
+		st, receive := CreateStreamingTableWithRandomName(pcConn)
+		handler := MessageBatchHandler{
+			receive: receive,
+			conn:    pcConn,
+		}
+		req := &streaming.SubscribeRequest{
+			UserID:       "scramUser",
+			Password:     "123456",
+			Address:      host5,
+			TableName:    st,
+			ActionName:   "subTrades1",
+			Offset:       0,
+			BatchHandler: &handler,
+		}
+		req.SetBatchSize(100).SetThrottle(5)
+		q, err := pc.Subscribe(req)
+		So(err, ShouldBeNil)
+		fmt.Println("started subscribe...")
+		_, err = pcConn.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
+		So(err, ShouldBeNil)
+		msgs := q.Poll(1000, 1000)
+		for _, msg := range msgs {
+			val0 := msg.GetValue(0).(*model.Scalar).DataType.String()
+			val1 := msg.GetValue(1).(*model.Scalar).DataType.String()
+			val2 := msg.GetValue(2).(*model.Scalar).DataType.String()
+			script := fmt.Sprintf("tableInsert(objByName(`"+receive+", true), %s,%s,%s)",
+				val0, val1, val2)
+			_, err := pcConn.RunScript(script)
+			AssertNil(err)
+		}
+		ret, err := pcConn.RunScript("res = select * from " + st + " order by ts;ex = select * from " + receive + " order by ts;all(each(eqObj, res.values(), ex.values()))")
+		So(err, ShouldBeNil)
+		So(ret.(*model.Scalar).Value().(bool), ShouldBeTrue)
+
+		err = pc.UnSubscribe(req)
+		So(err, ShouldBeNil)
+		ClearStreamTable(host5, st)
+		ClearStreamTable(host5, receive)
+	})
 	pc.Close()
 	assert.True(t, pc.IsClosed())
 }

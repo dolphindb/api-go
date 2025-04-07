@@ -21,9 +21,9 @@ type PollingClient struct {
 // When listeningPort is 0, enable the reverse stream subscription.
 func NewPollingClient(listeningHost string, listeningPort int) *PollingClient {
 	t := &PollingClient{
-		subscriber: newSubscriber(listeningHost, listeningPort),
+		subscriber:     newSubscriber(listeningHost, listeningPort),
 		topicPollerMap: sync.Map{},
-		exit:       make(chan bool),
+		exit:           make(chan bool),
 	}
 
 	return t
@@ -31,8 +31,8 @@ func NewPollingClient(listeningHost string, listeningPort int) *PollingClient {
 
 // Subscribe helps you to subscribe the specific action of the table according to the req.
 func (t *PollingClient) Subscribe(req *SubscribeRequest) (*TopicPoller, error) {
-	if (req.MsgAsTable) {
-		if(req.MsgDeserializer != nil) {
+	if req.MsgAsTable {
+		if req.MsgDeserializer != nil {
 			return nil, errors.New("if MsgAsTable is true, MsgDeserializer must be nil")
 		}
 	}
@@ -42,7 +42,7 @@ func (t *PollingClient) Subscribe(req *SubscribeRequest) (*TopicPoller, error) {
 		return nil, err
 	}
 
-	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
+	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return nil, err
@@ -67,16 +67,16 @@ func (t *PollingClient) subscribe(req *SubscribeRequest) error {
 		return err
 	}
 
-	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
+	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return err
 	}
 
 	t.topicPollerMap.Store(topicStr, &TopicPoller{
-		queue: queue,
+		queue:           queue,
 		MsgDeserializer: req.MsgDeserializer,
-		msgAsTable: req.MsgAsTable,
+		msgAsTable:      req.MsgAsTable,
 	})
 
 	return nil
@@ -85,7 +85,7 @@ func (t *PollingClient) subscribe(req *SubscribeRequest) error {
 func (t *PollingClient) reviseSubscriber(req *SubscribeRequest) error {
 	var err error
 	t.subscriber.once.Do(func() {
-		err = t.subscriber.checkServerVersion(req.Address)
+		err = t.subscriber.checkServerVersion(req)
 		if err == nil {
 			go listening(t)
 		}
@@ -96,7 +96,7 @@ func (t *PollingClient) reviseSubscriber(req *SubscribeRequest) error {
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.
 func (t *PollingClient) UnSubscribe(req *SubscribeRequest) error {
-    topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
+	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
 		return err
 	}
@@ -138,10 +138,10 @@ func (t *PollingClient) IsClosed() bool {
 	}
 }
 
-func (t *PollingClient) doReconnect(s *site) bool {
+func (t *PollingClient) doReconnect(req *SubscribeRequest) bool {
 	// time.Sleep(1 * time.Second)
 
-	topic, err := t.getTopicFromServer(s.address, s.tableName, s.actionName)
+	topic, err := t.getTopicFromServer(req)
 	if err != nil {
 		return false
 	}
@@ -155,11 +155,12 @@ func (t *PollingClient) doReconnect(s *site) bool {
 			closeUnboundedChan(q)
 			queueMap.Delete(topic)
 			haTopicToTrueTopic.Delete(topic)
-			trueTopicToSites.Delete(topic)
+			trueTopicToRequests.Delete(topic)
 		}
 		return true
 	}
-	err = t.reSubscribeInternal(transSiteToNewSubscribeRequest(s))
+	req.Offset = req.Offset + 1
+	err = t.reSubscribeInternal(req)
 	if err != nil {
 		fmt.Printf("%s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String())
 		return false

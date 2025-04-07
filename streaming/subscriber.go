@@ -17,6 +17,7 @@ type subscriber struct {
 	listeningHost string
 	listeningPort int32
 	once          *sync.Once
+	version       string
 
 	connList *UnboundedChan
 }
@@ -25,6 +26,10 @@ type subscriber struct {
 type SubscribeRequest struct {
 	// Server address
 	Address string
+	// the user ID
+	UserID string
+	// password of the user
+	Password string
 	// Name of the table to be subscribed
 	TableName string
 	// Name of the subscription task
@@ -43,6 +48,9 @@ type SubscribeRequest struct {
 	// whether to allow reconnection
 	Reconnect bool
 
+	// Whether the subscription is closed
+	closed bool
+
 	// Specify parameter Filter with function setStreamTableFilterColumn.
 	// SetStreamTableFilterColumn specifies the filtering column of a stream table.
 	// Only the messages with filtering column values in filter are subscribed.
@@ -54,19 +62,8 @@ type SubscribeRequest struct {
 	BatchHandler MessageBatchHandler
 	// StreamDeserializer to decode heterogenous streaming
 	MsgDeserializer *StreamDeserializer
-}
-
-type site struct {
-	address     string
-	tableName   string
-	actionName  string
-	msgID       int64
-	reconnect   bool
-	AllowExists bool
-	closed      bool
-
-	filter  *model.Vector
-	handler MessageHandler
+	// if enable SCRAM verify
+	EnableScram bool
 }
 
 // SetBatchSize sets the batch size.
@@ -96,9 +93,9 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*UnboundedChan, e
 	var conn dialer.Conn
 	var err error
 	if s.listeningPort == 0 {
-		conn, err = newReverseStreamConnectedConn(req.Address)
+		conn, err = newReverseStreamConnectedConn(req)
 	} else {
-		conn, err = newConnectedConn(req.Address)
+		conn, err = newConnectedConn(req)
 	}
 
 	if err != nil {
@@ -145,9 +142,9 @@ func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
 	var conn dialer.Conn
 	var err error
 	if s.listeningPort == 0 {
-		conn, err = newReverseStreamConnectedConn(req.Address)
+		conn, err = newReverseStreamConnectedConn(req)
 	} else {
-		conn, err = newConnectedConn(req.Address)
+		conn, err = newConnectedConn(req)
 	}
 
 	if err != nil {
@@ -199,8 +196,12 @@ func getLeader(err string) (string, bool) {
 	return fmt.Sprintf("%s:%s", strs[0], strs[1]), true
 }
 
-func (s *subscriber) checkServerVersion(address string) error {
-	conn, err := newConnectedConn(address)
+func (s *subscriber) isReverseStreaming() bool {
+	return strings.HasPrefix(s.version, "3") || (strings.HasPrefix(s.version, "2") && isLater(s.version, "2.00.9"))
+}
+
+func (s *subscriber) checkServerVersion(req *SubscribeRequest) error {
+	conn, err := newConnectedConn(req)
 	if err != nil {
 		return err
 	}
@@ -212,14 +213,14 @@ func (s *subscriber) checkServerVersion(address string) error {
 		return err
 	}
 
-	ver := df.(*model.Scalar).DataType.String()
-	if strings.HasPrefix(ver, "3") || (strings.HasPrefix(ver, "2") && isLater(ver, "2.00.9")) {
+	s.version = df.(*model.Scalar).DataType.String()
+	if s.isReverseStreaming() {
 		if s.listeningPort != 0 {
 			fmt.Println("Warn: The server only supports subscription through reverse connection (connection initiated by the subscriber). The specified port will not take effect.")
 		}
 		s.listeningPort = 0
 	} else if s.listeningPort <= 0 {
-		return errors.New("The server does not support subscription through reverse connection (connection initiated by the subscriber). Specify a valid port parameter.")
+		return errors.New("the server does not support subscription through reverse connection (connection initiated by the subscriber). Specify a valid port parameter")
 	}
 
 	return nil
@@ -274,30 +275,32 @@ func (s *subscriber) publishTable(topic string, req *SubscribeRequest, conn dial
 			return err
 		}
 	} else {
-		s.packSite(topic, req)
+		s.packRequest(topic, req)
 	}
 
 	return nil
 }
 
-func (s *subscriber) packSite(topic string, req *SubscribeRequest) {
-	si := &site{
-		address:     req.Address,
-		tableName:   req.TableName,
-		actionName:  req.ActionName,
-		handler:     req.Handler,
-		msgID:       req.Offset - 1,
-		reconnect:   req.Reconnect,
-		filter:      req.Filter,
+func (s *subscriber) packRequest(topic string, req *SubscribeRequest) {
+	newReq := &SubscribeRequest{
+		Address:     req.Address,
+		UserID:      req.UserID,
+		Password:    req.Password,
+		TableName:   req.TableName,
+		ActionName:  req.ActionName,
+		Handler:     req.Handler,
+		Offset:      req.Offset - 1,
+		Reconnect:   req.Reconnect,
+		Filter:      req.Filter,
 		AllowExists: req.AllowExists,
 	}
 
 	haTopicToTrueTopic.Store(topic, topic)
-	trueTopicToSites.Store(topic, []*site{si})
+	trueTopicToRequests.Store(topic, []*SubscribeRequest{newReq})
 }
 
-func (s *subscriber) getTopicFromServer(address, tableName, actionName string) (string, error) {
-	conn, err := newConnectedConn(address)
+func (s *subscriber) getTopicFromServer(req *SubscribeRequest) (string, error) {
+	conn, err := newConnectedConn(req)
 	if err != nil {
 		fmt.Printf("Failed to connect to server: %s\n", err.Error())
 		return "", err
@@ -305,7 +308,7 @@ func (s *subscriber) getTopicFromServer(address, tableName, actionName string) (
 
 	defer conn.Close()
 
-	return getTopicFromServer(tableName, actionName, conn)
+	return getTopicFromServer(req.TableName, req.ActionName, conn)
 }
 
 func getTopicFromServer(tableName, actionName string, conn dialer.Conn) (string, error) {
@@ -330,7 +333,7 @@ func (s *subscriber) handleAnyVector(topic string, df model.DataForm, req *Subsc
 	vct := df.(*model.Vector)
 	v := vct.Data.ElementValue(1).(*model.Vector)
 	HASiteStrings := v.Data.StringList()
-	sites := make([]*site, len(HASiteStrings))
+	requests := make([]*SubscribeRequest, len(HASiteStrings))
 	for k, v := range HASiteStrings {
 		str := strings.Split(v, ":")
 		host := str[0]
@@ -342,27 +345,29 @@ func (s *subscriber) handleAnyVector(topic string, df model.DataForm, req *Subsc
 
 		alias := str[2]
 
-		sites[k] = &site{
-			address:     fmt.Sprintf("%s:%d", host, port),
-			tableName:   req.TableName,
-			actionName:  req.ActionName,
-			msgID:       req.Offset - 1,
-			handler:     req.Handler,
-			reconnect:   true,
-			filter:      req.Filter,
+		requests[k] = &SubscribeRequest{
+			Address:     fmt.Sprintf("%s:%d", host, port),
+			UserID:      req.UserID,
+			Password:    req.Password,
+			TableName:   req.TableName,
+			ActionName:  req.ActionName,
+			Offset:      req.Offset - 1,
+			Handler:     req.Handler,
+			Reconnect:   true,
+			Filter:      req.Filter,
 			AllowExists: req.AllowExists,
 		}
 
 		haTopicToTrueTopic.Store(fmt.Sprintf("%s:%d:%s/%s/%s", host, port, alias, req.TableName, req.ActionName), topic)
 	}
 
-	trueTopicToSites.Store(topic, sites)
+	trueTopicToRequests.Store(topic, requests)
 
 	return nil
 }
 
-func (s *subscriber) activeCloseConnection(si *site) error {
-	conn, err := newConnectedConn(si.address)
+func (s *subscriber) activeCloseConnection(req *SubscribeRequest) error {
+	conn, err := newConnectedConn(req)
 	if err != nil {
 		fmt.Printf("Failed to new a connected connection: %s\n", err.Error())
 		return err
@@ -370,12 +375,7 @@ func (s *subscriber) activeCloseConnection(si *site) error {
 
 	defer conn.Close()
 
-	verNum, err := s.getVersion(conn)
-	if err != nil {
-		return err
-	}
-
-	err = s.activeClosePublishConnection(verNum, conn)
+	err = s.activeClosePublishConnection(conn, req.ActionName, req.TableName)
 	if err != nil {
 		fmt.Printf("Failed to call activeClosePublishConnection: %s\n", err.Error())
 		return err
@@ -385,12 +385,12 @@ func (s *subscriber) activeCloseConnection(si *site) error {
 	return nil
 }
 
-func (s *subscriber) activeClosePublishConnection(verNum int, conn dialer.Conn) error {
+func (s *subscriber) activeClosePublishConnection(conn dialer.Conn, actionName, tableName string) error {
 	if s.listeningHost == "" || strings.ToLower(s.listeningHost) == localhost {
 		s.listeningHost = conn.GetLocalAddress()
 	}
 
-	params, err := s.packActiveClosePublishConnectionParams(verNum)
+	params, err := s.packActiveClosePublishConnectionParams(actionName, tableName)
 	if err != nil {
 		fmt.Printf("Failed to pack params: %s\n", err.Error())
 		return err
@@ -405,37 +405,44 @@ func (s *subscriber) activeClosePublishConnection(verNum int, conn dialer.Conn) 
 	return nil
 }
 
-func (s *subscriber) getVersion(conn dialer.Conn) (int, error) {
-	df, err := conn.RunScript("version()")
-	if err != nil {
-		fmt.Printf("Failed to call vesion(): %s\n", err.Error())
-		return 0, err
-	}
+func (s *subscriber) packActiveClosePublishConnectionParams(actionName, tableName string) ([]model.DataForm, error) {
+	if s.isReverseStreaming() {
+		params := make([]model.DataForm, 2)
 
-	sca := df.(*model.Scalar)
-	verStr := sca.DataType.String()
-	return getVersionNum(verStr), nil
-}
+		actionNameArgs, err := model.NewDataType(model.DtString, actionName)
+		if err != nil {
+			fmt.Printf("Failed to instantiate DataType with listeningHost: %s\n", err.Error())
+			return nil, err
+		}
 
-func (s *subscriber) packActiveClosePublishConnectionParams(verNum int) ([]model.DataForm, error) {
-	params := make([]model.DataForm, 3)
+		params[0] = model.NewScalar(actionNameArgs)
 
-	localIP, err := model.NewDataType(model.DtString, s.listeningHost)
-	if err != nil {
-		fmt.Printf("Failed to instantiate DataType with listeningHost: %s\n", err.Error())
-		return nil, err
-	}
+		tableNameArgs, err := model.NewDataType(model.DtString, tableName)
+		if err != nil {
+			fmt.Printf("Failed to instantiate DataType with listeningPort: %s\n", err.Error())
+			return nil, err
+		}
 
-	params[0] = model.NewScalar(localIP)
+		params[1] = model.NewScalar(tableNameArgs)
+		return params, nil
+	} else {
+		params := make([]model.DataForm, 3)
 
-	port, err := model.NewDataType(model.DtInt, s.listeningPort)
-	if err != nil {
-		fmt.Printf("Failed to instantiate DataType with listeningPort: %s\n", err.Error())
-		return nil, err
-	}
+		localIP, err := model.NewDataType(model.DtString, s.listeningHost)
+		if err != nil {
+			fmt.Printf("Failed to instantiate DataType with listeningHost: %s\n", err.Error())
+			return nil, err
+		}
 
-	params[1] = model.NewScalar(port)
-	if verNum >= 955 {
+		params[0] = model.NewScalar(localIP)
+
+		port, err := model.NewDataType(model.DtInt, s.listeningPort)
+		if err != nil {
+			fmt.Printf("Failed to instantiate DataType with listeningPort: %s\n", err.Error())
+			return nil, err
+		}
+
+		params[1] = model.NewScalar(port)
 		tmp, err := model.NewDataType(model.DtBool, byte(1))
 		if err != nil {
 			fmt.Printf("Failed to instantiate DataType with bool value: %s\n", err.Error())
@@ -443,13 +450,12 @@ func (s *subscriber) packActiveClosePublishConnectionParams(verNum int) ([]model
 		}
 
 		params[2] = model.NewScalar(tmp)
+		return params, nil
 	}
-
-	return params, nil
 }
 
 func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
-	conn, err := newConnectedConn(req.Address)
+	conn, err := newConnectedConn(req)
 	if err != nil {
 		fmt.Printf("Failed to new connected conn: %s\n", err.Error())
 		return err
@@ -477,14 +483,14 @@ func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 func (s *subscriber) cleanTopic(topic string) {
 	// queueMap.Delete(topic)
 
-	raw, ok := trueTopicToSites.Load(topic)
+	raw, ok := trueTopicToRequests.Load(topic)
 	if !ok {
 		return
 	}
 
-	sites := raw.([]*site)
+	requests := raw.([]*SubscribeRequest)
 
-	for _, v := range sites {
+	for _, v := range requests {
 		v.closed = true
 	}
 }
@@ -517,15 +523,15 @@ func tryReconnect(topic string, ac AbstractClient) {
 
 	// queueMap.Delete(topicRaw)
 
-	sites, isSuccess := loadSites(topicRaw)
+	requests, isSuccess := loadRequests(topicRaw)
 	if !isSuccess {
 		return
 	}
 
-	site := getActiveSite(sites)
-	if site != nil {
-		if ac.doReconnect(site) {
-			reconnectTable.Delete(site)
+	req := getActiveReq(requests)
+	if req != nil {
+		if ac.doReconnect(req) {
+			reconnectTable.Delete(req)
 			waitReconnectTopic.Delete(topicRaw)
 			return
 		}
@@ -534,17 +540,17 @@ func tryReconnect(topic string, ac AbstractClient) {
 	}
 }
 
-func loadSites(topic interface{}) ([]*site, bool) {
-	raw, ok := trueTopicToSites.Load(topic)
+func loadRequests(topic interface{}) ([]*SubscribeRequest, bool) {
+	raw, ok := trueTopicToRequests.Load(topic)
 	if !ok {
 		return nil, false
 	}
 
-	sites := raw.([]*site)
+	requests := raw.([]*SubscribeRequest)
 
-	if len(sites) == 0 || (len(sites) == 1 && !sites[0].reconnect) {
+	if len(requests) == 0 || (len(requests) == 1 && !requests[0].Reconnect) {
 		return nil, false
 	}
 
-	return sites, true
+	return requests, true
 }

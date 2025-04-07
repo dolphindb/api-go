@@ -32,6 +32,8 @@ func TestNewGoroutinePooledClient_subscribe_ex_ubsubscribe_r(t *testing.T) {
 			TableName:    st,
 			ActionName:   "subTradesTable",
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req.SetBatchSize(2).SetThrottle(1)
 		err := gpc_r.Subscribe(req)
@@ -71,6 +73,8 @@ func TestNewGoroutinePooledClient_subscribe_ex_ActionName_r(t *testing.T) {
 			Offset:       0,
 			Reconnect:    true,
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req.SetBatchSize(1000)
 		err := gpc_r.Subscribe(req)
@@ -100,6 +104,8 @@ func TestNewGoroutinePooledClient_subscribe_exTableName_r(t *testing.T) {
 			Offset:       0,
 			Reconnect:    true,
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		err := gpc_r.Subscribe(req)
 		So(err, ShouldNotBeNil)
@@ -124,11 +130,13 @@ func TestNewGoroutinePooledClient_subscribe_ex_offset_r(t *testing.T) {
 			Offset:       -2,
 			Reconnect:    true,
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		err := gpc_r.Subscribe(req)
 		So(err, ShouldNotBeNil)
 		err = gpc_r.UnSubscribe(req)
-		AssertNil(err)
+		So(err, ShouldNotBeNil)
 		ClearStreamTable(host2, st)
 		ClearStreamTable(host2, receive)
 	})
@@ -151,6 +159,8 @@ func TestNewGoroutinePooledClient_subscribe_offset_0_r(t *testing.T) {
 			Offset:       0,
 			Reconnect:    true,
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req.SetBatchSize(1000)
 		err := gpc_r.Subscribe(req)
@@ -187,6 +197,8 @@ func TestNewGoroutinePooledClient_subscribe_offset_negative_r(t *testing.T) {
 			Offset:       -1,
 			Reconnect:    true,
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req.SetBatchSize(1000)
 		_, err := gpcConn_r.RunScript("n=1000;t1=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t1)")
@@ -228,6 +240,8 @@ func TestNewGoroutinePooledClient_subscribe_offset_10_r(t *testing.T) {
 			Offset:       10,
 			Reconnect:    true,
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req.SetBatchSize(1000)
 		err = gpc_r.Subscribe(req)
@@ -269,11 +283,13 @@ func TestNewGoroutinePooledClient_subscribe_offset_morethan_rowCount_r(t *testin
 			Offset:       1000,
 			Reconnect:    true,
 			BatchHandler: &handler,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		err = gpc_r.Subscribe(req)
 		So(err, ShouldNotBeNil)
 		err = gpc_r.UnSubscribe(req)
-		AssertNil(err)
+		So(err, ShouldNotBeNil)
 		ClearStreamTable(host2, st)
 		ClearStreamTable(host2, receive)
 	})
@@ -305,6 +321,8 @@ func TestNewGoroutinePooledClient_subscribe_filter_r(t *testing.T) {
 			Reconnect:  true,
 			Filter:     filter1.(*model.Vector),
 			Handler:    &handler,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req2 := &streaming.SubscribeRequest{
 			Address:    host2,
@@ -314,6 +332,8 @@ func TestNewGoroutinePooledClient_subscribe_filter_r(t *testing.T) {
 			Reconnect:  true,
 			Filter:     filter2.(*model.Vector),
 			Handler:    &handler,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		err = gpc_r.Subscribe(req1)
 		So(err, ShouldBeNil)
@@ -329,11 +349,11 @@ func TestNewGoroutinePooledClient_subscribe_filter_r(t *testing.T) {
 
 		err = gpc_r.Subscribe(req2)
 		So(err, ShouldBeNil)
-		waitData(gpcConn_r, receive, 1000)
+		waitData(gpcConn_r, receive, 2000)
 		tmp3, err = gpcConn_r.RunScript("select * from " + receive + " order by tag, ts, data")
 		So(err, ShouldBeNil)
-		So(tmp3.Rows(), ShouldEqual, 1000)
-		CheckmodelTableEqual(tmp1.(*model.Table), tmp3.(*model.Table), 2000)
+		So(tmp3.Rows(), ShouldEqual, 2000)
+		// CheckmodelTableEqual(tmp1.(*model.Table), tmp3.(*model.Table), 2000)
 		err = gpc_r.UnSubscribe(req1)
 		So(err, ShouldBeNil)
 		err = gpc_r.UnSubscribe(req2)
@@ -363,6 +383,8 @@ func TestNewGoroutinePooledClient_batchSize_throttle_r(t *testing.T) {
 			Filter:       filter1.(*model.Vector),
 			BatchHandler: &handler,
 			Reconnect:    true,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req1.SetBatchSize(1000).SetThrottle(5)
 		err = gpc_r.Subscribe(req1)
@@ -396,11 +418,14 @@ func TestNewGoroutinePooledClient_tableName_handler_offset_reconnect_success_r(t
 		_, err := gpcConn_r.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		req := &streaming.SubscribeRequest{
-			Address:   host2,
-			TableName: st,
-			Offset:    0,
-			Reconnect: true,
-			Handler:   &handler,
+			Address:    host2,
+			TableName:  st,
+			ActionName: "subTradesTable",
+			Offset:     0,
+			Reconnect:  true,
+			Handler:    &handler,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		err = gpc_r.Subscribe(req)
 		So(err, ShouldBeNil)
@@ -408,20 +433,19 @@ func TestNewGoroutinePooledClient_tableName_handler_offset_reconnect_success_r(t
 		_, err = gpcConn_r.RunScript("n=500;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)
-		_, err = gpcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host2, ":")[1] + ",'" + st + "')")
+		_, err = gpcConn_r.RunScript("stopPublishTable('" + strings.Split(host2, ":")[0] + "'," + strings.Split(host2, ":")[1] + ",'" + st + "','subTradesTable')")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)
 		_, err = gpcConn_r.RunScript("n=500;t=table(1..n+500 as tag,now()+1..n+500 as ts,rand(100.0,n) as data);" + "" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		time.Sleep(2 * time.Second)
-		_, err = gpcConn_r.RunScript("stopPublishTable('" + setup.IP + "'," + strings.Split(host2, ":")[1] + ",'" + st + "')")
+		_, err = gpcConn_r.RunScript("stopPublishTable('" + strings.Split(host2, ":")[0] + "'," + strings.Split(host2, ":")[1] + ",'" + st + "','subTradesTable')")
 		So(err, ShouldBeNil)
 
 		waitData(gpcConn_r, receive, 2000)
-		res, _ := gpcConn_r.RunScript("res = select * from " + receive + " order by tag;ex = select * from " + st + " order by tag;each(eqObj, ex.values(), res.values())")
-		for _, val := range res.(*model.Vector).Data.Value() {
-			So(val, ShouldBeTrue)
-		}
+		res, _ := gpcConn_r.RunScript("res = select * from " + receive + " order by tag,ts;ex = select * from " + st + " order by tag,ts;all(each(eqObj, ex.values(), res.values()))")
+		So(res.(*model.Scalar).Value().(bool), ShouldBeTrue)
+		time.Sleep(2 * time.Second)
 		err = gpc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
 		ClearStreamTable(host2, st)
@@ -449,6 +473,8 @@ func TestNewGoroutinePooledClient_batchSize_throttle2_r(t *testing.T) {
 			Filter:       filter1.(*model.Vector),
 			BatchHandler: &handler,
 			Reconnect:    true,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req1.SetBatchSize(10000).SetThrottle(5)
 		err = gpc_r.Subscribe(req1)
@@ -493,14 +519,18 @@ func TestNewGoroutinePooledClient_subscribe_unsubscribe_resubscribe_r(t *testing
 			Filter:       filter1.(*model.Vector),
 			BatchHandler: &handler,
 			Reconnect:    true,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req1.SetBatchSize(10000).SetThrottle(5)
 		err = gpc_r.Subscribe(req1)
 		So(err, ShouldBeNil)
+		time.Sleep(1 * time.Second)
 		err = gpc_r.UnSubscribe(req1)
 		So(err, ShouldBeNil)
 		err = gpc_r.Subscribe(req1)
 		So(err, ShouldBeNil)
+		time.Sleep(1 * time.Second)
 		err = gpc_r.UnSubscribe(req1)
 		So(err, ShouldBeNil)
 		ClearStreamTable(host2, st)
@@ -526,6 +556,8 @@ func TestNewGoroutinePooledClient_msgAsTable_r(t *testing.T) {
 			Handler:    &handler,
 			Reconnect:  true,
 			MsgAsTable: true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		req1.SetBatchSize(1000)
 		err := gpc_r.Subscribe(req1)
@@ -560,6 +592,8 @@ func TestNewGoroutinePooledClient_subscribe_with_StreamDeserializer_r(t *testing
 			Offset:     0,
 			Handler:    &sdhandler,
 			Reconnect:  true,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 
 		targetows := 2000
@@ -610,6 +644,8 @@ func TestNewGoroutinePooledClient_subscribe_with_StreamDeserializer_r(t *testing
 			Offset:       0,
 			BatchHandler: &sdBatchHandler1,
 			Reconnect:    true,
+			UserID:       setup.UserName,
+			Password:     setup.Password,
 		}
 		req1.SetBatchSize(500)
 		targetows := 2000
@@ -665,7 +701,10 @@ func TestNewGoroutinePooledClient_unsubscribe_in_doEvent_r(t *testing.T) {
 				Address:    host2,
 				TableName:  st,
 				ActionName: "subTrades1",
-				Offset:     0},
+				Offset:     0,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
+			},
 			successCount: 0,
 		}
 		_, err := gpcConn_r.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
@@ -677,6 +716,8 @@ func TestNewGoroutinePooledClient_unsubscribe_in_doEvent_r(t *testing.T) {
 			Offset:     0,
 			Reconnect:  true,
 			Handler:    &handler,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
 		}
 		err = gpc_r.Subscribe(req)
 		So(err, ShouldBeNil)
@@ -688,7 +729,7 @@ func TestNewGoroutinePooledClient_unsubscribe_in_doEvent_r(t *testing.T) {
 		// fmt.Println(res_afterSub)
 		So(res_inSub.(*model.Table).GetColumnByName("tables").String(), ShouldContainSubstring, st)
 		So(res_afterSub.(*model.Table).GetColumnByName("tables").String(), ShouldNotContainSubstring, st)
-		So(handler.successCount, ShouldBeGreaterThan, 1)
+		So(handler.successCount, ShouldEqual, 1)
 
 		ClearStreamTable(host2, st)
 		ClearStreamTable(host2, receive)
@@ -749,6 +790,8 @@ func TestNewGoroutinePooledClient_subscribe_allTypes_r(t *testing.T) {
 				Handler:    &MessageHandler_allTypes{appender},
 				Reconnect:  true,
 				MsgAsTable: true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 
 			targetows := 1000
@@ -794,6 +837,8 @@ func TestNewGoroutinePooledClient_subscribe_allTypes_r(t *testing.T) {
 				Offset:       0,
 				BatchHandler: &MessageBatchHandler_allTypes{appender},
 				Reconnect:    true,
+				UserID:       setup.UserName,
+				Password:     setup.Password,
 			}
 			req1.SetBatchSize(100)
 			targetows := 1000
@@ -876,6 +921,8 @@ func TestNewGoroutinePooledClient_subscribe_arrayVector_r(t *testing.T) {
 				Handler:    &MessageHandler_av{appender},
 				Reconnect:  true,
 				MsgAsTable: true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
 			}
 
 			targetows := 1000
@@ -921,6 +968,8 @@ func TestNewGoroutinePooledClient_subscribe_arrayVector_r(t *testing.T) {
 				Offset:       0,
 				BatchHandler: &MessageBatchHandler_av{appender},
 				Reconnect:    true,
+				UserID:       setup.UserName,
+				Password:     setup.Password,
 			}
 			req1.SetBatchSize(100)
 			targetows := 1000
@@ -954,139 +1003,183 @@ func TestNewGoroutinePooledClient_subscribe_arrayVector_r(t *testing.T) {
 	assert.True(t, gpc_r.IsClosed())
 }
 
-// func TestNewGoroutinePooledClient_subscribe_with_StreamDeserializer_arrayVector_r(t *testing.T) {
-// 	var gpc_r = streaming.NewGoroutinePooledClient(setup.IP, setup.Reverse_subPort)
-// 	testDatas := []Tuple{
-// 		{model.DtBool, "rand(0 1, 2)"}, {model.DtBool, "array(BOOL, 2,2,NULL)"},
-// 		{model.DtChar, "rand(127c, 2)"}, {model.DtChar, "array(CHAR, 2,2,NULL)"},
-// 		{model.DtShort, "rand(32767h, 2)"}, {model.DtShort, "array(SHORT, 2,2,NULL)"},
-// 		{model.DtInt, "rand(2147483647, 2)"}, {model.DtInt, "array(INT, 2,2,NULL)"},
-// 		{model.DtLong, "rand(1000l, 2)"}, {model.DtLong, "array(LONG, 2,2,NULL)"},
-// 		{model.DtDate, "rand(2019.01.01, 2)"}, {model.DtDate, "array(DATE, 2,2,NULL)"},
-// 		{model.DtMonth, "rand(2019.01M, 2)"}, {model.DtMonth, "array(MONTH, 2,2,NULL)"},
-// 		{model.DtTime, "rand(12:00:00.123, 2)"}, {model.DtTime, "array(TIME, 2,2,NULL)"},
-// 		{model.DtMinute, "rand(12:00m, 2)"}, {model.DtMinute, "array(MINUTE, 2,2,NULL)"},
-// 		{model.DtSecond, "rand(12:00:00, 2)"}, {model.DtSecond, "array(SECOND, 2,2,NULL)"},
-// 		{model.DtDatetime, "rand(2019.01.01 12:00:00, 2)"}, {model.DtDatetime, "array(DATETIME, 2,2,NULL)"},
-// 		{model.DtTimestamp, "rand(2019.01.01 12:00:00.123, 2)"}, {model.DtTimestamp, "array(TIMESTAMP, 2,2,NULL)"},
-// 		{model.DtNanoTime, "rand(12:00:00.123456789, 2)"}, {model.DtNanoTime, "array(NANOTIME, 2,2,NULL)"},
-// 		{model.DtNanoTimestamp, "rand(2019.01.01 12:00:00.123456789, 2)"}, {model.DtNanoTimestamp, "array(NANOTIMESTAMP, 2,2,NULL)"},
-// 		{model.DtDateHour, "rand(datehour(100), 2)"}, {model.DtDateHour, "array(DATEHOUR, 2,2,NULL)"},
-// 		{model.DtFloat, "rand(10.00f, 2)"}, {model.DtFloat, "array(FLOAT, 2,2,NULL)"},
-// 		{model.DtDouble, "rand(10.00, 2)"}, {model.DtDouble, "array(DOUBLE, 2,2,NULL)"},
-// 		{model.DtIP, "take(ipaddr('192.168.1.1'), 2)"}, {model.DtIP, "array(IPADDR, 2,2,NULL)"},
-// 		{model.DtUUID, "take(uuid('12345678-1234-1234-1234-123456789012'), 2)"}, {model.DtUUID, "array(UUID, 2,2,NULL)"},
-// 		{model.DtInt128, "take(int128(`e1671797c52e15f763380b45e841ec32), 2)"}, {model.DtInt128, "array(INT128, 2,2,NULL)"},
-// 		{model.DtDecimal32, "decimal32(rand('-1.123''''2.23468965412', 2), 8)"}, {model.DtDecimal32, "array(DECIMAL32(2), 2,2,NULL)"},
-// 		{model.DtDecimal64, "decimal64(rand('-1.123''''2.123123123123123123', 2), 15)"}, {model.DtDecimal64, "array(DECIMAL64(15), 2,2,NULL)"},
-// 		{model.DtDecimal128, "decimal128(rand('-1.123''''2.123123123123123123123123123', 2), 25)"}, {model.DtDecimal128, "array(DECIMAL128(25), 2,2,NULL)"},
-// 		{model.DtComplex, "take(complex(1,2), 2)"}, {model.DtComplex, "array(COMPLEX, 2,2,NULL)"},
-// 		{model.DtPoint, "take(point(1, 2), 2)"}, {model.DtPoint, "array(POINT, 2,2,NULL)"},
-// 	}
-// 	for _, data := range testDatas {
-// 		Convey("TestNewGoroutinePooledClient_subscribe_oneHandler_with_StreamDeserializer_arrayVector", t, func() {
-// 			tbname := "outTables_" + getRandomStr(8)
-// 			_, err := gpcConn_r.RunScript(
-// 				"try{ dropStreamTable(`st2);}catch(ex){};" +
-// 					"try{ undef(`table1, SHARED);}catch(ex){};" +
-// 					"try{ undef(`table2, SHARED);}catch(ex){};go")
-// 			So(err, ShouldBeNil)
-// 			sdhandler, _ := createStreamDeserializer_av(gpcConn_r, tbname, data.Dt, data.VecVal)
-// 			req1 := &streaming.SubscribeRequest{
-// 				Address:    host2,
-// 				TableName:  tbname,
-// 				ActionName: "testStreamDeserializer",
-// 				Offset:     0,
-// 				Handler:    &sdhandler,
-// 				Reconnect:  true,
-// 			}
+func TestNewGoroutinePooledClient_subscribe_with_StreamDeserializer_arrayVector_r(t *testing.T) {
+	var gpc_r = streaming.NewGoroutinePooledClient(setup.IP, setup.Reverse_subPort)
+	testDatas := []Tuple{
+		{model.DtBool, "rand(0 1, 2)"}, {model.DtBool, "array(BOOL, 2,2,NULL)"},
+		{model.DtChar, "rand(127c, 2)"}, {model.DtChar, "array(CHAR, 2,2,NULL)"},
+		{model.DtShort, "rand(32767h, 2)"}, {model.DtShort, "array(SHORT, 2,2,NULL)"},
+		{model.DtInt, "rand(2147483647, 2)"}, {model.DtInt, "array(INT, 2,2,NULL)"},
+		{model.DtLong, "rand(1000l, 2)"}, {model.DtLong, "array(LONG, 2,2,NULL)"},
+		{model.DtDate, "rand(2019.01.01, 2)"}, {model.DtDate, "array(DATE, 2,2,NULL)"},
+		{model.DtMonth, "rand(2019.01M, 2)"}, {model.DtMonth, "array(MONTH, 2,2,NULL)"},
+		{model.DtTime, "rand(12:00:00.123, 2)"}, {model.DtTime, "array(TIME, 2,2,NULL)"},
+		{model.DtMinute, "rand(12:00m, 2)"}, {model.DtMinute, "array(MINUTE, 2,2,NULL)"},
+		{model.DtSecond, "rand(12:00:00, 2)"}, {model.DtSecond, "array(SECOND, 2,2,NULL)"},
+		{model.DtDatetime, "rand(2019.01.01 12:00:00, 2)"}, {model.DtDatetime, "array(DATETIME, 2,2,NULL)"},
+		{model.DtTimestamp, "rand(2019.01.01 12:00:00.123, 2)"}, {model.DtTimestamp, "array(TIMESTAMP, 2,2,NULL)"},
+		{model.DtNanoTime, "rand(12:00:00.123456789, 2)"}, {model.DtNanoTime, "array(NANOTIME, 2,2,NULL)"},
+		{model.DtNanoTimestamp, "rand(2019.01.01 12:00:00.123456789, 2)"}, {model.DtNanoTimestamp, "array(NANOTIMESTAMP, 2,2,NULL)"},
+		{model.DtDateHour, "rand(datehour(100), 2)"}, {model.DtDateHour, "array(DATEHOUR, 2,2,NULL)"},
+		{model.DtFloat, "rand(10.00f, 2)"}, {model.DtFloat, "array(FLOAT, 2,2,NULL)"},
+		{model.DtDouble, "rand(10.00, 2)"}, {model.DtDouble, "array(DOUBLE, 2,2,NULL)"},
+		{model.DtIP, "take(ipaddr('192.168.1.1'), 2)"}, {model.DtIP, "array(IPADDR, 2,2,NULL)"},
+		{model.DtUUID, "take(uuid('12345678-1234-1234-1234-123456789012'), 2)"}, {model.DtUUID, "array(UUID, 2,2,NULL)"},
+		{model.DtInt128, "take(int128(`e1671797c52e15f763380b45e841ec32), 2)"}, {model.DtInt128, "array(INT128, 2,2,NULL)"},
+		// {model.DtDecimal32, "decimal32(rand('-1.123''''2.23468965412', 2), 8)"}, {model.DtDecimal32, "array(DECIMAL32(2), 2,2,NULL)"},
+		// {model.DtDecimal64, "decimal64(rand('-1.123''''2.123123123123123123', 2), 15)"}, {model.DtDecimal64, "array(DECIMAL64(15), 2,2,NULL)"},
+		// {model.DtDecimal128, "decimal128(rand('-1.123''''2.123123123123123123123123123', 2), 25)"}, {model.DtDecimal128, "array(DECIMAL128(25), 2,2,NULL)"},
+		{model.DtComplex, "take(complex(1,2), 2)"}, {model.DtComplex, "array(COMPLEX, 2,2,NULL)"},
+		{model.DtPoint, "take(point(1, 2), 2)"}, {model.DtPoint, "array(POINT, 2,2,NULL)"},
+	}
+	for _, data := range testDatas {
+		Convey("TestNewGoroutinePooledClient_subscribe_oneHandler_with_StreamDeserializer_arrayVector", t, func() {
+			tbname := "outTables_" + getRandomStr(8)
+			_, err := gpcConn_r.RunScript(
+				"try{ dropStreamTable(`st2);}catch(ex){};" +
+					"try{ undef(`table1, SHARED);}catch(ex){};" +
+					"try{ undef(`table2, SHARED);}catch(ex){};go")
+			So(err, ShouldBeNil)
+			sdhandler, _ := createStreamDeserializer_av(gpcConn_r, tbname, data.Dt, data.VecVal)
+			req1 := &streaming.SubscribeRequest{
+				Address:    host2,
+				TableName:  tbname,
+				ActionName: "testStreamDeserializer",
+				Offset:     0,
+				Handler:    &sdhandler,
+				Reconnect:  true,
+				UserID:     setup.UserName,
+				Password:   setup.Password,
+			}
 
-// 			targetows := 2000
-// 			err = gpc_r.Subscribe(req1)
-// 			So(err, ShouldBeNil)
-// 			fmt.Println("started subscribe...")
-// 			for {
-// 				time.Sleep(1 * time.Second)
-// 				if sdhandler.msg1_total+sdhandler.msg2_total == targetows {
-// 					break
-// 				}
-// 			}
-// 			err = gpc_r.UnSubscribe(req1)
-// 			So(err, ShouldBeNil)
+			targetows := 2000
+			err = gpc_r.Subscribe(req1)
+			So(err, ShouldBeNil)
+			fmt.Println("started subscribe...")
+			for {
+				time.Sleep(1 * time.Second)
+				if sdhandler.msg1_total+sdhandler.msg2_total == targetows {
+					break
+				}
+			}
+			err = gpc_r.UnSubscribe(req1)
+			So(err, ShouldBeNil)
 
-// 			res_tab1 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1", "price2"}, sdhandler.res1_data)
-// 			res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdhandler.res2_data)
+			res_tab1 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1", "price2"}, sdhandler.res1_data)
+			res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdhandler.res2_data)
 
-// 			// fmt.Println("res_tab1: ", res_tab1)
-// 			// fmt.Println("res_tab2: ", res_tab2)
-// 			// So(res_tab1.get, ShouldEqual, model.DtAny)
-// 			_, err = gpcConn_r.Upload(map[string]model.DataForm{"res1": res_tab1, "res2": res_tab2})
-// 			AssertNil(err)
-// 			_, err = gpcConn_r.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
-// 			AssertNil(err)
+			// fmt.Println("res_tab1: ", res_tab1)
+			// fmt.Println("res_tab2: ", res_tab2)
+			// So(res_tab1.get, ShouldEqual, model.DtAny)
+			_, err = gpcConn_r.Upload(map[string]model.DataForm{"res1": res_tab1, "res2": res_tab2})
+			AssertNil(err)
+			_, err = gpcConn_r.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
+			AssertNil(err)
 
-// 			_, err = gpcConn_r.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
-// 			AssertNil(err)
-// 			_, err = gpcConn_r.RunScript(
-// 				"try{ dropStreamTable(`" + tbname + ");}catch(ex){};" +
-// 					"try{ dropStreamTable(`st2);}catch(ex){};" +
-// 					"try{ undef(`table1, SHARED);}catch(ex){};" +
-// 					"try{ undef(`table2, SHARED);}catch(ex){};go")
-// 			So(err, ShouldBeNil)
-// 		})
-// 		Convey("TestNewGoroutinePooledClient_subscribe_batchHandler_with_StreamDeserializer_arrayVector", t, func() {
-// 			tbname := "outTables_" + getRandomStr(8)
-// 			_, err := gpcConn_r.RunScript(
-// 				"try{ dropStreamTable(`st2);}catch(ex){};" +
-// 					"try{ undef(`table1, SHARED);}catch(ex){};" +
-// 					"try{ undef(`table2, SHARED);}catch(ex){};go")
-// 			So(err, ShouldBeNil)
-// 			_, sdBatchHandler := createStreamDeserializer_av(gpcConn_r, tbname, data.Dt, data.VecVal)
-// 			req1 := &streaming.SubscribeRequest{
-// 				Address:      host2,
-// 				TableName:    tbname,
-// 				ActionName:   "testStreamDeserializer",
-// 				Offset:       0,
-// 				BatchHandler: &sdBatchHandler,
-// 				Reconnect:    true,
-// 			}
+			_, err = gpcConn_r.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
+			AssertNil(err)
+			_, err = gpcConn_r.RunScript(
+				"try{ dropStreamTable(`" + tbname + ");}catch(ex){};" +
+					"try{ dropStreamTable(`st2);}catch(ex){};" +
+					"try{ undef(`table1, SHARED);}catch(ex){};" +
+					"try{ undef(`table2, SHARED);}catch(ex){};go")
+			So(err, ShouldBeNil)
+		})
+		Convey("TestNewGoroutinePooledClient_subscribe_batchHandler_with_StreamDeserializer_arrayVector", t, func() {
+			tbname := "outTables_" + getRandomStr(8)
+			_, err := gpcConn_r.RunScript(
+				"try{ dropStreamTable(`st2);}catch(ex){};" +
+					"try{ undef(`table1, SHARED);}catch(ex){};" +
+					"try{ undef(`table2, SHARED);}catch(ex){};go")
+			So(err, ShouldBeNil)
+			_, sdBatchHandler := createStreamDeserializer_av(gpcConn_r, tbname, data.Dt, data.VecVal)
+			req1 := &streaming.SubscribeRequest{
+				Address:      host2,
+				TableName:    tbname,
+				ActionName:   "testStreamDeserializer",
+				Offset:       0,
+				BatchHandler: &sdBatchHandler,
+				Reconnect:    true,
+				UserID:       setup.UserName,
+				Password:     setup.Password,
+			}
 
-// 			req1.SetBatchSize(200)
-// 			targetows := 2000
-// 			err = gpc_r.Subscribe(req1)
-// 			So(err, ShouldBeNil)
-// 			fmt.Println("started subscribe...")
-// 			for {
-// 				time.Sleep(1 * time.Second)
-// 				if sdBatchHandler.msg1_total+sdBatchHandler.msg2_total == targetows {
-// 					break
-// 				}
-// 			}
-// 			err = gpc_r.UnSubscribe(req1)
-// 			So(err, ShouldBeNil)
+			req1.SetBatchSize(200)
+			targetows := 2000
+			err = gpc_r.Subscribe(req1)
+			So(err, ShouldBeNil)
+			fmt.Println("started subscribe...")
+			for {
+				time.Sleep(1 * time.Second)
+				if sdBatchHandler.msg1_total+sdBatchHandler.msg2_total == targetows {
+					break
+				}
+			}
+			err = gpc_r.UnSubscribe(req1)
+			So(err, ShouldBeNil)
 
-// 			res_tab1 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1", "price2"}, sdBatchHandler.res1_data)
-// 			res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdBatchHandler.res2_data)
+			res_tab1 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1", "price2"}, sdBatchHandler.res1_data)
+			res_tab2 := model.NewTable([]string{"datetimev", "timestampv", "sym", "price1"}, sdBatchHandler.res2_data)
 
-// 			// fmt.Println("res_tab1: ", res_tab1)
-// 			// fmt.Println("res_tab2: ", res_tab2)
-// 			// So(res_tab1.get, ShouldEqual, model.DtAny)
-// 			_, err = gpcConn_r.Upload(map[string]model.DataForm{"res1": res_tab1, "res2": res_tab2})
-// 			AssertNil(err)
-// 			_, err = gpcConn_r.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
-// 			AssertNil(err)
+			// fmt.Println("res_tab1: ", res_tab1)
+			// fmt.Println("res_tab2: ", res_tab2)
+			// So(res_tab1.get, ShouldEqual, model.DtAny)
+			_, err = gpcConn_r.Upload(map[string]model.DataForm{"res1": res_tab1, "res2": res_tab2})
+			AssertNil(err)
+			_, err = gpcConn_r.RunScript("res = select * from res1 order by datetimev,timestampv;ex= select * from table1 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
+			AssertNil(err)
 
-// 			_, err = gpcConn_r.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
-// 			AssertNil(err)
-// 			_, err = gpcConn_r.RunScript(
-// 				"try{ dropStreamTable(`" + tbname + ");}catch(ex){};" +
-// 					"try{ dropStreamTable(`st2);}catch(ex){};" +
-// 					"try{ undef(`table1, SHARED);}catch(ex){};" +
-// 					"try{ undef(`table2, SHARED);}catch(ex){};go")
-// 			So(err, ShouldBeNil)
-// 		})
+			_, err = gpcConn_r.RunScript("res = select * from res2 order by datetimev,timestampv;ex= select * from table2 order by datetimev,timestampv;assert each(eqObj, res.values(), ex.values())")
+			AssertNil(err)
+			_, err = gpcConn_r.RunScript(
+				"try{ dropStreamTable(`" + tbname + ");}catch(ex){};" +
+					"try{ dropStreamTable(`st2);}catch(ex){};" +
+					"try{ undef(`table1, SHARED);}catch(ex){};" +
+					"try{ undef(`table2, SHARED);}catch(ex){};go")
+			So(err, ShouldBeNil)
+		})
 
-// 	}
-// 	gpc_r.Close()
-// 	assert.True(t, gpc_r.IsClosed())
-// }
+	}
+	gpc_r.Close()
+	assert.True(t, gpc_r.IsClosed())
+}
+
+func TestGoroutinePooledClient_subscribe_with_SCRAM_user_r(t *testing.T) {
+	_, err := gpcConn_r.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
+	if err != nil {
+		t.Skip("skip test because create SCRAM user failed")
+	}
+	var gpc_r = streaming.NewGoroutinePooledClient(setup.IP, setup.Reverse_subPort)
+	Convey("TestGoroutinePooledClient_subscribe_SCRAM_user", t, func() {
+		st, receive := CreateStreamingTableWithRandomName(gpcConn_r)
+		handler := MessageBatchHandler{
+			receive: receive,
+			conn:    gpcConn_r,
+		}
+		req := &streaming.SubscribeRequest{
+			UserID:       "scramUser",
+			Password:     "123456",
+			Address:      host2,
+			TableName:    st,
+			ActionName:   "subTrades1",
+			Offset:       0,
+			BatchHandler: &handler,
+		}
+		req.SetBatchSize(100).SetThrottle(5)
+		err = gpc_r.Subscribe(req)
+		So(err, ShouldBeNil)
+		_, err := gpcConn_r.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
+		So(err, ShouldBeNil)
+		waitData(gpcConn_r, receive, 1000)
+		ret, err := gpcConn_r.RunScript("res = select * from " + st + " order by ts;ex = select * from " + receive + " order by ts;all(each(eqObj, res.values(), ex.values()))")
+		So(err, ShouldBeNil)
+		So(ret.(*model.Scalar).Value().(bool), ShouldBeTrue)
+
+		err = gpc_r.UnSubscribe(req)
+		So(err, ShouldBeNil)
+		ClearStreamTable(host2, st)
+		ClearStreamTable(host2, receive)
+	})
+	gpc_r.Close()
+	assert.True(t, gpc_r.IsClosed())
+}

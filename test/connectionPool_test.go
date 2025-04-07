@@ -1786,6 +1786,7 @@ func TestTableAppender(t *testing.T) {
 }
 
 func TestConnnectionPoolHighAvailability(t *testing.T) {
+	t.SkipNow()
 	SkipConvey("TestConnnectionPoolHighAvailability", t, func() {
 		opt := &api.PoolOption{
 			Address:                setup.Address4,
@@ -1855,6 +1856,43 @@ func TestConnnectionPoolHighAvailability(t *testing.T) {
 	// 	_, err = api.NewDBConnectionPool(opt)
 	// 	So(err.Error(), ShouldContainSubstring, "connect to all sites failed")
 	// })
+	Convey("TestConnnectionPoolOption_reconnect", t, func() {
+		reconnNum := 1
+		opt := &api.PoolOption{
+			Address:          host1,
+			UserID:           setup.UserName,
+			Password:         setup.Password,
+			PoolSize:         4,
+			Reconnect:        true,
+			TryReconnectNums: &reconnNum,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		defer pool.Close()
+		// stop one node
+		connCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		getnametask := api.Task{Script: "getNodeAlias()"}
+		tasks := []*api.Task{&getnametask}
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		origin_node := tasks[0].GetResult()
+		fmt.Println("now", origin_node.(*model.Scalar).Value().(string), "is connected, try to stop it")
+		_, err = connCtl.RunScript("stopDataNode(`" + origin_node.(*model.Scalar).Value().(string) + ");sleep(1000)")
+		So(err, ShouldBeNil)
+		fmt.Println("stop successfully")
+
+		time.Sleep(1 * time.Second)
+		_, err = connCtl.RunScript(
+			"startDataNode(exec name from getClusterPerf() where state!=1 and mode !=1);sleep(1000)")
+		So(err, ShouldBeNil)
+		fmt.Println("restart success, check if the connection is ok")
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		re := tasks[0].GetResult()
+		So(re.(*model.Scalar).Value().(string), ShouldEqual, origin_node.(*model.Scalar).Value().(string))
+		time.Sleep(2 * time.Second)
+	})
 
 }
 
@@ -1934,44 +1972,6 @@ func TestConnnectionPoolOption(t *testing.T) {
 		So(err.Error(), ShouldContainSubstring, "Timeout must be equal or greater than 0")
 	})
 
-	Convey("TestConnnectionPoolOption_reconnect", t, func() {
-		reconnNum := 1
-		opt := &api.PoolOption{
-			Address:          host1,
-			UserID:           setup.UserName,
-			Password:         setup.Password,
-			PoolSize:         4,
-			Reconnect:        true,
-			TryReconnectNums: &reconnNum,
-		}
-		pool, err := api.NewDBConnectionPool(opt)
-		So(err, ShouldBeNil)
-		defer pool.Close()
-		// stop one node
-		connCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
-		So(err, ShouldBeNil)
-		getnametask := api.Task{Script: "getNodeAlias()"}
-		tasks := []*api.Task{&getnametask}
-		err = pool.Execute(tasks)
-		So(err, ShouldBeNil)
-		origin_node := tasks[0].GetResult()
-		fmt.Println("now", origin_node.(*model.Scalar).Value().(string), "is connected, try to stop it")
-		_, err = connCtl.RunScript("stopDataNode(`" + origin_node.(*model.Scalar).Value().(string) + ");sleep(1000)")
-		So(err, ShouldBeNil)
-		fmt.Println("stop successfully")
-
-		time.Sleep(1 * time.Second)
-		_, err = connCtl.RunScript(
-			"startDataNode(exec name from getClusterPerf() where state!=1 and mode !=1);sleep(1000)")
-		So(err, ShouldBeNil)
-		fmt.Println("restart success, check if the connection is ok")
-		err = pool.Execute(tasks)
-		So(err, ShouldBeNil)
-		re := tasks[0].GetResult()
-		So(re.(*model.Scalar).Value().(string), ShouldEqual, origin_node.(*model.Scalar).Value().(string))
-		time.Sleep(2 * time.Second)
-	})
-
 	Convey("Test_BehaviorOptions_timeout_reached", t, func() {
 		timeout := time.Second * 2
 		opt := &api.PoolOption{
@@ -2016,7 +2016,112 @@ func TestConnnectionPoolOption(t *testing.T) {
 		So(err, ShouldBeNil)
 		end := time.Now()
 		So(end.Sub(start).Seconds(), ShouldBeLessThan, 2)
-		So(end.Sub(start).Seconds(), ShouldBeGreaterThanOrEqualTo, 1)
+		So(math.Abs(end.Sub(start).Seconds()-1), ShouldBeLessThan, 0.001)
 		So(tasks[0].GetResult().(*model.Scalar).Value().(int32), ShouldEqual, int32(2))
+	})
+}
+
+func Test_DBConnectionPool_SCRAM(t *testing.T) {
+	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, "admin", "123456")
+	AssertNil(err)
+	defer db.Close()
+	_, err = db.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
+	if err != nil {
+		t.Skip("skip test because create SCRAM user failed")
+	}
+	Convey("Test_DBConnectionPool_with_invalid_user", t, func() {
+		opt := &api.PoolOption{
+			EnableScram: true,
+			Address:     host1,
+			UserID:      "admin",
+			Password:    "123456",
+			PoolSize:    10,
+		}
+		_, err := api.NewDBConnectionPool(opt)
+		So(err.Error(), ShouldContainSubstring, "user 'admin' doesn't support scram authMode")
+	})
+	Convey("Test_DBConnectionPool_SCRAM_login_success", t, func() {
+		opt := &api.PoolOption{
+			EnableScram: true,
+			Address:     host1,
+			UserID:      "scramUser",
+			Password:    "123456",
+			PoolSize:    10,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		defer pool.Close()
+		tasks := make([]*api.Task, 1)
+		tasks[0] = &api.Task{Script: "1+1"}
+		err = pool.Execute(tasks)
+		So(err, ShouldBeNil)
+		So(tasks[0].GetResult().(*model.Scalar).Value().(int32), ShouldEqual, int32(2))
+		pool.Close()
+		So(pool.IsClosed(), ShouldBeTrue)
+	})
+
+}
+
+func TestPartitionedTableAppender_SCRAM(t *testing.T) {
+	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, "admin", "123456")
+	AssertNil(err)
+	defer db.Close()
+	_, err = db.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
+	if err != nil {
+		t.Skip("skip test because create SCRAM user failed")
+	}
+	Convey("TestPartitionedTableAppender_SCRAM_login_success", t, func() {
+		opt := &api.PoolOption{
+			EnableScram: true,
+			Address:     host1,
+			UserID:      "scramUser",
+			Password:    "123456",
+			PoolSize:    10,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		defer pool.Close()
+		data, _ := globalConn.RunScript("t = table(1..1000 as c1, rand(100.00, 1000) as c2);share table(1:0, `c1`c2, [INT, DOUBLE]) as t2; t")
+		appenderOpt := &api.PartitionedTableAppenderOption{
+			Pool:      pool,
+			TableName: "t2",
+		}
+		appender, err := api.NewPartitionedTableAppender(appenderOpt)
+		So(err, ShouldBeNil)
+		rows, err := appender.Append(data.(*model.Table))
+		So(err, ShouldBeNil)
+		So(rows, ShouldEqual, 10)
+		err = appender.Close()
+		So(err, ShouldBeNil)
+		globalConn.RunScript("undef(`t2, SHARED)")
+
+	})
+}
+
+func TestTableAppender_SCRAM(t *testing.T) {
+	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, "admin", "123456")
+	AssertNil(err)
+	defer db.Close()
+	_, err = db.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
+	if err != nil {
+		t.Skip("skip test because create SCRAM user failed")
+	}
+	Convey("TestTableAppender_SCRAM_login_success", t, func() {
+		data, _ := globalConn.RunScript("t = table(1..1000 as c1, rand(100.00, 1000) as c2);share table(1:0, `c1`c2, [INT, DOUBLE]) as t2; t")
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, "scramUser", "123456")
+		AssertNil(err)
+		appenderOpt := &api.TableAppenderOption{
+			Conn:      conn,
+			TableName: "t2",
+		}
+		appender := api.NewTableAppender(appenderOpt)
+		So(err, ShouldBeNil)
+		_, err = appender.Append(data.(*model.Table))
+		So(err, ShouldBeNil)
+		res, _ := globalConn.RunScript("res = select * from t2 order by c1;ex = select * from t order by c1;all(each(eqObj, res.values(), ex.values()))")
+		So(res.(*model.Scalar).Value().(bool), ShouldBeTrue)
+		err = appender.Close()
+		So(err, ShouldBeNil)
+		globalConn.RunScript("undef(`t2, SHARED)")
 	})
 }

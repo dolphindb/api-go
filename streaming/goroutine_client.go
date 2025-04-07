@@ -31,20 +31,20 @@ func NewGoroutineClient(listeningHost string, listeningPort int) *GoroutineClien
 
 // Subscribe helps you to subscribe the specific action of the table according to the req.
 func (t *GoroutineClient) Subscribe(req *SubscribeRequest) error {
-	if (req.MsgAsTable) {
-		if(req.MsgDeserializer != nil) {
+	if req.MsgAsTable {
+		if req.MsgDeserializer != nil {
 			return errors.New("if MsgAsTable is true, MsgDeserializer must be nil")
 		}
-		if(req.Handler == nil) {
+		if req.Handler == nil {
 			return errors.New("if MsgAsTable is true, the callback in Handler will be called, so it shouldn't be nil")
 		}
 	} else {
-		if(req.BatchSize != nil && *req.BatchSize >= 1) {
-			if(!req.MsgAsTable && req.BatchHandler == nil) {
+		if req.BatchSize != nil && *req.BatchSize >= 1 {
+			if !req.MsgAsTable && req.BatchHandler == nil {
 				return errors.New("if BatchSize >= 1 and MsgAsTable is false, the callback in BatchHandler will be called, so it shouldn't be nil")
 			}
 		} else {
-			if(req.BatchSize == nil && req.Handler == nil) {
+			if req.BatchSize == nil && req.Handler == nil {
 				return errors.New("if BatchSize is not set, the callback in Handler will be called, so it shouldn't be nil")
 			}
 		}
@@ -66,7 +66,7 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 
 	handlerLooper := t.initHandlerLooper(queue, req)
 
-	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
+	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return err
@@ -82,7 +82,7 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 func (t *GoroutineClient) reviseSubscriber(req *SubscribeRequest) error {
 	var err error
 	t.subscriber.once.Do(func() {
-		err = t.subscriber.checkServerVersion(req.Address)
+		err = t.subscriber.checkServerVersion(req)
 		if err == nil {
 			go listening(t)
 		}
@@ -100,12 +100,12 @@ func (t *GoroutineClient) initHandlerLooper(queue *UnboundedChan, req *Subscribe
 		handlerThrottle = nil
 	}
 	handlerLooper := &handlerLopper{
-		queue:     queue,
-		handler:   req.Handler,
-		batchHandler:   req.BatchHandler,
-		batchSize: req.BatchSize,
-		msgAsTable: req.MsgAsTable,
-		throttle:  handlerThrottle,
+		queue:           queue,
+		handler:         req.Handler,
+		batchHandler:    req.BatchHandler,
+		batchSize:       req.BatchSize,
+		msgAsTable:      req.MsgAsTable,
+		throttle:        handlerThrottle,
 		MsgDeserializer: req.MsgDeserializer,
 	}
 
@@ -113,13 +113,12 @@ func (t *GoroutineClient) initHandlerLooper(queue *UnboundedChan, req *Subscribe
 	// 	handlerLooper.handler = &DefaultMessageHandler{}
 	// }
 
-
 	return handlerLooper
 }
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.
 func (t *GoroutineClient) UnSubscribe(req *SubscribeRequest) error {
-	topicStr, _, err := t.stopHandlerLopper(req.Address, req.TableName, req.ActionName)
+	topicStr, _, err := t.stopHandlerLopper(req)
 	if err != nil {
 		return err
 	}
@@ -170,13 +169,13 @@ func (t *GoroutineClient) Close() {
 	}
 }
 
-func (t *GoroutineClient) doReconnect(s *site) bool {
+func (t *GoroutineClient) doReconnect(req *SubscribeRequest) bool {
 	// topic, err := t.stopHandlerLopper(s.address, s.tableName, s.actionName)
 	// if err != nil {
 	// 	return false
 	// }
 
-	topic, err := t.getTopicFromServer(s.address, s.tableName, s.actionName)
+	topic, err := t.getTopicFromServer(req)
 	if err != nil {
 		return false
 	}
@@ -190,12 +189,12 @@ func (t *GoroutineClient) doReconnect(s *site) bool {
 			closeUnboundedChan(q)
 			queueMap.Delete(topic)
 			haTopicToTrueTopic.Delete(topic)
-			trueTopicToSites.Delete(topic)
+			trueTopicToRequests.Delete(topic)
 		}
 		return true
 	}
 
-	isSuccess := t.reSubscribe(topic, s)
+	isSuccess := t.reSubscribe(topic, req)
 	if !isSuccess {
 		return isSuccess
 	}
@@ -204,8 +203,9 @@ func (t *GoroutineClient) doReconnect(s *site) bool {
 	return true
 }
 
-func (t *GoroutineClient) reSubscribe(topic string, s *site) bool {
-	err := t.reSubscribeInternal(transSiteToNewSubscribeRequest(s))
+func (t *GoroutineClient) reSubscribe(topic string, req *SubscribeRequest) bool {
+	req.Offset = req.Offset + 1
+	err := t.reSubscribeInternal(req)
 	if err != nil {
 		fmt.Printf("%s %s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String(), topic)
 		return false
@@ -214,20 +214,20 @@ func (t *GoroutineClient) reSubscribe(topic string, s *site) bool {
 	return true
 }
 
-func transSiteToNewSubscribeRequest(s *site) *SubscribeRequest {
-	return &SubscribeRequest{
-		Address:    s.address,
-		TableName:  s.tableName,
-		ActionName: s.actionName,
-		Handler:    s.handler,
-		Offset:     s.msgID + 1,
-		Filter:     s.filter,
-		Reconnect:  s.reconnect,
-	}
-}
+// func transSiteToNewSubscribeRequest(s *site) *SubscribeRequest {
+// 	return &SubscribeRequest{
+// 		Address:    s.address,
+// 		TableName:  s.tableName,
+// 		ActionName: s.actionName,
+// 		Handler:    s.handler,
+// 		Offset:     s.msgID + 1,
+// 		Filter:     s.filter,
+// 		Reconnect:  s.reconnect,
+// 	}
+// }
 
-func (t *GoroutineClient) stopHandlerLopper(address, tableName, actionName string) (string, *handlerLopper, error) {
-	topic, err := t.getTopicFromServer(address, tableName, actionName)
+func (t *GoroutineClient) stopHandlerLopper(req *SubscribeRequest) (string, *handlerLopper, error) {
+	topic, err := t.getTopicFromServer(req)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server during reconnection using doReconnect: %s\n", err.Error())
 		return "", nil, err

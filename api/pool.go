@@ -58,6 +58,9 @@ type PoolOption struct {
 
 	// try reconnect times
 	TryReconnectNums *int
+
+	// if enable SCRAM login verify
+	EnableScram bool
 }
 
 // NewDBConnectionPool inits a DBConnectionPool object and configures it with opt, finally returns it.
@@ -107,6 +110,7 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 		HighAvailabilitySites:  opt.HighAvailabilitySites,
 		Reconnect:              opt.Reconnect,
 		TryReconnectNums:       opt.TryReconnectNums,
+		EnableScram:            opt.EnableScram,
 	}
 	conn, err := dialer.NewConn(context.TODO(), addr, bOpt)
 	if err != nil {

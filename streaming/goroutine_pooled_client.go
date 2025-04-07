@@ -17,13 +17,13 @@ type GoroutinePooledClient struct {
 }
 
 type queueHandlerBinder struct {
-	queue   *UnboundedChan
-	handler MessageHandler
-	batchHandler MessageBatchHandler
+	queue           *UnboundedChan
+	handler         MessageHandler
+	batchHandler    MessageBatchHandler
 	MsgDeserializer *StreamDeserializer
-	msgAsTable bool
-	batchSize *int
-	throttle  *int
+	msgAsTable      bool
+	batchSize       *int
+	throttle        *int
 }
 
 func (h *queueHandlerBinder) getThrottle() int {
@@ -62,20 +62,20 @@ func NewGoroutinePooledClient(listeningHost string, listeningPort int) *Goroutin
 
 // Subscribe helps you to subscribe the specific action of the table according to the req.
 func (t *GoroutinePooledClient) Subscribe(req *SubscribeRequest) error {
-	if (req.MsgAsTable) {
-		if(req.MsgDeserializer != nil) {
+	if req.MsgAsTable {
+		if req.MsgDeserializer != nil {
 			return errors.New("if MsgAsTable is true, MsgDeserializer must be nil")
 		}
-		if(req.Handler == nil) {
+		if req.Handler == nil {
 			return errors.New("if MsgAsTable is true, the callback in Handler will be called, so it shouldn't be nil")
 		}
 	} else {
-		if(req.BatchSize != nil && *req.BatchSize >= 1) {
-			if(!req.MsgAsTable && req.BatchHandler == nil) {
+		if req.BatchSize != nil && *req.BatchSize >= 1 {
+			if !req.MsgAsTable && req.BatchHandler == nil {
 				return errors.New("if BatchSize >= 1 and MsgAsTable is false, the callback in BatchHandler will be called, so it shouldn't be nil")
 			}
 		} else {
-			if(req.BatchSize == nil && req.Handler == nil) {
+			if req.BatchSize == nil && req.Handler == nil {
 				return errors.New("if BatchSize is not set, the callback in Handler will be called, so it shouldn't be nil")
 			}
 		}
@@ -95,7 +95,7 @@ func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
 		return err
 	}
 
-	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
+	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return err
@@ -108,13 +108,13 @@ func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
 		queueHandlerThrottle = nil
 	}
 	queueHandler := &queueHandlerBinder{
-		queue:   queue,
-		handler: req.Handler,
-		batchHandler: req.BatchHandler,
+		queue:           queue,
+		handler:         req.Handler,
+		batchHandler:    req.BatchHandler,
 		MsgDeserializer: req.MsgDeserializer,
-		msgAsTable: req.MsgAsTable,
-		batchSize: req.BatchSize,
-		throttle: queueHandlerThrottle,
+		msgAsTable:      req.MsgAsTable,
+		batchSize:       req.BatchSize,
+		throttle:        queueHandlerThrottle,
 	}
 
 	if req.Handler == nil {
@@ -129,7 +129,7 @@ func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
 func (t *GoroutinePooledClient) reviseSubscriber(req *SubscribeRequest) error {
 	var err error
 	t.subscriber.once.Do(func() {
-		err = t.subscriber.checkServerVersion(req.Address)
+		err = t.subscriber.checkServerVersion(req)
 		if err == nil {
 			go listening(t)
 		}
@@ -140,7 +140,7 @@ func (t *GoroutinePooledClient) reviseSubscriber(req *SubscribeRequest) error {
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.
 func (t *GoroutinePooledClient) UnSubscribe(req *SubscribeRequest) error {
-	topicStr, err := t.getTopicFromServer(req.Address, req.TableName, req.ActionName)
+	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
 		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
 		return err
@@ -189,11 +189,10 @@ func (t *GoroutinePooledClient) Close() {
 	}
 }
 
-func (t *GoroutinePooledClient) doReconnect(s *site) bool {
-	topicStr := fmt.Sprintf("%s/%s/%s", s.address, s.tableName, s.actionName)
+func (t *GoroutinePooledClient) doReconnect(req *SubscribeRequest) bool {
+	topicStr := fmt.Sprintf("%s/%s/%s", req.Address, req.TableName, req.ActionName)
 
-
-	topic, err := t.getTopicFromServer(s.address, s.tableName, s.actionName)
+	topic, err := t.getTopicFromServer(req)
 	if err != nil {
 		return false
 	}
@@ -207,11 +206,12 @@ func (t *GoroutinePooledClient) doReconnect(s *site) bool {
 			closeUnboundedChan(q)
 			queueMap.Delete(topic)
 			haTopicToTrueTopic.Delete(topic)
-			trueTopicToSites.Delete(topic)
+			trueTopicToRequests.Delete(topic)
 		}
 		return true
 	}
-	if err := t.reSubscribeInternal(transSiteToNewSubscribeRequest(s)); err != nil {
+	req.Offset = req.Offset + 1
+	if err := t.reSubscribeInternal(req); err != nil {
 		fmt.Printf("%s %s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String(), topicStr)
 		return false
 	}
@@ -241,14 +241,14 @@ func (t *GoroutinePooledClient) run() {
 
 				binder := raw.(*queueHandlerBinder)
 
-				if(binder.msgAsTable) {
+				if binder.msgAsTable {
 					ret, err := mergeIMessage(msg)
 					if err != nil {
 						fmt.Printf("merge msg to table failed: %s\n", err.Error())
 					}
 					go binder.handler.DoEvent(ret)
-				} else if (binder.batchSize != nil && *binder.batchSize >= 1) {
-					if(binder.MsgDeserializer != nil) {
+				} else if binder.batchSize != nil && *binder.batchSize >= 1 {
+					if binder.MsgDeserializer != nil {
 						outMsg := make([]IMessage, 0)
 						for _, v := range msg {
 							ret, err := binder.MsgDeserializer.Parse(v)
@@ -264,7 +264,7 @@ func (t *GoroutinePooledClient) run() {
 					}
 				} else {
 					for _, v := range msg {
-						if(binder.MsgDeserializer != nil) {
+						if binder.MsgDeserializer != nil {
 							ret, err := binder.MsgDeserializer.Parse(v)
 							if err != nil {
 								fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())

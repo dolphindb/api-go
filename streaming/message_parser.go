@@ -49,7 +49,7 @@ func (m *messageParser) run() {
 			// HACK close queue at message parser & reconnect place, if not close here, then close at reconnect place
 			queueMap.Delete(m.topic)
 			haTopicToTrueTopic.Delete(m.topic)
-			trueTopicToSites.Delete(m.topic)
+			trueTopicToRequests.Delete(m.topic)
 			q := raw.(*UnboundedChan)
 			closeUnboundedChan(q)
 		}

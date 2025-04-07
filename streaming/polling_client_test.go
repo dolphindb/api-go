@@ -124,7 +124,7 @@ func TestMain(m *testing.M) {
 	queueMap.Delete("topic")
 	haTopicToTrueTopic.Delete("topic")
 	messageCache.Delete("topic")
-	trueTopicToSites.Delete("topic")
+	trueTopicToRequests.Delete("topic")
 
 	for _, v := range subscribeServer {
 		v.Close()
