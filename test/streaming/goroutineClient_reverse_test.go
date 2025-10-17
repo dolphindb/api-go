@@ -349,14 +349,14 @@ func TestGoroutineClient_subscribe_TableName_ActionName_Handler_offset_negative_
 		So(err, ShouldBeNil)
 		_, err = gcConn_r.RunScript("n=1000;t=table(1..n as tag,2020.01.03T12:23:45+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
 		So(err, ShouldBeNil)
-		waitData(gcConn_r, receive, 3000)
+		waitData(gcConn_r, receive, 4000)
 		tmp1, err := gcConn_r.RunScript(receive)
 		So(err, ShouldBeNil)
 		re := tmp1.(*model.Table)
 		tmp2, err := gcConn_r.RunScript("select * from " + st + " where rowNo(tag)>=1000")
 		So(err, ShouldBeNil)
 		ex := tmp2.(*model.Table)
-		So(re.Rows(), ShouldEqual, 3000)
+		So(re.Rows(), ShouldEqual, 4000)
 		CheckmodelTableEqual(re, ex, 0)
 		err = gc_r.UnSubscribe(req)
 		So(err, ShouldBeNil)
@@ -637,7 +637,7 @@ func TestGoroutineClient_subscribe_unsubscribeesubscribe_r(t *testing.T) {
 }
 
 func TestGoroutineClient_subscribe_TableName_ActionName_Handler_offseteconnect_filter_AllowExistTopic_r(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var gc_r = streaming.NewGoroutineClient(setup.IP, setup.Reverse_subPort)
 	Convey("TestGoroutineClient_subscribe_TableName_ActionName_Handler_offseteconnect_filter_AllowExistTopic", t, func() {
 		st, receive := CreateStreamingTableWithRandomName(gcConn_r)
@@ -1312,7 +1312,7 @@ func TestGoroutineClient_subscribe_with_StreamDeserializer_arrayVector_r(t *test
 
 func TestGoroutineClient_subscribe_with_SCRAM_user_r(t *testing.T) {
 	_, err := gcConn_r.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
-	if err!= nil {
+	if err != nil {
 		t.Skip("skip test because create SCRAM user failed")
 	}
 	var gc_r = streaming.NewGoroutineClient(setup.IP, setup.Reverse_subPort)
@@ -1337,7 +1337,7 @@ func TestGoroutineClient_subscribe_with_SCRAM_user_r(t *testing.T) {
 		_, err := gcConn_r.RunScript("n=1000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
 		So(err, ShouldBeNil)
 		waitData(gcConn_r, receive, 1000)
-		ret, err := gcConn_r.RunScript("res = select * from "+st+" order by ts;ex = select * from "+receive+" order by ts;all(each(eqObj, res.values(), ex.values()))")
+		ret, err := gcConn_r.RunScript("res = select * from " + st + " order by ts;ex = select * from " + receive + " order by ts;all(each(eqObj, res.values(), ex.values()))")
 		So(err, ShouldBeNil)
 		So(ret.(*model.Scalar).Value().(bool), ShouldBeTrue)
 

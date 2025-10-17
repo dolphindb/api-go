@@ -1156,7 +1156,7 @@ func Test_Table_DownLoad_DataType_int128(t *testing.T) {
 			So(k, ShouldEqual, result.Rows())
 		})
 		Convey("Test_Table_only_one_int128_null_columns:", func() {
-			s, err := db.RunScript("m = table(10.0+int128(['','','','','','']) as int128_null);m")
+			s, err := db.RunScript("m = table(int128(['','','','','','']) as int128_null);m")
 			So(err, ShouldBeNil)
 			result := s.(*model.Table)
 			get := result.GetColumnByName("int128_null").Data.Value()
@@ -1167,6 +1167,26 @@ func Test_Table_DownLoad_DataType_int128(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Table_DownLoad_DataType_any(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Table_with_any:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_Table_with_any:", func() {
+			s, err := db.RunScript("re = table(100:0, `sex`name`eye, [STRING,ANY,ANY]);re.tableInsert(`f`m,([`jill],['tom' 'dick' 'harry' 'jack']), ([`gray],['blue' 'green' 'blue' 'blue'])); re;")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			get := result.GetColumnByName("name").Data.Get(1).String()
+			get1 := result.GetColumnByName("eye").Data.Get(1).String()
+			//fmt.Println("tb:", get)
+			So("vector<any>([vector<string>([tom, dick, harry, jack])])", ShouldEqual, get)
+			So("vector<any>([vector<string>([blue, green, blue, blue])])", ShouldEqual, get1)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Table_DownLoad_DataType_big_size(t *testing.T) {
 	t.Parallel()
 	Convey("Test_Table_size_bigger_than_1024:", t, func() {

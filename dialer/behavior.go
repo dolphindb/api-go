@@ -94,5 +94,8 @@ func (f *BehaviorOptions) GetTryReconnectNums() int {
 	if f.TryReconnectNums == nil {
 		return 0
 	}
+	if *f.TryReconnectNums < 0 {
+		return 0
+	}
 	return *f.TryReconnectNums
 }

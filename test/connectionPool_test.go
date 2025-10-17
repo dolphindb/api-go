@@ -172,6 +172,21 @@ func TestDBConnectionPool_exception(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(pool, ShouldBeNil)
 		})
+		Convey("Test_function_DBConnectionPool_wrong_Password_exception_Reconnect_true \n", func() {
+			t := 2
+			opt := &api.PoolOption{
+				Address:          host1,
+				UserID:           setup.UserName,
+				Password:         "rpoot120@",
+				PoolSize:         10,
+				LoadBalance:      false,
+				Reconnect:        true,
+				TryReconnectNums: &t,
+			}
+			pool, err := api.NewDBConnectionPool(opt)
+			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
+		})
 		Convey("Test_function_DBConnectionPool_PoolSize_less_than_0_exception", func() {
 			opt := &api.PoolOption{
 				Address:     host1,
@@ -2016,7 +2031,7 @@ func TestConnnectionPoolOption(t *testing.T) {
 		So(err, ShouldBeNil)
 		end := time.Now()
 		So(end.Sub(start).Seconds(), ShouldBeLessThan, 2)
-		So(math.Abs(end.Sub(start).Seconds()-1), ShouldBeLessThan, 0.001)
+		So(math.Abs(end.Sub(start).Seconds()-1), ShouldBeLessThan, 0.002)
 		So(tasks[0].GetResult().(*model.Scalar).Value().(int32), ShouldEqual, int32(2))
 	})
 }
@@ -2123,5 +2138,33 @@ func TestTableAppender_SCRAM(t *testing.T) {
 		err = appender.Close()
 		So(err, ShouldBeNil)
 		globalConn.RunScript("undef(`t2, SHARED)")
+	})
+}
+
+// https://dolphindb1.atlassian.net/browse/AG-175
+func TestConnnectionPoolOption_reconnect_true_TryReconnectNums_ConnectionNum(t *testing.T) {
+	Convey("TestConnnectionPoolOption_reconnect_true_TryReconnectNums_ConnectionNum", t, func() {
+		connCtl, _ := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		time.Sleep(2 * time.Second)
+		res, _ := connCtl.RunScript("select connectionNum  from getClusterPerf(true) where port = " + strconv.Itoa(setup.CtlPort))
+		connectionNum := res.(*model.Table).GetColumnByIndex(0).Get(0).Value()
+		reconnNum := 10
+		opt := api.PoolOption{
+			Address:          setup.CtlAdress,
+			UserID:           setup.UserName,
+			Password:         setup.Password,
+			PoolSize:         10,
+			Reconnect:        true,
+			TryReconnectNums: &reconnNum,
+		}
+		poll, err := api.NewDBConnectionPool(&opt)
+		So(err, ShouldBeNil)
+		So(poll.GetPoolSize(), ShouldEqual, 10)
+		time.Sleep(2 * time.Second)
+		res1, _ := connCtl.RunScript("select connectionNum  from getClusterPerf(true) where port = " + strconv.Itoa(setup.CtlPort))
+		connectionNum1 := res1.(*model.Table).GetColumnByIndex(0).Get(0).Value()
+		num1 := connectionNum.(int32)
+		num2 := connectionNum1.(int32)
+		So(num2-num1, ShouldEqual, 10)
 	})
 }

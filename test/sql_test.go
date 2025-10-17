@@ -36,7 +36,10 @@ func TestSql(t *testing.T) {
 				So(err, ShouldBeNil)
 				var assert_s = "res = bool([]);res.append!(eqObj(tab.column(0), 1..100));res.append!(tab.column(1).isNull());all(res)"
 				res, _ := ddb.RunScript(assert_s)
-				So(res.(*model.Scalar).Value(), ShouldBeTrue)
+				for i := 0; i < ex_col0.(*model.Vector).Rows(); i++ {
+					So(res.(*model.Vector).Get(i).Value(), ShouldEqual, true)
+				}
+
 			})
 			Convey("Test_sql_select_NULL_with_no_other_data", func() {
 				var sql string = "select NULL as val from table(1..100 as id)"
@@ -50,7 +53,7 @@ func TestSql(t *testing.T) {
 				So(err, ShouldBeNil)
 				var assert_s = "res = bool([]);res.append!(tab.column(0).isNull());all(res)"
 				res, _ := ddb.RunScript(assert_s)
-				So(res.(*model.Scalar).Value(), ShouldBeTrue)
+				So(res.(*model.Vector).Get(0).Value(), ShouldEqual, true)
 			})
 			Convey("Test_sql_select_NULL_from_huge_table", func() {
 				// NOTE(slshen) The case also test performance, the whole case should be completed within 30 seconds

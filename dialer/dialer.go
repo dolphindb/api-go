@@ -2,6 +2,10 @@ package dialer
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
@@ -11,6 +15,7 @@ import (
 
 	"github.com/dolphindb/api-go/v3/dialer/protocol"
 	"github.com/dolphindb/api-go/v3/model"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const (
@@ -72,6 +77,7 @@ type Conn interface {
 	// for inner use
 	GetReader() protocol.Reader
 	enableScram() bool
+	ConnLogin(userID, password string) error
 }
 
 type conn struct {
@@ -143,11 +149,6 @@ func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, erro
 	conn.SetUserID(userID)
 
 	err = conn.Connect()
-	if err != nil {
-		return nil, err
-	}
-
-	err = Login(conn, userID, pwd)
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +243,11 @@ func (c *conn) Connect() error {
 		for _, v := range c.highAvailabilitySites {
 			c.nodePool.add(&node{address: v})
 		}
-		return c.switchDatanode(nil)
+		return c.switchDataNode(nil)
 	} else if c.reconnect {
 		c.nodePool = &nodePool{}
 		c.nodePool.add(&node{address: c.addr})
-		return c.switchDatanode(nil)
+		return c.switchDataNode(nil)
 	} else {
 		ok, err := c.connectNode(&node{address: c.addr})
 		if err != nil {
@@ -292,11 +293,24 @@ func (c *conn) connect(addr string) error {
 	c.isClosed = false
 	c.refreshHeaderForResponse(h)
 
-	if c.userID != "" {
-		Login(c, c.userID, c.password)
+	args := make([]model.DataForm, 0)
+	ret, err := c.runFuncInternal("isNodeInitialized", args)
+	if err != nil {
+		fmt.Println("Server does not support the initialization check. Please upgrade to a newer version.")
+	} else {
+		if !(ret.(*model.Scalar)).Value().(bool) {
+			c.isConnected = false
+			fmt.Println("connection established, but the node has not been initialized")
+			return fmt.Errorf("<DataNodeNotReady>") // use a special error to indicate that the node is not initialized
+		}
+	}
+	err = nil
+
+	if c.userID != "" || c.password != "" {
+		err = Login(c, c.userID, c.password)
 	}
 
-	return nil
+	return err
 }
 
 func (c *conn) Close() error {
@@ -365,6 +379,20 @@ func (c *conn) RunFunc(s string, args []model.DataForm) (model.DataForm, error) 
 	return di, err
 }
 
+func (c *conn) runFuncInternal(s string, args []model.DataForm) (model.DataForm, error) {
+	bo := defaultByteOrder
+
+	_, di, err := c.runInternal(&requestParams{
+		commandType: functionCmd,
+		Command:     generateFunctionCommand(s, bo, args),
+		SessionID:   []byte(c.GetSession()),
+		Args:        args,
+		ByteOrder:   bo,
+	})
+
+	return di, err
+}
+
 // Upload sends local data to dolphindb and the specified variable is generated on the dolphindb.
 func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 	bo := defaultByteOrder
@@ -392,32 +420,39 @@ func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 }
 
 func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, error) {
-	retryTimes := c.getRetryTimes()
-	if c.nodePool != nil && c.nodePool.len > 0 {
-		for i := 0; i <= retryTimes; i++ { // at least try once
-			rh, df, err := c.runInternal(params)
-			if err != nil {
-				n := c.nodePool.nodes[c.nodePool.lastInd]
-				if c.connected() {
-					et := c.nodePool.parseError(err.Error(), n)
-					if et == IGNORE || et == NO_INITIALIZED {
-						continue
-					}
-				}
-				time.Sleep(300 * time.Millisecond)
-				err := c.switchDatanode(nil)
-				if err != nil {
-					return nil, nil, err
-				}
-				continue
-			}
-
-			return rh, df, nil
-		}
-		return nil, nil, fmt.Errorf("failed to connect to %s after %d times of reconnecting", c.addr, retryTimes)
-	} else {
+	if c.nodePool == nil || c.nodePool.len <= 0 {
 		return c.runInternal(params)
 	}
+
+	rh, df, err := c.runInternal(params)
+	for i := 0; i <= c.getRetryTimes(); i++ {
+		if err == nil {
+			return rh, df, nil
+		}
+
+		n := c.nodePool.nodes[c.nodePool.lastInd]
+		et := c.nodePool.parseError(err.Error(), n)
+
+		if c.connected() && et == UNKNOWN {
+			return rh, df, err
+		}
+		if et == LOGIN_REQUIRED {
+			return rh, df, err
+		}
+
+		if !(et == NEW_LEADER || et == NO_INITIALIZED || et == NODE_NOT_AVAIL) {
+			// not use the current node
+			n = nil
+		}
+		time.Sleep(300 * time.Millisecond)
+
+		// for loop would break when switchDataNode run out of retry times
+		if err := c.switchDataNode(n); err != nil {
+			return nil, nil, err
+		}
+		rh, df, err = c.runInternal(params)
+	}
+	return rh, df, err
 }
 
 func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataForm, error) {
@@ -464,4 +499,159 @@ func (c *conn) refreshHeaderForResponse(h *responseHeader) {
 
 func (c *conn) enableScram() bool {
 	return c.behaviorOpt.EnableScram
+}
+
+func (c *conn) ConnLogin(userID, password string) error {
+	if c.enableScram() {
+		return c.scramLogin(userID, password)
+	} else {
+		err := c.scramLogin(userID, password)
+		if err == nil {
+			return nil
+		}
+	}
+	args := make([]model.DataForm, 2)
+	user, err := model.NewDataType(model.DtString, userID)
+	if err != nil {
+		return err
+	}
+	pwd, err := model.NewDataType(model.DtString, password)
+	if err != nil {
+		return err
+	}
+
+	args[0] = model.NewScalar(user)
+	args[1] = model.NewScalar(pwd)
+	_, err = c.runFuncInternal("login", args)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func generateNonce(length int) (string, error) {
+	buffer := make([]byte, length)
+	_, err := rand.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(buffer), nil
+}
+
+func xorBytes(a, b []byte) []byte {
+	result := make([]byte, len(a))
+	for i := range a {
+		result[i] = a[i] ^ b[i]
+	}
+	return result
+}
+
+func (c *conn) scramLogin(userID, password string) error {
+	args := make([]model.DataForm, 2)
+	user, err := model.NewDataType(model.DtString, userID)
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, %w", err)
+	}
+	clientNonce, err := generateNonce(16)
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, %w", err)
+	}
+	nonce, err := model.NewDataType(model.DtString, clientNonce)
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, %w", err)
+	}
+	args[0] = model.NewScalar(user)
+	args[1] = model.NewScalar(nonce)
+
+	result, err := c.runFuncInternal("scramClientFirst", args)
+	if err != nil {
+		if strings.Contains(err.Error(), "Can't recognize function name scramClientFirst") {
+			return fmt.Errorf("SCRAM login is unavailable on current server")
+		}
+		if strings.Contains(err.Error(), "sha256 authMode doesn't support scram authMode") {
+			return fmt.Errorf("user '%s' doesn't support scram authMode", userID)
+		}
+		return fmt.Errorf("scramClientFirst failed: %w", err)
+	}
+
+	retVec := result.(*model.Vector)
+
+	if retVec.Rows() != 3 {
+		return fmt.Errorf("SCRAM login failed, server error: get server nonce failed")
+	}
+	saltStr := retVec.Get(0).Value().(*model.Scalar).Value().(string)
+	iterCount := int(retVec.Get(1).Value().(*model.Scalar).Value().(int32))
+	combinedNonce := retVec.Get(2).Value().(*model.Scalar).Value().(string)
+
+	salt, err := base64.StdEncoding.DecodeString(saltStr)
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, base64 decode failed: %w", err)
+	}
+
+	saltedPassword := pbkdf2.Key([]byte(password), salt, iterCount, 32, sha256.New)
+
+	mac := hmac.New(sha256.New, saltedPassword)
+	_, err = mac.Write([]byte("Client Key"))
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, HMAC calculation failed: %w", err)
+	}
+	clientKey := mac.Sum(nil)
+
+	storedKey := sha256.Sum256(clientKey)
+
+	authMessage := fmt.Sprintf(`n=%s,r=%s,r=%s,s=%s,i=%d,c=biws,r=%s`,
+		userID, clientNonce, combinedNonce, saltStr, iterCount, combinedNonce)
+
+	mac = hmac.New(sha256.New, storedKey[:])
+	_, err = mac.Write([]byte(authMessage))
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, HMAC calculation failed: %w", err)
+	}
+	clientSig := mac.Sum(nil)
+
+	proof := xorBytes(clientKey, clientSig)
+
+	finalArgs := make([]model.DataForm, 3)
+	combinedNonceScalar, err := model.NewDataType(model.DtString, combinedNonce)
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, %w", err)
+	}
+	proofScalar, err := model.NewDataType(model.DtString, base64.StdEncoding.EncodeToString(proof))
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, %w", err)
+	}
+
+	finalArgs[0] = model.NewScalar(user)
+	finalArgs[1] = model.NewScalar(combinedNonceScalar)
+	finalArgs[2] = model.NewScalar(proofScalar)
+
+	finalResult, err := c.runFuncInternal("scramClientFinal", finalArgs)
+	if err != nil {
+		return fmt.Errorf("scramClientFinal failed: %w", err)
+	}
+	serverSigBase64 := finalResult.(*model.Scalar).Value().(string)
+
+	mac = hmac.New(sha256.New, saltedPassword)
+	_, err = mac.Write([]byte("Server Key"))
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, HMAC calculation failed: %w", err)
+	}
+	serverKey := mac.Sum(nil)
+
+	mac = hmac.New(sha256.New, serverKey)
+	_, err = mac.Write([]byte(authMessage))
+	if err != nil {
+		return fmt.Errorf("SCRAM login failed, HMAC calculation failed: %w", err)
+	}
+	serverSig := mac.Sum(nil)
+
+	expectedSig := base64.StdEncoding.EncodeToString(serverSig)
+
+	if serverSigBase64 != "" && expectedSig != serverSigBase64 {
+		c.Close()
+		return fmt.Errorf("invalid SCRAM server signature")
+	}
+
+	fmt.Println("SCRAM login succeeded")
+	return nil
 }

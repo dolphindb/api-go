@@ -449,9 +449,9 @@ func TestConnectionHighAvailability(t *testing.T) {
 	Convey("Test_BehaviorOptions_Reconnect_true", t, func() {
 		reconnNum := 1
 		opt := &dialer.BehaviorOptions{
-			Reconnect: true,
+			Reconnect:        true,
 			TryReconnectNums: &reconnNum,
-			Timeout: timeout,
+			Timeout:          timeout,
 		}
 		connCtl, _ := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
 		So(connCtl.IsConnected(), ShouldBeTrue)
@@ -743,7 +743,7 @@ func Test_Connection_SCRAM(t *testing.T) {
 	db, err := api.NewSimpleDolphinDBClient(context.TODO(), host3, "admin", "123456")
 	AssertNil(err)
 	_, err = db.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
-	if err!= nil {
+	if err != nil {
 		t.Skip("skip test because create SCRAM user failed")
 	}
 	Convey("Test_Connection_SCRAM_with_invalid_user", t, func() {
@@ -794,3 +794,21 @@ func Test_Connection_SCRAM(t *testing.T) {
 	db.Close()
 
 }
+
+//AG-163 连接win和linux server 重复多次断开再重启 检查api连接状态
+// func TestConnectionRun(t *testing.T) {
+// 	Convey("Test_BehaviorOptions_Reconnect_true", t, func() {
+// 		opt := &dialer.BehaviorOptions{
+// 			Reconnect: true,
+// 		}
+// 		conn, _ := api.NewDolphinDBClient(context.TODO(), "192.168.0.69:8848", opt)
+// 		err := conn.Connect()
+// 		So(err, ShouldBeNil)
+// 		for {
+// 			conn.RunScript(`
+// 			1+1`)
+// 			fmt.Println("This is an infinite loop")
+// 			time.Sleep(1 * time.Second) // 避免CPU跑满
+// 		}
+// 	})
+// }

@@ -118,14 +118,12 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 		return nil, err
 	}
 
+	conn.SetUserID(opt.UserID)
+	conn.SetPassword(opt.Password)
+
 	err = conn.Connect()
 	if err != nil {
 		fmt.Printf("Failed to connect to the server: %s\n", err.Error())
-		return nil, err
-	}
-
-	err = dialer.Login(conn, opt.UserID, opt.Password)
-	if err != nil {
 		return nil, err
 	}
 

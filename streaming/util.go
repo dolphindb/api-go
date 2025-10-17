@@ -173,17 +173,12 @@ func newConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
 		return nil, err
 	}
 
+	conn.SetUserID(req.UserID)
+	conn.SetPassword(req.Password)
 	err = conn.Connect()
 	if err != nil {
 		fmt.Printf("Failed to connect to server: %s\n", err.Error())
 		return nil, err
-	}
-	if (req.UserID != "") && (req.Password != "") {
-		err = dialer.Login(conn, req.UserID, req.Password)
-		if err != nil {
-			fmt.Printf("Failed to login: %s\n", err.Error())
-			return nil, err
-		}
 	}
 
 	return conn, err
@@ -201,18 +196,12 @@ func newReverseStreamConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
 		return nil, err
 	}
 
+	conn.SetUserID(req.UserID)
+	conn.SetPassword(req.Password)
 	err = conn.Connect()
 	if err != nil {
 		fmt.Printf("Failed to connect to server: %s\n", err.Error())
 		return nil, err
-	}
-
-	if (req.UserID != "") && (req.Password != "") {
-		err = dialer.Login(conn, req.UserID, req.Password)
-		if err != nil {
-			fmt.Printf("Failed to login: %s\n", err.Error())
-			return nil, err
-		}
 	}
 
 	return conn, err

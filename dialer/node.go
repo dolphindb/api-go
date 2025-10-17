@@ -44,15 +44,15 @@ func (n *nodePool) add(no *node) {
 	n.len++
 }
 
-func isIgnoreMsg(msg string) bool {
-	ignoreMsgs := []string{
+func isNotInitialized(msg string) bool {
+	errMsgs := []string{
 		"<ChunkInTransaction>",
-		"<DataNodeNotAvail>",
 		"<DataNodeNotReady>",
 		"<ControllerNotReady>",
 		"DFS is not enabled",
+		"The datanode isn't initialized yet. Please try again later",
 	}
-	for _, m := range ignoreMsgs {
+	for _, m := range errMsgs {
 		if strings.Contains(msg, m) {
 			return true
 		}
@@ -62,14 +62,14 @@ func isIgnoreMsg(msg string) bool {
 
 func (n *nodePool) parseError(msg string, no *node) ErrorType {
 	switch {
-	case isIgnoreMsg(msg):
-		return IGNORE
+	case isNotInitialized(msg):
+		return NO_INITIALIZED
 	case strings.Contains(msg, "<NotLeader>"):
 		return n.getNewLeader(msg, no)
 	case strings.Contains(msg, "<DataNodeNotAvail>"):
 		return n.handleNotAvailError(msg, no)
-	case strings.Contains(msg, "The datanode isn't initialized yet. Please try again later"):
-		return NO_INITIALIZED
+	case strings.Contains(msg, "Login is required for script execution with client authentication enabled"):
+		return LOGIN_REQUIRED
 	default:
 		return UNKNOWN
 	}
@@ -83,7 +83,7 @@ func (n *nodePool) handleNotAvailError(msg string, no *node) ErrorType {
 		return UNEXPECT
 	}
 
-	no.address = ""
+	no.address = addr
 	return NODE_NOT_AVAIL
 }
 
@@ -112,10 +112,10 @@ func (c *conn) getRetryTimes() int {
 	return *c.behaviorOpt.TryReconnectNums
 }
 
-func (c *conn) switchDatanode(n *node) (err error) {
+func (c *conn) switchDataNode(n *node) (err error) {
 	retryTimes := c.getRetryTimes()
 	connected := false
-	for attempt := 0; attempt <= retryTimes; attempt++ {
+	for attempt := 0; attempt <= retryTimes; attempt++ { // at least try once
 		if n != nil {
 			if connected, err = c.connectNode(n); connected {
 				return nil
@@ -125,6 +125,9 @@ func (c *conn) switchDatanode(n *node) (err error) {
 			if connected, err = c.rangeConnectNode(); connected {
 				return nil
 			}
+		}
+		if err != nil {
+			return err
 		}
 
 		time.Sleep(time.Second)
@@ -138,18 +141,8 @@ func (c *conn) switchDatanode(n *node) (err error) {
 }
 
 func (c *conn) rangeConnectNode() (bool, error) {
-	for i := c.nodePool.len - 1; i >= 0; i-- {
-		c.nodePool.lastInd = (c.nodePool.lastInd + 1) % c.nodePool.len
-		ok, err := c.connectNode(c.nodePool.nodes[c.nodePool.lastInd])
-		if err != nil {
-			return false, err
-		}
-		if ok {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	c.nodePool.lastInd = (c.nodePool.lastInd + 1) % c.nodePool.len
+	return c.connectNode(c.nodePool.nodes[c.nodePool.lastInd])
 }
 
 // return true, nil: success
@@ -162,14 +155,10 @@ func (c *conn) connectNode(n *node) (bool, error) {
 		return true, nil
 	}
 
-	if !c.isConnected {
-		fmt.Printf("Connect to %s failed: %s\n", n.address, err)
-		return false, err
-	}
-
 	node := newNode("", 0)
 	et := c.nodePool.parseError(err.Error(), node)
-	if et == UNEXPECT || et == UNKNOWN {
+	if et == UNEXPECT || et == UNKNOWN || et == LOGIN_REQUIRED {
+		fmt.Printf("Connect to %s failed: %s\n", n.address, err)
 		return false, err
 	}
 
@@ -258,7 +247,7 @@ func (c *conn) connected() bool {
 // 	if minNode.address != cn.address {
 // 		fmt.Println("Connect to min load node: ", minNode.address)
 // 		c.Conn.Close()
-// 		err := c.switchDatanode(minNode)
+// 		err := c.switchDataNode(minNode)
 // 		if err != nil {
 // 			return err
 // 		}
@@ -350,13 +339,13 @@ func (c *conn) connected() bool {
 // 		if et == IGNORE {
 // 			return nil
 // 		} else if et == NEW_LEADER || et == NODE_NOT_AVAIL {
-// 			err = c.switchDatanode(n1)
+// 			err = c.switchDataNode(n1)
 // 			if err != nil {
 // 				return err
 // 			}
 // 		}
 // 	} else {
-// 		err = c.switchDatanode(n1)
+// 		err = c.switchDataNode(n1)
 // 		if err != nil {
 // 			return err
 // 		}

@@ -224,7 +224,11 @@ func readVectorData(r protocol.Reader, bo protocol.ByteOrder, dv *Vector) error 
 			return err
 		}
 	default:
-		dv.Data, err = readList(r, dt, bo, int(dv.RowCount*dv.ColumnCount))
+		len := int(dv.RowCount * dv.ColumnCount)
+		if dt == DtAny {
+			len = int(dv.RowCount)
+		}
+		dv.Data, err = readList(r, dt, bo, len)
 	}
 
 	return err

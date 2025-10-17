@@ -1805,7 +1805,7 @@ func Test_Vector_Download_Datatype_array_vector_big_than_1048576(t *testing.T) {
 	Convey("Test_vector_array_vector_big_than_1048576:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		s, err := db.RunScript("a = array(DATETIME[],0).append!(take([[1996.12.31T23:59:59,1997.01.01T00:00:00],[2006.01.02T15:04:04,2006.01.02T15:04:05],[2022.01.02T23:59:59,2006.01.02T15:04:59],[2022.09.02T15:04:04,3002.01.02T15:04:05]],1048576)).append!(2002.02.02T12:24:36);a")
+		s, err := db.RunScript("a = array(DATETIME[],0).append!(take([[1996.12.31T23:59:59,1997.01.01T00:00:00],[2006.01.02T15:04:04,2006.01.02T15:04:05],[2022.01.02T23:59:59,2006.01.02T15:04:59],[2022.09.02T15:04:04,2002.01.02T15:04:05]],1048576)).append!(2002.02.02T12:24:36);a")
 		So(err, ShouldBeNil)
 		result := s.(*model.Vector)
 		So(result.GetVectorValue(1).Data.Value()[1], ShouldEqual, time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC))
