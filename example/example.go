@@ -2,18 +2,20 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/example/apis"
 )
 
 func main() {
 	// 配置连接池选项
 	timeout := 1 * time.Second
 	opt := &api.PoolOption{
-		Address:                "localhost:8848",
-		UserID:                 "admin",
-		Password:               "123456",
+		Address:                getenv("DOLPHINDB_ADDR", apis.TestAddr),
+		UserID:                 getenv("DOLPHINDB_USER", apis.User),
+		Password:               getenv("DOLPHINDB_PASSWORD", apis.Password),
 		PoolSize:               5,
 		LoadBalance:            false,
 		EnableHighAvailability: false,
@@ -45,11 +47,19 @@ func main() {
 
 	// 输出任务结果
 	for _, task := range tasks {
-		fmt.Println("Task if success: ", task.IsSuccess())
+		fmt.Println("Task succeeded:", task.IsSuccess())
 		if task.GetError() != nil {
 			fmt.Printf("Task failed: %s\n", task.GetError().Error())
 		} else {
 			fmt.Printf("Task result: %v\n", task.GetResult())
 		}
 	}
+}
+
+func getenv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+
+	return fallback
 }

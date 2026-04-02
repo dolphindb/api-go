@@ -7,7 +7,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-var API_VERSION = "3.0.3"
+var API_VERSION = "3.0.4"
 
 func GetAPIVersion() string {
 	return API_VERSION

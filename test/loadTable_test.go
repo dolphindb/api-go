@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/model"
@@ -20,10 +21,12 @@ func TestLoadTable(t *testing.T) {
 		So(err, ShouldBeNil)
 		Convey("Test_LoadTable_dfs_dimension:", func() {
 			DfsDBPath := "dfs://" + generateRandomString(8)
+			fmt.Println("DfsDBPath" + DfsDBPath)
 			re1, err := ddb.ExistsDatabase(new(api.ExistsDatabaseRequest).SetPath(DfsDBPath))
 			So(err, ShouldBeNil)
 			So(re1, ShouldBeFalse)
 			CreateDfsDimensiondb(DfsDBPath, TbName1, TbName2)
+			time.Sleep(10 * time.Second)
 			// defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DfsDBPath))
 			tmp, err := ddb.RunScript(`select * from loadTable("` + DfsDBPath + `", "` + TbName1 + `")`)
 			So(err, ShouldBeNil)

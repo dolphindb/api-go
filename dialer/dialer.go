@@ -140,7 +140,13 @@ func NewConn(ctx context.Context, addr string, behaviorOpt *BehaviorOptions) (Co
 // NewSimpleConn instantiates a new connection with the addr,
 // which connects to the server and logs in with the userID and pwd.
 func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, error) {
-	conn, err := NewConn(ctx, address, nil)
+	return NewSimpleConnWithBehavior(ctx, address, userID, pwd, nil)
+}
+
+// NewSimpleConnWithBehavior instantiates a new connection with the addr,
+// which connects to the server and logs in with the userID and pwd.
+func NewSimpleConnWithBehavior(ctx context.Context, address, userID, pwd string, behaviorOpt *BehaviorOptions) (Conn, error) {
+	conn, err := NewConn(ctx, address, behaviorOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -314,6 +320,17 @@ func (c *conn) connect(addr string) error {
 }
 
 func (c *conn) Close() error {
+	if c == nil {
+		return nil
+	}
+
+	if c.Conn == nil {
+		c.isConnected = false
+		c.isClosed = true
+		c.sessionID = nil
+		return nil
+	}
+
 	if err := c.Conn.Close(); err != nil {
 		return err
 	}

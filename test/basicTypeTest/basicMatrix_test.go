@@ -313,6 +313,73 @@ func Test_Matrix_DownLoad_symbol(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+func Test_Matrix_DownLoad_string(t *testing.T) {
+	t.Parallel()
+	Convey("Test_matrix_string:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_matrix_string_not_null:", func() {
+			s, err := db.RunScript("string(`A +string(1..9))$3:3")
+			So(err, ShouldBeNil)
+			result := s.(*model.Matrix)
+			zx := [3][3]string{{"A1", "A4", "A7"}, {"A2", "A5", "A8"}, {"A3", "A6", "A9"}}
+			var k int
+			for i := 0; i < result.Data.Rows(); i++ {
+				for j := 0; j < int(result.Data.ColumnCount); j++ {
+					if result.Get(i, j).Value() == zx[i][j] {
+						k++
+					}
+				}
+			}
+			So(result.Data.ColumnCount, ShouldEqual, 3)
+			So(result.Data.RowCount, ShouldEqual, 3)
+			So(k, ShouldEqual, result.Data.ColumnCount*result.Data.RowCount)
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 18)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "string")
+		})
+		Convey("Test_matrix_string_null:", func() {
+			s, err := db.RunScript("matrix(STRING, 3, 2)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Matrix)
+			for i := 0; i < 3; i++ {
+				for j := 0; j < 2; j++ {
+					So(result.Get(i, j).IsNull(), ShouldEqual, true)
+				}
+			}
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 18)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "string")
+		})
+		Convey("Test_matrix_string_all_null:", func() {
+			s, err := db.RunScript("string(take(string(), 12))$3:4")
+			So(err, ShouldBeNil)
+			result := s.(*model.Matrix)
+			for i := 0; i < 3; i++ {
+				for j := 0; j < 4; j++ {
+					re := result.Get(i, j).Value()
+					So(re, ShouldEqual, "")
+				}
+			}
+		})
+		Convey("Test_matrix_string_some_null:", func() {
+			s, err := db.RunScript("string(['AA', 'BB',NULL, 'CC',NULL, 'DD'])$2:3")
+			So(err, ShouldBeNil)
+			result := s.(*model.Matrix)
+			zx := [2][3]string{{"AA"}, {"BB", "CC", "DD"}}
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 3; j++ {
+					re := result.Get(i, j).Value()
+					So(re, ShouldEqual, zx[i][j])
+				}
+			}
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Matrix_DownLoad_date(t *testing.T) {
 	t.Parallel()
 	Convey("Test_matrix_date:", t, func() {
@@ -1163,6 +1230,37 @@ func Test_Matrix_UpLoad_DataType_double(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Matrix_UpLoad_DataType_string(t *testing.T) {
+	t.Parallel()
+	Convey("Test_matrix_string_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_matrix_string_upload:", func() {
+			data, err := model.NewDataTypeListFromRawData(model.DtString, []string{"1024.2", "-2.10", "", "NULL测试!@#$%^&*()_+{}:COUNT<>,.//;'|[]=-`~", "T", "6", "7", "8", "9"})
+			So(err, ShouldBeNil)
+			mtx := model.NewMatrix(model.NewVector(data), nil, nil)
+			_, err = db.Upload(map[string]model.DataForm{"s": mtx})
+			res, _ := db.RunScript("s")
+			ty, _ := db.RunScript("typestr(s)")
+			result := res.(*model.Matrix)
+			re := result.Data.Data.Value()
+			zx := []string{"1024.2", "-2.10", "", "NULL测试!@#$%^&*()_+{}:COUNT<>,.//;'|[]=-`~", "T", "6", "7", "8", "9"}
+			var j int
+			for i := 0; i < len(re); i++ {
+				if re[i] == zx[i] {
+					j++
+				}
+			}
+			So(j, ShouldEqual, len(re))
+			So(err, ShouldBeNil)
+			So(ty.String(), ShouldEqual, "string(STRING MATRIX)")
+			So(res.GetDataType(), ShouldEqual, model.DtString)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Matrix_UpLoad_DataType_date(t *testing.T) {
 	t.Parallel()
 	Convey("Test_matrix_date_upload:", t, func() {
@@ -1487,6 +1585,45 @@ func Test_Matrix_UpLoad_DataType_complex(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+// 有问题
+//
+//	func Test_Matrix_UpLoad_DataType_point(t *testing.T) {
+//		t.Parallel()
+//		Convey("Test_matrix_point_upload:", t, func() {
+//			db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+//			So(err, ShouldBeNil)
+//			Convey("Test_matrix_point_upload:", func() {
+//				data, err := model.NewDataTypeListFromRawData(model.DtPoint, [][2]float64{{1, 1}, {-1, -1024.5}, {1001022.4, -30028.75}})
+//				So(err, ShouldBeNil)
+//				rl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1})
+//				So(err, ShouldBeNil)
+//				cl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3})
+//				So(err, ShouldBeNil)
+//				mtx := model.NewMatrix(model.NewVector(data), model.NewVector(rl), model.NewVector(cl))
+//				print(mtx.String())
+//				_, err = db.Upload(map[string]model.DataForm{"s": mtx})
+//				print(err)
+//				So(err, ShouldBeNil)
+//				res, _ := db.RunScript("s")
+//				ty, _ := db.RunScript("typestr(s)")
+//				result := res.(*model.Matrix)
+//				re := result.Data.Data.Value()
+//				zx := []string{"(1.00000,1.00000)", "(-1.00000,-1024.50000)", "(1001022.40000,-30028.75000)"}
+//				var j int
+//				for i := 0; i < len(re); i++ {
+//					if re[i] == zx[i] {
+//						j++
+//					}
+//				}
+//				So(j, ShouldEqual, len(re))
+//				So(err, ShouldBeNil)
+//				So(ty.String(), ShouldEqual, "string(FAST POINT MATRIX)")
+//				So(res.GetDataType(), ShouldEqual, model.DtPoint)
+//			})
+//			So(db.Close(), ShouldBeNil)
+//		})
+//	}
 func Test_Matrix_UpLoad_DataType_big_array(t *testing.T) {
 	t.Parallel()
 	Convey("Test_matrix_big_array_upload:", t, func() {

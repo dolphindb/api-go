@@ -812,3 +812,47 @@ func Test_Connection_SCRAM(t *testing.T) {
 // 		}
 // 	})
 // }
+
+func TestNewDolphinDBClient_SqlStd(t *testing.T) {
+	Convey("TestNewDolphinDBClient_SqlStd", t, func() {
+		cases := []struct {
+			name       string
+			SqlStd     dialer.SqlStdEnum
+			shouldFail bool
+		}{
+			{name: "default_dolphindb", SqlStd: dialer.SqlStdDolphinDB, shouldFail: true},
+			{name: "oracle", SqlStd: dialer.SqlStdOracle, shouldFail: false},
+			{name: "mysql", SqlStd: dialer.SqlStdMySQL, shouldFail: false},
+		}
+
+		for _, tc := range cases {
+			tc := tc
+			Convey(tc.name, func() {
+				opt := (&dialer.BehaviorOptions{}).SetSqlStd(tc.SqlStd)
+				conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
+				So(err, ShouldBeNil)
+
+				err = conn.Connect()
+				So(err, ShouldBeNil)
+				defer conn.Close()
+
+				loginReq := (&api.LoginRequest{}).
+					SetUserID(setup.UserName).
+					SetPassword(setup.Password)
+				err = conn.Login(loginReq)
+				So(err, ShouldBeNil)
+
+				res, err := conn.RunScript("sysdate()")
+				if tc.shouldFail {
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "sysdate")
+					So(res, ShouldBeNil)
+					return
+				}
+
+				So(err, ShouldBeNil)
+				So(res, ShouldNotBeNil)
+			})
+		}
+	})
+}

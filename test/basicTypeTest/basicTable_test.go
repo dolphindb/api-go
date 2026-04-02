@@ -1168,6 +1168,52 @@ func Test_Table_DownLoad_DataType_int128(t *testing.T) {
 	})
 }
 
+func Test_Table_DownLoad_DataType_complex(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Table_with_complex:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_Table_with_complex_not_null:", func() {
+			s, err := db.RunScript("complexv = take(complex(1,1) join complex(-1,-1)  join NULL, 3);m=table(complexv);m")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			get := result.GetColumnByName("complexv").Data.Value()
+			zx := [3]string{"1.00000+1.00000i", "-1.00000+-1.00000i", ""}
+			var k int
+			for i := 0; i < len(get); i++ {
+				if get[i] == zx[i] {
+					k++
+				}
+			}
+			So(k, ShouldEqual, result.Rows())
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Table_DownLoad_DataType_point(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Table_with_point:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_Table_with_point_not_null:", func() {
+			s, err := db.RunScript("pointv = take(point(1,1) join point(-1,-1)  join NULL, 3);m=table(pointv);m")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			get := result.GetColumnByName("pointv").Data.Value()
+			zx := [3]string{"(1.00000, 1.00000)", "(-1.00000, -1.00000)", "(,)"}
+			var k int
+			for i := 0; i < len(get); i++ {
+				if get[i] == zx[i] {
+					k++
+				}
+			}
+			So(k, ShouldEqual, result.Rows())
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
 func Test_Table_DownLoad_DataType_any(t *testing.T) {
 	t.Parallel()
 	Convey("Test_Table_with_any:", t, func() {
@@ -1179,9 +1225,54 @@ func Test_Table_DownLoad_DataType_any(t *testing.T) {
 			result := s.(*model.Table)
 			get := result.GetColumnByName("name").Data.Get(1).String()
 			get1 := result.GetColumnByName("eye").Data.Get(1).String()
-			//fmt.Println("tb:", get)
 			So("vector<any>([vector<string>([tom, dick, harry, jack])])", ShouldEqual, get)
 			So("vector<any>([vector<string>([blue, green, blue, blue])])", ShouldEqual, get1)
+		})
+
+		Convey("Test_Table_with_any_all_dataForm:", func() {
+			s, err := db.RunScript("cany=array(ANY,0).append!(1000).append!(`www`qqq).append!(matrix([1 2 3, 4 5 6])).append!(set(1 2)).append!(100:11).append!(table(`qa`ws`ed as id)).append!(dict(`aaa11`bbb22, [dict(`p1`p2, `1`2, true), dict(`p11`p22, `100`200, true)])).append!((100, `11)).append!( [[`1a,`a1]].setColumnarTuple!()); re1 =  table(cany as any1, cany as any2, cany as any3) ;re1;")
+			So(err, ShouldBeNil)
+			result := s.(*model.Table)
+			get := result.GetColumnByName("any1").Data.Get(0).String()
+			get1 := result.GetColumnByName("any1").Data.Get(1).String()
+			get2 := result.GetColumnByName("any1").Data.Get(2).String()
+			get3 := result.GetColumnByName("any1").Data.Get(3).String()
+			get4 := result.GetColumnByName("any1").Data.Get(4).String()
+			get5 := result.GetColumnByName("any1").Data.Get(5).String()
+			get6 := result.GetColumnByName("any1").Data.Get(6).String()
+			get7 := result.GetColumnByName("any1").Data.Get(7).String()
+			get8 := result.GetColumnByName("any1").Data.Get(8).String()
+			fmt.Println("tb:", result.String())
+			So("int(1000)", ShouldEqual, get)
+			So("vector<string>([www, qqq])", ShouldEqual, get1)
+			fmt.Println("get2:", get2)
+			So(`matrix<int>[3r][2c]({
+  rows: null,
+  cols: null,
+  data: intArray(6) [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+  ]
+})`, ShouldEqual, get2)
+			So("set<int>[2]([2, 1])", ShouldEqual, get3)
+			So("pair<int>([100, 11])", ShouldEqual, get4)
+			So(get5, ShouldContainSubstring, "string[3]('id', [qa, ws, ed])")
+			So(`dict<string, any>([
+  string[2]([bbb22, aaa11]),
+  any[2]([dict<string, string>([
+  string[2]([p11, p22]),
+  string[2]([100, 200]),
+]), dict<string, string>([
+  string[2]([p1, p2]),
+  string[2]([1, 2]),
+])]),
+])`, ShouldEqual, get6)
+			So("vector<any>([int(100), string(11)])", ShouldEqual, get7)
+			So("vector<any>([vector<string>([1a, a1])])", ShouldEqual, get8)
 		})
 		So(db.Close(), ShouldBeNil)
 	})
@@ -1536,7 +1627,7 @@ func Test_Table_DownLoad_indexed_table(t *testing.T) {
 	Convey("Test_Table_indexed_table:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		s, err := db.RunScript("n = 6;timev = take(2022.01.03T12:00:00+1..n, n);num = take(1023.002+1..n, n);name = take(`a`b`c`d`e`f, n);boolv = take(true false , n);uuidv = take(uuid('a268652a-6c8e-5686-5dd9-4ab882ecb969'), n);ipaddrv = take(ipaddr('191.168.13.16'), n);int128v = take(int128('97b48f09119a1d91d44fd12893226af8'), n);pointv = take(point(0.0+1..n,100.0+1..n), n);complexv = take(complex(0.0+1..n,100.0+1..n), n);t1=table(timev, num, name, boolv, uuidv, ipaddrv, int128v, pointv, complexv);t=indexedTable(`timev, t1);select * from t")
+		s, err := db.RunScript("try{undef(`t1,SHARED)}catch(ex){};go;n = 6;timev = take(2022.01.03T12:00:00+1..n, n);num = take(1023.002+1..n, n);name = take(`a`b`c`d`e`f, n);boolv = take(true false , n);uuidv = take(uuid('a268652a-6c8e-5686-5dd9-4ab882ecb969'), n);ipaddrv = take(ipaddr('191.168.13.16'), n);int128v = take(int128('97b48f09119a1d91d44fd12893226af8'), n);pointv = take(point(0.0+1..n,100.0+1..n), n);complexv = take(complex(0.0+1..n,100.0+1..n), n);t1=table(timev, num, name, boolv, uuidv, ipaddrv, int128v, pointv, complexv);t=indexedTable(`timev, t1);select * from t")
 		So(err, ShouldBeNil)
 		result := s.(*model.Table)
 		datetimev := []time.Time{time.Date(2022, 1, 3, 12, 00, 1, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 2, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 3, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 4, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 5, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 6, 0, time.UTC)}
@@ -1628,7 +1719,7 @@ func Test_Table_DownLoad_keyed_table(t *testing.T) {
 	Convey("Test_Table_keyed_table:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
-		s, err := db.RunScript("n = 6;timev = take(2022.01.03T12:00:00+1..n, n);num = take(1023.002+1..n, n);name = take(`a`b`c`d`e`f, n);boolv = take(true false , n);uuidv = take(uuid('a268652a-6c8e-5686-5dd9-4ab882ecb969'), n);ipaddrv = take(ipaddr('191.168.13.16'), n);int128v = take(int128('97b48f09119a1d91d44fd12893226af8'), n);pointv = take(point(0.0+1..n,100.0+1..n), n);complexv = take(complex(0.0+1..n,100.0+1..n), n);t1=table(timev, num, name, boolv, uuidv, ipaddrv, int128v, pointv, complexv);t=keyedTable(`timev, t1);select * from t")
+		s, err := db.RunScript("try{undef(`t1,SHARED)}catch(ex){};go;n = 6;timev = take(2022.01.03T12:00:00+1..n, n);num = take(1023.002+1..n, n);name = take(`a`b`c`d`e`f, n);boolv = take(true false , n);uuidv = take(uuid('a268652a-6c8e-5686-5dd9-4ab882ecb969'), n);ipaddrv = take(ipaddr('191.168.13.16'), n);int128v = take(int128('97b48f09119a1d91d44fd12893226af8'), n);pointv = take(point(0.0+1..n,100.0+1..n), n);complexv = take(complex(0.0+1..n,100.0+1..n), n);t1=table(timev, num, name, boolv, uuidv, ipaddrv, int128v, pointv, complexv);t=keyedTable(`timev, t1);select * from t")
 		So(err, ShouldBeNil)
 		result := s.(*model.Table)
 		datetimev := []time.Time{time.Date(2022, 1, 3, 12, 00, 1, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 2, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 3, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 4, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 5, 0, time.UTC), time.Date(2022, 1, 3, 12, 00, 6, 0, time.UTC)}

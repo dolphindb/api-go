@@ -2,6 +2,35 @@ package dialer
 
 import "time"
 
+// SqlStandard specifies which SQL standard should be used for the session.
+// The numeric values must stay compatible with the existing DolphinDB protocol:
+// DolphinDB=0, Oracle=1, MySQL=2.
+type SqlStdEnum int
+
+const (
+	// SqlStdDolphinDB uses DolphinDB SQL semantics.
+	SqlStdDolphinDB SqlStdEnum = 0
+	// SqlStdOracle uses Oracle-compatible SQL semantics.
+	SqlStdOracle SqlStdEnum = 1
+	// SqlStdMySQL uses MySQL-compatible SQL semantics.
+	SqlStdMySQL SqlStdEnum = 2
+	// SqlStdDefault keeps the default DolphinDB SQL semantics.
+	SqlStdDefault = SqlStdDolphinDB
+)
+
+func (s SqlStdEnum) String() string {
+	switch s {
+	case SqlStdDolphinDB:
+		return "DolphinDB"
+	case SqlStdOracle:
+		return "Oracle"
+	case SqlStdMySQL:
+		return "MySQL"
+	default:
+		return "Unknown"
+	}
+}
+
 // BehaviorOptions helps you configure behavior identity.
 // Refer to https://github.com/dolphindb/Tutorials_CN/blob/master/api_protocol.md#254-%E8%A1%8C%E4%B8%BA%E6%A0%87%E8%AF%86 for more details.
 type BehaviorOptions struct {
@@ -39,6 +68,9 @@ type BehaviorOptions struct {
 	// UsePython specifies whether the session uses a Python parser
 	UsePython bool
 
+	// SqlStd specifies which SQL standard should be used for the session.
+	SqlStd SqlStdEnum
+
 	// if enable SCRAM login verify
 	EnableScram bool
 }
@@ -63,6 +95,12 @@ func (f *BehaviorOptions) SetFetchSize(fs int) *BehaviorOptions {
 
 func (f *BehaviorOptions) SetTryReconnectNums(n int) *BehaviorOptions {
 	f.TryReconnectNums = &n
+	return f
+}
+
+// SetSqlStd sets the SQL standard of the session.
+func (f *BehaviorOptions) SetSqlStd(sqlStd SqlStdEnum) *BehaviorOptions {
+	f.SqlStd = sqlStd
 	return f
 }
 

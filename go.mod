@@ -9,7 +9,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/forgoer/openssl v1.6.0
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/shopspring/decimal v1.3.1
 	github.com/smartystreets/goconvey v1.7.2

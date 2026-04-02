@@ -556,6 +556,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				So(err, ShouldBeNil)
 				scriptusernograntwrite := `
 				def test_user(){
+					try{deleteUser("mark")}catch(ex){};
 					createUser("mark", "123456")
 					grant("mark", TABLE_READ, "*")
 				}
@@ -4325,20 +4326,19 @@ func TestMultiGoroutineTable_concurrentWrite_getFailedData_when_unfinished_write
 	})
 }
 
-
-func TestMultiGoroutineTable_SCRAM_user(t *testing.T){
+func TestMultiGoroutineTable_SCRAM_user(t *testing.T) {
 	Convey("TestMultiGoroutineTable_SCRAM_user", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		_, err = ddb.RunScript("try{deleteUser('scramUser')}catch(ex){};go;createUser(`scramUser, `123456, authMode='scram')")
-		if err!= nil {
+		if err != nil {
 			t.Skip("skip test because create SCRAM user failed")
 		}
 		ddb.Close()
 		conn_scram, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, "scramUser", "123456")
 		So(err, ShouldBeNil)
 		defer conn_scram.Close()
-		data, _ :=conn_scram.RunScript("t = table(1..1000 as c1, rand(100.00, 1000) as c2);share table(1:0, `c1`c2, [INT, DOUBLE]) as t2; t")
+		data, _ := conn_scram.RunScript("t = table(1..1000 as c1, rand(100.00, 1000) as c2);share table(1:0, `c1`c2, [INT, DOUBLE]) as t2; t")
 		opt := &mtw.Option{
 			GoroutineCount: 1,
 			BatchSize:      100,

@@ -1,9 +1,14 @@
 package dialer
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"math"
+	"net"
+	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/model"
@@ -140,6 +145,29 @@ func (c *conn) switchDataNode(n *node) (err error) {
 	return fmt.Errorf("failed to connect to %s", c.addr)
 }
 
+func isRetryableConnectError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+
+	var syscallErr *os.SyscallError
+	if errors.As(err, &syscallErr) {
+		return true
+	}
+
+	return errors.Is(err, io.EOF) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EHOSTUNREACH) ||
+		errors.Is(err, syscall.ENETUNREACH)
+}
+
 func (c *conn) rangeConnectNode() (bool, error) {
 	c.nodePool.lastInd = (c.nodePool.lastInd + 1) % c.nodePool.len
 	return c.connectNode(c.nodePool.nodes[c.nodePool.lastInd])
@@ -153,6 +181,10 @@ func (c *conn) connectNode(n *node) (bool, error) {
 	err := c.connect(n.address)
 	if err == nil {
 		return true, nil
+	}
+	if isRetryableConnectError(err) {
+		fmt.Printf("Connect to %s failed: %s\n", n.address, err)
+		return false, nil
 	}
 
 	node := newNode("", 0)

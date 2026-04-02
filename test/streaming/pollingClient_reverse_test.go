@@ -47,7 +47,7 @@ func TestSubscribe_exception_r(t *testing.T) {
 				Password:   setup.Password,
 			}
 			_, err := pc_r.Subscribe(req)
-			So(err.Error(), ShouldContainSubstring, "no such host")
+			So(err.Error(), ShouldContainSubstring, "failed to connect to ")
 		})
 		Convey("Test_subscribe_err_port", func() {
 			req := &streaming.SubscribeRequest{
@@ -60,7 +60,7 @@ func TestSubscribe_exception_r(t *testing.T) {
 				Password:   setup.Password,
 			}
 			_, err := pc_r.Subscribe(req)
-			So(err.Error(), ShouldContainSubstring, "refused")
+			So(err.Error(), ShouldContainSubstring, "failed to connect to ")
 		})
 		Convey("Test_subscribe_err_TableName", func() {
 			req := &streaming.SubscribeRequest{

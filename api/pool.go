@@ -23,6 +23,17 @@ type DBConnectionPool struct {
 	timeout     time.Duration
 }
 
+type loadBalanceDiscoveryConn interface {
+	RunScript(s string) (model.DataForm, error)
+	Close() error
+}
+
+// dialerNewConn is a test seam for stubbing dialer.NewConn in unit tests.
+var dialerNewConn = dialer.NewConn
+var openLoadBalanceDiscoveryConn = func(opt *PoolOption) (loadBalanceDiscoveryConn, error) {
+	return newConn(opt.Address, opt)
+}
+
 // PoolOption helps you to configure DBConnectionPool by calling NewDBConnectionPool.
 type PoolOption struct {
 	// the server address
@@ -61,6 +72,9 @@ type PoolOption struct {
 
 	// if enable SCRAM login verify
 	EnableScram bool
+
+	// SqlStd specifies which SQL standard should be used for the session.
+	SqlStd dialer.SqlStdEnum
 }
 
 // NewDBConnectionPool inits a DBConnectionPool object and configures it with opt, finally returns it.
@@ -111,8 +125,9 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 		Reconnect:              opt.Reconnect,
 		TryReconnectNums:       opt.TryReconnectNums,
 		EnableScram:            opt.EnableScram,
+		SqlStd:                 opt.SqlStd,
 	}
-	conn, err := dialer.NewConn(context.TODO(), addr, bOpt)
+	conn, err := dialerNewConn(context.TODO(), addr, bOpt)
 	if err != nil {
 		fmt.Printf("Failed to instantiate a connection: %s\n", err.Error())
 		return nil, err
@@ -223,7 +238,7 @@ func (d *DBConnectionPool) initLoadBalanceConnections(opt *PoolOption) error {
 }
 
 func (d *DBConnectionPool) getLoadBalanceAddress(opt *PoolOption) ([]string, error) {
-	db, err := dialer.NewSimpleConn(context.TODO(), opt.Address, opt.UserID, opt.Password)
+	db, err := openLoadBalanceDiscoveryConn(opt)
 	if err != nil {
 		fmt.Printf("Failed to instantiate a simple connection: %s\n", err.Error())
 		return nil, err

@@ -1292,6 +1292,17 @@ func Test_Scalar_DownLoad_Datatype_string(t *testing.T) {
 			reTypeString := result.GetDataTypeString()
 			So(reTypeString, ShouldEqual, "string")
 		})
+		Convey("Test_scalar_string_special_char:", func() {
+			s, err := db.RunScript(`"hello\u0000\x00word"`)
+			So(err, ShouldBeNil)
+			result := s.(*model.Scalar)
+			re := result.DataType.Value()
+			reType := result.GetDataType()
+			So(re, ShouldEqual, "hellou0000x00word")
+			So(reType, ShouldEqual, 18)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "string")
+		})
 		So(db.Close(), ShouldBeNil)
 	})
 }

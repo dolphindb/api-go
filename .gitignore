@@ -1,31 +1,19 @@
-# Binaries for programs and plugins
+.codex
+.vscode/
+AGENTS.md
+
+# Build outputs
+/bin/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-bin
 
-# Test binary, build with `go test -c`
+# Test artifacts
 *.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-
-# Kubernetes Generated files - skip generated files, except for vendored files
-
-!vendor/**/zz_generated.*
-
-# editor and IDE paraphernalia
-.idea
-*.swp
-*.swo
-*~
-.vscode/
-*.dos
 coverage.txt
-performance/
-cover.sh
+coverage.out
+coverage/
 gobco-counts.json
-branchCover.sh
-TradesSmall.csv

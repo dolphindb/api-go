@@ -2,7 +2,9 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/test/setup"
@@ -91,6 +93,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(re2, ShouldBeFalse)
 			CreateDfsDimensiondb(DfsDBPath, TbName1, TbName2)
+			time.Sleep(10 * time.Second)
 			defer ddb.DropDatabase(&api.DropDatabaseRequest{Directory: DfsDBPath})
 			re3, err := ddb.ExistsTable(new(api.ExistsTableRequest).SetDBPath(DfsDBPath).SetTableName(TbName1))
 			So(err, ShouldBeNil)
@@ -322,6 +325,7 @@ func TestExistsTableAndDropTable(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(re2, ShouldBeTrue)
 			err = ddb.DropTable(new(api.DropTableRequest).SetTableName(DfsTBName1).SetDBPath(DiskDBPath))
+			fmt.Println(err)
 			So(err, ShouldBeNil)
 			re3, err := ddb.ExistsTable(new(api.ExistsTableRequest).SetDBPath(DiskDBPath).SetTableName(DfsTBName1))
 			So(err, ShouldBeNil)

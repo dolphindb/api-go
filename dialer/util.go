@@ -77,6 +77,10 @@ func generatorRequestFlag(opt *BehaviorOptions) int {
 	if opt.IsReverseStreaming {
 		flag += 131072
 	}
+
+	if opt.SqlStd != SqlStdDolphinDB {
+		flag += int(opt.SqlStd) << 19
+	}
 	return flag
 }
 

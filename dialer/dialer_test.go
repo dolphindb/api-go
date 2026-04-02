@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -81,6 +82,74 @@ func TestDialer(t *testing.T) {
 	err = c.Close()
 	assert.Nil(t, err)
 	assert.True(t, c.IsClosed())
+}
+
+func TestReconnectRetriesUntilServerComesBack(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.Nil(t, err)
+	addr := ln.Addr().String()
+	assert.Nil(t, ln.Close())
+
+	exit := make(chan bool)
+	var once sync.Once
+	cleanup := func() {
+		once.Do(func() {
+			close(exit)
+		})
+	}
+	defer cleanup()
+
+	go func() {
+		time.Sleep(1500 * time.Millisecond)
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			return
+		}
+		defer listener.Close()
+
+		go func() {
+			<-exit
+			_ = listener.Close()
+		}()
+
+		for !isExit(exit) {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+
+			go handleData(conn)
+		}
+	}()
+
+	retries := 5
+	conn, err := NewConn(context.TODO(), addr, &BehaviorOptions{
+		Reconnect:        true,
+		TryReconnectNums: &retries,
+	})
+	assert.Nil(t, err)
+
+	start := time.Now()
+	err = conn.Connect()
+	assert.Nil(t, err)
+	assert.GreaterOrEqual(t, time.Since(start), time.Second)
+
+	assert.Nil(t, conn.Close())
+}
+
+func TestSqlStdEnumString(t *testing.T) {
+	assert.Equal(t, "DolphinDB", SqlStdDolphinDB.String())
+	assert.Equal(t, "Oracle", SqlStdOracle.String())
+	assert.Equal(t, "MySQL", SqlStdMySQL.String())
+	assert.Equal(t, "Unknown", SqlStdEnum(99).String())
+}
+
+func TestCloseWithoutUnderlyingConn(t *testing.T) {
+	c := &conn{}
+
+	assert.Nil(t, c.Close())
+	assert.True(t, c.IsClosed())
+	assert.False(t, c.IsConnected())
 }
 
 func TestMain(m *testing.M) {
