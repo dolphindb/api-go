@@ -1,24 +1,29 @@
 package dialer
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/model"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testAddr = "127.0.0.1:3002"
 
 func TestDialer(t *testing.T) {
 	fOpt := new(BehaviorOptions)
-	assert.Equal(t, fOpt.GetParallelism(), 2)
+	assert.Equal(t, fOpt.GetParallelism(), 64)
 	assert.Equal(t, fOpt.GetPriority(), 4)
 	assert.Equal(t, fOpt.GetFetchSize(), 0)
 
@@ -137,6 +142,435 @@ func TestReconnectRetriesUntilServerComesBack(t *testing.T) {
 	assert.Nil(t, conn.Close())
 }
 
+func TestNewConnRejectsNegativeNetTimeout(t *testing.T) {
+	conn, err := NewConn(context.TODO(), testAddr, &BehaviorOptions{
+		NetTimeout: -time.Second,
+	})
+
+	assert.Nil(t, conn)
+	assert.EqualError(t, err, "the NetTimeout must be non-negative")
+}
+
+func TestNewConnRejectsHighAvailabilitySitesWhenHighAvailabilityDisabled(t *testing.T) {
+	conn, err := NewConn(context.TODO(), testAddr, &BehaviorOptions{
+		EnableHighAvailability: false,
+		HighAvailabilitySites:  []string{"127.0.0.1:3003"},
+	})
+
+	assert.Nil(t, conn)
+	assert.EqualError(t, err, "HighAvailabilitySites requires EnableHighAvailability to be true")
+}
+
+type retryableNetError struct{}
+
+func (retryableNetError) Error() string   { return "temporary network error" }
+func (retryableNetError) Timeout() bool   { return false }
+func (retryableNetError) Temporary() bool { return true }
+
+func TestConnectWithHighAvailabilityTriesPrimaryAddressBeforeFallbackSites(t *testing.T) {
+	original := connectToAddress
+	defer func() {
+		connectToAddress = original
+	}()
+	originalShuffle := shuffleStringSlice
+	defer func() {
+		shuffleStringSlice = originalShuffle
+	}()
+	shuffleStringSlice = func(values []string) {
+		for i, j := 0, len(values)-1; i < j; i, j = i+1, j-1 {
+			values[i], values[j] = values[j], values[i]
+		}
+	}
+
+	var attempted []string
+	connectToAddress = func(c *conn, addr string) error {
+		attempted = append(attempted, addr)
+		if addr == "primary:8848" {
+			return retryableNetError{}
+		}
+
+		return nil
+	}
+
+	c, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		EnableHighAvailability: true,
+		HighAvailabilitySites:  []string{"primary:8848", "secondary:8848", "tertiary:8848"},
+	})
+	assert.Nil(t, err)
+
+	err = c.Connect()
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"primary:8848", "tertiary:8848"}, attempted)
+}
+
+func TestConnectWithHighAvailabilityDoesNotFallbackWhenPrimarySucceeds(t *testing.T) {
+	original := connectToAddress
+	defer func() {
+		connectToAddress = original
+	}()
+	originalShuffle := shuffleStringSlice
+	defer func() {
+		shuffleStringSlice = originalShuffle
+	}()
+	shuffleStringSlice = func(values []string) {}
+
+	var attempted []string
+	connectToAddress = func(c *conn, addr string) error {
+		attempted = append(attempted, addr)
+		return nil
+	}
+
+	c, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		EnableHighAvailability: true,
+		HighAvailabilitySites:  []string{"secondary:8848", "tertiary:8848"},
+	})
+	assert.Nil(t, err)
+
+	err = c.Connect()
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"primary:8848"}, attempted)
+}
+
+func TestConnectWithHighAvailabilityFallsBackWhenPrimaryReturnsError(t *testing.T) {
+	original := connectToAddress
+	defer func() {
+		connectToAddress = original
+	}()
+	originalShuffle := shuffleStringSlice
+	defer func() {
+		shuffleStringSlice = originalShuffle
+	}()
+	shuffleStringSlice = func(values []string) {}
+
+	var attempted []string
+	connectToAddress = func(c *conn, addr string) error {
+		attempted = append(attempted, addr)
+		if addr == "primary:8848" {
+			return errors.New("unexpected primary failure")
+		}
+
+		return nil
+	}
+
+	c, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		EnableHighAvailability: true,
+		HighAvailabilitySites:  []string{"secondary:8848", "tertiary:8848"},
+	})
+	assert.Nil(t, err)
+
+	err = c.Connect()
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"primary:8848", "secondary:8848"}, attempted)
+}
+
+func TestConnectWithHighAvailabilityReconnectCountsDoNotDoubleCountPrimary(t *testing.T) {
+	originalConnect := connectToAddress
+	defer func() {
+		connectToAddress = originalConnect
+	}()
+	originalShuffle := shuffleStringSlice
+	defer func() {
+		shuffleStringSlice = originalShuffle
+	}()
+	originalSleep := sleepBeforeRetry
+	defer func() {
+		sleepBeforeRetry = originalSleep
+	}()
+	shuffleStringSlice = func(values []string) {}
+	sleepBeforeRetry = func(time.Duration) {}
+
+	var attempted []string
+	connectToAddress = func(c *conn, addr string) error {
+		attempted = append(attempted, addr)
+		return retryableNetError{}
+	}
+
+	retries := 3
+	c, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		Reconnect:              true,
+		EnableHighAvailability: true,
+		HighAvailabilitySites:  []string{"primary:8848", "secondary:8848", "tertiary:8848", "quaternary:8848"},
+		TryReconnectNums:       &retries,
+	})
+	require.NoError(t, err)
+
+	err = c.Connect()
+	require.EqualError(t, err, "failed to connect to primary:8848")
+	assert.Equal(t, []string{"primary:8848", "secondary:8848", "tertiary:8848", "quaternary:8848"}, attempted)
+}
+
+func TestConnectWithHighAvailabilityStillTriesEachNodeOnceWhenRetryCountIsZero(t *testing.T) {
+	originalConnect := connectToAddress
+	defer func() {
+		connectToAddress = originalConnect
+	}()
+	originalShuffle := shuffleStringSlice
+	defer func() {
+		shuffleStringSlice = originalShuffle
+	}()
+	originalSleep := sleepBeforeRetry
+	defer func() {
+		sleepBeforeRetry = originalSleep
+	}()
+	shuffleStringSlice = func(values []string) {}
+	sleepBeforeRetry = func(time.Duration) {}
+
+	var attempted []string
+	connectToAddress = func(c *conn, addr string) error {
+		attempted = append(attempted, addr)
+		return retryableNetError{}
+	}
+
+	retries := 0
+	c, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		EnableHighAvailability: true,
+		HighAvailabilitySites:  []string{"secondary:8848", "tertiary:8848"},
+		TryReconnectNums:       &retries,
+	})
+	require.NoError(t, err)
+
+	err = c.Connect()
+	require.EqualError(t, err, "failed to connect to primary:8848")
+	assert.Equal(t, []string{"primary:8848", "secondary:8848", "tertiary:8848"}, attempted)
+}
+
+func TestSwitchDataNodeLogsFinalFailedAttempt(t *testing.T) {
+	originalConnect := connectToAddress
+	defer func() {
+		connectToAddress = originalConnect
+	}()
+	originalSleep := sleepBeforeRetry
+	defer func() {
+		sleepBeforeRetry = originalSleep
+	}()
+	originalLogWriter := dialerLogWriter
+	defer func() {
+		dialerLogWriter = originalLogWriter
+	}()
+
+	sleepBeforeRetry = func(time.Duration) {}
+
+	var logBuf bytes.Buffer
+	dialerLogWriter = &logBuf
+
+	connectToAddress = func(c *conn, addr string) error {
+		return retryableNetError{}
+	}
+
+	rawConn, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		Reconnect: true,
+	})
+	require.NoError(t, err)
+
+	internalConn := rawConn.(*conn)
+	internalConn.nodePool = newNodePool("primary:8848", nil)
+
+	err = internalConn.switchDataNodeWithAttempts(nil, 3)
+	require.EqualError(t, err, "failed to connect to primary:8848")
+	assert.Contains(t, logBuf.String(), "failover attempt 3/3 did not connect; no retries left")
+}
+
+func TestNewConnShufflesHighAvailabilitySitesWithoutMutatingInput(t *testing.T) {
+	originalShuffle := shuffleStringSlice
+	defer func() {
+		shuffleStringSlice = originalShuffle
+	}()
+	shuffleStringSlice = func(values []string) {
+		for i, j := 0, len(values)-1; i < j; i, j = i+1, j-1 {
+			values[i], values[j] = values[j], values[i]
+		}
+	}
+
+	sites := []string{"secondary:8848", "tertiary:8848", "quaternary:8848"}
+	behaviorOpt := &BehaviorOptions{
+		EnableHighAvailability: true,
+		HighAvailabilitySites:  sites,
+	}
+
+	c, err := NewConn(context.TODO(), "primary:8848", behaviorOpt)
+	assert.Nil(t, err)
+
+	internalConn := c.(*conn)
+	assert.Equal(t, []string{"quaternary:8848", "tertiary:8848", "secondary:8848"}, internalConn.highAvailabilitySites)
+	assert.Equal(t, []string{"secondary:8848", "tertiary:8848", "quaternary:8848"}, behaviorOpt.HighAvailabilitySites)
+}
+
+func TestConnectUsesConfiguredNetTimeout(t *testing.T) {
+	original := dialWithDialer
+	defer func() {
+		dialWithDialer = original
+	}()
+
+	var gotTimeout time.Duration
+	dialWithDialer = func(d *net.Dialer, network, address string) (net.Conn, error) {
+		gotTimeout = d.Timeout
+		return nil, retryableNetError{}
+	}
+
+	rawConn, err := NewConn(context.TODO(), testAddr, &BehaviorOptions{
+		NetTimeout: 2 * time.Second,
+	})
+	require.NoError(t, err)
+
+	err = rawConn.(*conn).connect(testAddr)
+	require.Error(t, err)
+	assert.Equal(t, 2*time.Second, gotTimeout)
+}
+
+func TestConnectNodeDoesNotTreatEINVALAsRetryable(t *testing.T) {
+	originalConnect := connectToAddress
+	defer func() {
+		connectToAddress = originalConnect
+	}()
+	connectToAddress = func(c *conn, addr string) error {
+		return fmt.Errorf("NetTimeout too long (720h0m0s): %w", &net.OpError{
+			Op:  "set",
+			Net: "tcp",
+			Err: &os.SyscallError{
+				Syscall: "setsockopt",
+				Err:     syscall.EINVAL,
+			},
+		})
+	}
+
+	rawConn, err := NewConn(context.TODO(), "primary:8848", nil)
+	require.NoError(t, err)
+
+	connected, err := rawConn.(*conn).connectNode(&node{address: "primary:8848"})
+	require.False(t, connected)
+	require.EqualError(t, err, "NetTimeout too long (720h0m0s): set tcp: setsockopt: invalid argument")
+}
+
+func TestConnectLogsSuccessfulLoginWithUserName(t *testing.T) {
+	addr, stop := startDialerTestServer(t)
+	defer stop()
+
+	originalLogin := loginWithCredentials
+	defer func() {
+		loginWithCredentials = originalLogin
+	}()
+
+	originalLogWriter := dialerLogWriter
+	defer func() {
+		dialerLogWriter = originalLogWriter
+	}()
+
+	var logBuf bytes.Buffer
+	dialerLogWriter = &logBuf
+
+	var loginCalls int
+	loginWithCredentials = func(conn Conn, userID, password string) error {
+		loginCalls++
+		assert.Equal(t, "alice", userID)
+		assert.Equal(t, "secret", password)
+		return nil
+	}
+
+	rawConn, err := NewConn(context.TODO(), addr, nil)
+	require.NoError(t, err)
+	rawConn.SetUserID("alice")
+	rawConn.SetPassword("secret")
+
+	require.NoError(t, rawConn.Connect())
+	defer rawConn.Close()
+
+	assert.Equal(t, 1, loginCalls)
+	assert.Contains(t, logBuf.String(), `login to `+addr+` succeeded for user "alice"`)
+}
+
+func TestSwitchDataNodeReconnectsWithLogin(t *testing.T) {
+	addr, stop := startDialerTestServer(t)
+	defer stop()
+
+	originalLogin := loginWithCredentials
+	defer func() {
+		loginWithCredentials = originalLogin
+	}()
+
+	var loginTargets []string
+	loginWithCredentials = func(dialConn Conn, userID, password string) error {
+		loginTargets = append(loginTargets, dialConn.(*conn).currentRemoteAddress())
+		return nil
+	}
+
+	retries := 1
+	rawConn, err := NewConn(context.TODO(), addr, &BehaviorOptions{
+		Reconnect:        true,
+		TryReconnectNums: &retries,
+	})
+	require.NoError(t, err)
+	rawConn.SetUserID("alice")
+	rawConn.SetPassword("secret")
+
+	require.NoError(t, rawConn.Connect())
+
+	internalConn := rawConn.(*conn)
+	require.NoError(t, internalConn.Close())
+	require.NoError(t, internalConn.switchDataNode(nil))
+	defer internalConn.Close()
+
+	assert.Equal(t, []string{addr, addr}, loginTargets)
+}
+
+func TestSwitchDataNodeHighAvailabilityRelogsOnNewNode(t *testing.T) {
+	primaryAddr, stopPrimary := startDialerTestServer(t)
+	defer stopPrimary()
+	secondaryAddr, stopSecondary := startDialerTestServer(t)
+	defer stopSecondary()
+
+	originalLogin := loginWithCredentials
+	defer func() {
+		loginWithCredentials = originalLogin
+	}()
+
+	var loginTargets []string
+	loginWithCredentials = func(dialConn Conn, userID, password string) error {
+		loginTargets = append(loginTargets, dialConn.(*conn).currentRemoteAddress())
+		return nil
+	}
+
+	retries := 1
+	rawConn, err := NewConn(context.TODO(), primaryAddr, &BehaviorOptions{
+		EnableHighAvailability: true,
+		HighAvailabilitySites:  []string{secondaryAddr},
+		TryReconnectNums:       &retries,
+	})
+	require.NoError(t, err)
+	rawConn.SetUserID("alice")
+	rawConn.SetPassword("secret")
+
+	require.NoError(t, rawConn.Connect())
+
+	internalConn := rawConn.(*conn)
+	require.NoError(t, internalConn.Close())
+	require.NoError(t, internalConn.switchDataNode(&node{address: secondaryAddr}))
+	defer internalConn.Close()
+
+	assert.Equal(t, []string{primaryAddr, secondaryAddr}, loginTargets)
+}
+
+func TestConnSocketOptionsDefaultsAndDisables(t *testing.T) {
+	rawConn, err := NewConn(context.TODO(), testAddr, nil)
+	require.NoError(t, err)
+
+	opt := rawConn.(*conn).tcpSocketOptions()
+	assert.Equal(t, defaultKeepAliveTime, opt.keepAliveTime)
+	assert.Equal(t, defaultTCPUserTimeout, opt.tcpUserTimeout)
+	assert.Equal(t, defaultTCPUserTimeout/defaultKeepAliveProbeCnt, opt.keepAliveInterval)
+	assert.Equal(t, defaultKeepAliveProbeCnt, opt.keepAliveCount)
+
+	rawConn, err = NewConn(context.TODO(), testAddr, &BehaviorOptions{
+		NetTimeout: 9 * time.Second,
+	})
+	require.NoError(t, err)
+
+	opt = rawConn.(*conn).tcpSocketOptions()
+	assert.Equal(t, 9*time.Second, opt.keepAliveTime)
+	assert.Equal(t, 9*time.Second, opt.tcpUserTimeout)
+	assert.Equal(t, 3*time.Second, opt.keepAliveInterval)
+	assert.Equal(t, defaultKeepAliveProbeCnt, opt.keepAliveCount)
+}
+
 func TestSqlStdEnumString(t *testing.T) {
 	assert.Equal(t, "DolphinDB", SqlStdDolphinDB.String())
 	assert.Equal(t, "Oracle", SqlStdOracle.String())
@@ -179,6 +613,14 @@ func TestMain(m *testing.M) {
 }
 
 func handleData(conn net.Conn) {
+	const (
+		successResponse        = "20267359 0 1\nOK\n"
+		boolScalarTrueResponse = "20267359 1 1\nOK\n\x01\x00\x01"
+		intScalarTwoResponse   = "20267359 1 1\nOK\n\x04\x00\x02\x00\x00\x00"
+		scramUnavailableError  = "20267359 0 1\nCan't recognize function name scramClientFirst\n"
+		stringScalarOKResponse = "20267359 1 1\nOK\n\x12\x00OK\x00"
+	)
+
 	res := make([]byte, 0)
 	for {
 		buf := make([]byte, 512)
@@ -188,17 +630,59 @@ func handleData(conn net.Conn) {
 		}
 
 		res = append(res, buf[0:l]...)
-		if len(res) == 25 || len(res) == 29 || len(res) == 30 || len(res) == 48 ||
+		script := string(res)
+		if strings.Contains(script, "scramClientFirst") {
+			_, err = conn.Write([]byte(scramUnavailableError))
+			if err != nil {
+				return
+			}
+
+			res = make([]byte, 0)
+		} else if strings.Contains(script, "isNodeInitialized") {
+			_, err = conn.Write([]byte(boolScalarTrueResponse))
+			if err != nil {
+				return
+			}
+
+			res = make([]byte, 0)
+		} else if strings.Contains(script, "login") {
+			_, err = conn.Write([]byte(successResponse))
+			if err != nil {
+				return
+			}
+
+			res = make([]byte, 0)
+		} else if strings.Contains(script, "typestr") {
+			_, err = conn.Write([]byte(successResponse))
+			if err != nil {
+				return
+			}
+
+			res = make([]byte, 0)
+		} else if strings.Contains(script, "1+1") {
+			_, err = conn.Write([]byte(intScalarTwoResponse))
+			if err != nil {
+				return
+			}
+
+			res = make([]byte, 0)
+		} else if strings.Contains(script, "variable\nscalar\n1") {
+			_, err = conn.Write([]byte(stringScalarOKResponse))
+			if err != nil {
+				return
+			}
+
+			res = make([]byte, 0)
+		} else if len(res) == 25 || len(res) == 27 || len(res) == 29 || len(res) == 30 || len(res) == 48 ||
 			len(res) == 48 || len(res) == 54 || len(res) == 49 {
-			_, err = conn.Write([]byte{0x32, 0x30, 0x32, 0x36, 0x37, 0x33, 0x35, 0x39, 0x20, 0x30, 0x20, 0x31, 0x0a, 0x4f, 0x4b, 0x0a})
+			_, err = conn.Write([]byte(successResponse))
 			if err != nil {
 				return
 			}
 
 			res = make([]byte, 0)
 		} else if len(res) == 42 {
-			_, err = conn.Write([]byte{0x32, 0x30, 0x32, 0x36, 0x37, 0x33, 0x35, 0x39, 0x20, 0x31, 0x20, 0x31, 0x0a, 0x4f, 0x4b, 0x0a,
-				0x12, 0x00, 0x4f, 0x4b, 0x00})
+			_, err = conn.Write([]byte(stringScalarOKResponse))
 			if err != nil {
 				return
 			}
@@ -214,5 +698,117 @@ func isExit(exit <-chan bool) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func startDialerTestServer(t *testing.T) (string, func()) {
+	t.Helper()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				select {
+				case <-done:
+					return
+				default:
+					return
+				}
+			}
+
+			go handleTestProtocolConn(conn)
+		}
+	}()
+
+	return ln.Addr().String(), func() {
+		close(done)
+		_ = ln.Close()
+	}
+}
+
+func handleTestProtocolConn(conn net.Conn) {
+	defer conn.Close()
+
+	const (
+		successResponse        = "20267359 0 1\nOK\n"
+		boolScalarTrueResponse = "20267359 1 1\nOK\n\x01\x00\x01"
+		intScalarTwoResponse   = "20267359 1 1\nOK\n\x04\x00\x02\x00\x00\x00"
+		scramUnavailableError  = "20267359 0 1\nCan't recognize function name scramClientFirst\n"
+		stringScalarOKResponse = "20267359 1 1\nOK\n\x12\x00OK\x00"
+	)
+
+	res := make([]byte, 0)
+	for {
+		buf := make([]byte, 512)
+		l, err := conn.Read(buf)
+		if err != nil {
+			return
+		}
+
+		res = append(res, buf[:l]...)
+		if strings.Contains(string(res), "scramClientFirst") {
+			if _, err = conn.Write([]byte(scramUnavailableError)); err != nil {
+				return
+			}
+			res = res[:0]
+			continue
+		}
+
+		if strings.Contains(string(res), "isNodeInitialized") {
+			if _, err = conn.Write([]byte(boolScalarTrueResponse)); err != nil {
+				return
+			}
+			res = res[:0]
+			continue
+		}
+
+		if strings.Contains(string(res), "login") {
+			if _, err = conn.Write([]byte(successResponse)); err != nil {
+				return
+			}
+			res = res[:0]
+			continue
+		}
+
+		if strings.Contains(string(res), "typestr") {
+			if _, err = conn.Write([]byte(successResponse)); err != nil {
+				return
+			}
+			res = res[:0]
+			continue
+		}
+
+		if strings.Contains(string(res), "1+1") {
+			if _, err = conn.Write([]byte(intScalarTwoResponse)); err != nil {
+				return
+			}
+			res = res[:0]
+			continue
+		}
+
+		if strings.Contains(string(res), "variable\nscalar\n1") {
+			if _, err = conn.Write([]byte(stringScalarOKResponse)); err != nil {
+				return
+			}
+			res = res[:0]
+			continue
+		}
+
+		switch len(res) {
+		case 25, 27, 29, 30, 48, 49, 54:
+			if _, err = conn.Write([]byte(successResponse)); err != nil {
+				return
+			}
+			res = res[:0]
+		case 42:
+			if _, err = conn.Write([]byte(stringScalarOKResponse)); err != nil {
+				return
+			}
+			res = res[:0]
+		}
 	}
 }

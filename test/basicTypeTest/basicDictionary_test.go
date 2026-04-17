@@ -70,6 +70,47 @@ func Test_Dictionary_DownLoad_int(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Dictionary_DownLoad_DataType_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_dictionary_boundary:", t, func() {
+		Convey("Test_dictionary_boundary_missing_key:", func() {
+			keys, err := model.NewDataTypeListFromRawData(model.DtString, []string{"A", "B"})
+			So(err, ShouldBeNil)
+			vals, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2})
+			So(err, ShouldBeNil)
+			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(vals))
+			_, err = dict.Get("missing")
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "invalid key")
+		})
+
+		Convey("Test_dictionary_boundary_duplicate_key_updates_value:", func() {
+			keys, err := model.NewDataTypeListFromRawData(model.DtString, []string{"A", "B"})
+			So(err, ShouldBeNil)
+			vals, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2})
+			So(err, ShouldBeNil)
+			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(vals))
+			newVal, err := model.NewDataType(model.DtInt, int32(9))
+			So(err, ShouldBeNil)
+			dict.Set(dict.Keys.Get(0), newVal)
+			got, err := dict.Get("A")
+			So(err, ShouldBeNil)
+			So(got.Value(), ShouldEqual, int32(9))
+			So(dict.Rows(), ShouldEqual, 2)
+		})
+
+		Convey("Test_dictionary_boundary_empty_input:", func() {
+			keys, err := model.NewDataTypeListFromRawData(model.DtString, []string{})
+			So(err, ShouldBeNil)
+			vals, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{})
+			So(err, ShouldBeNil)
+			dict := model.NewDictionary(model.NewVector(keys), model.NewVector(vals))
+			_, err = dict.Get("missing")
+			So(err, ShouldNotBeNil)
+		})
+	})
+}
 func Test_Dictionary_DownLoad_short(t *testing.T) {
 	t.Parallel()
 	Convey("Test_dictionary_short:", t, func() {
@@ -254,6 +295,7 @@ func Test_Dictionary_DownLoad_string(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
 func Test_Dictionary_DownLoad_long(t *testing.T) {
 	t.Parallel()
 	Convey("Test_dictionary_long:", t, func() {

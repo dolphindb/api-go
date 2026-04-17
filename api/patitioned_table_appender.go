@@ -46,7 +46,7 @@ type PartitionedTableAppenderOption struct {
 // NewPartitionedTableAppender instantiates a new PartitionedTableAppender according to the option.
 func NewPartitionedTableAppender(opt *PartitionedTableAppenderOption) (*PartitionedTableAppender, error) {
 	res, task := initPartitionedTableAppender(opt)
-	err := res.pool.Execute([]*Task{task})
+	err := res.pool.ExecuteTask(task)
 	if err != nil {
 		fmt.Printf("Failed to execute task: %s\n", err.Error())
 		return nil, err

@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -795,23 +796,24 @@ func Test_Connection_SCRAM(t *testing.T) {
 
 }
 
-//AG-163 连接win和linux server 重复多次断开再重启 检查api连接状态
-// func TestConnectionRun(t *testing.T) {
-// 	Convey("Test_BehaviorOptions_Reconnect_true", t, func() {
-// 		opt := &dialer.BehaviorOptions{
-// 			Reconnect: true,
-// 		}
-// 		conn, _ := api.NewDolphinDBClient(context.TODO(), "192.168.0.69:8848", opt)
-// 		err := conn.Connect()
-// 		So(err, ShouldBeNil)
-// 		for {
-// 			conn.RunScript(`
-// 			1+1`)
-// 			fmt.Println("This is an infinite loop")
-// 			time.Sleep(1 * time.Second) // 避免CPU跑满
-// 		}
-// 	})
-// }
+func TestBehaviorOptions_NetTimeout(t *testing.T) {
+	Convey("Test_BehaviorOptions_NetTimeout_negative", t, func() {
+		opt := &dialer.BehaviorOptions{
+			NetTimeout: -1 * time.Second,
+		}
+		_, err := api.NewDolphinDBClient(context.TODO(), setup.Address4, opt)
+		So(err.Error(), ShouldContainSubstring, "the NetTimeout must be non-negative")
+	})
+
+	Convey("Test_BehaviorOptions_NetTimeout_0", t, func() {
+		opt := &dialer.BehaviorOptions{
+			NetTimeout: 0 * time.Second,
+		}
+		conn, _ := api.NewDolphinDBClient(context.TODO(), setup.Address4, opt)
+		err := conn.Connect()
+		So(err, ShouldBeNil)
+	})
+}
 
 func TestNewDolphinDBClient_SqlStd(t *testing.T) {
 	Convey("TestNewDolphinDBClient_SqlStd", t, func() {
@@ -854,5 +856,301 @@ func TestNewDolphinDBClient_SqlStd(t *testing.T) {
 				So(res, ShouldNotBeNil)
 			})
 		}
+	})
+}
+
+func TestNewDolphinDBClient_tableInsert_haStreamTable(t *testing.T) {
+	Convey("TestNewDolphinDBClient_tableInsert_haStreamTable", t, func() {
+		opt := &dialer.BehaviorOptions{
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3},
+		}
+
+		connection, err := api.NewDolphinDBClient(context.TODO(), setup.Address, opt)
+		So(err, ShouldBeNil)
+		So(connection, ShouldNotBeNil)
+		defer connection.Close()
+
+		err = connection.Connect()
+		So(err, ShouldBeNil)
+
+		_, err = connection.RunScript("try{dropStreamTable(\"st_scada_value\")}catch(ex){}\ngo;\nt = table(1:0, `time`value`quality`flags`id`station`type, [TIMESTAMP,DOUBLE,INT,INT,SYMBOL,SYMBOL,SYMBOL]);\nhaStreamTable(11,t,`st_scada_value,100000);")
+		So(err, ShouldBeNil)
+
+		tmp, err := connection.RunScript("re = table(timestamp(1..10) as time, double(1..10) as value, 1..10 as quality,1..10 as flags, 'id'+string(1..10) as id, 'station'+string(1..10) as station, 'type'+string(1..10) as type); re;")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		// fmt.Println("---------------------------------Read data end------------------------------------")
+		time.Sleep(3 * time.Second)
+		// fmt.Println("Start Write!!!!!!!!!!!!!!!!!")
+		for i := 0; i < 10; i++ {
+			_, err = connection.RunFunc("tableInsert{st_scada_value}", values)
+			So(err, ShouldBeNil)
+			fmt.Println("数据插入", i, "次")
+			//time.Sleep(3 * time.Second)
+		}
+		//fmt.Println("End Write!!!!!!!!!!!!!!!!!!!")
+		res, err := connection.RunScript("select count(*) from st_scada_value")
+		So(err, ShouldBeNil)
+		So(res, ShouldNotBeNil)
+		So(res.String(), ShouldContainSubstring, "100")
+	})
+}
+
+func TestNewDolphinDBClient_tableInsert_haMvccTable_leader(t *testing.T) {
+	Convey("TestNewDolphinDBClient_tableInsert_haMvccTable_leader", t, func() {
+		conn, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		err = conn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq := (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getHaMvccLeader(3);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+		So(err, ShouldBeNil)
+
+		leaderConn, err := api.NewDolphinDBClient(context.TODO(), setup.IP+":"+strconv.Itoa(leaderPort), nil)
+		So(err, ShouldBeNil)
+		So(leaderConn, ShouldNotBeNil)
+		defer leaderConn.Close()
+
+		err = leaderConn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq = (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = leaderConn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		_, err = leaderConn.RunScript("try{dropHaMvccTable(\"HaMvccTable1\")}catch(ex){};\n go;\n haMvccTable(1:0, table(array(INT) as intv,array(SYMBOL) as symbolv),\"HaMvccTable1\",3)")
+		So(err, ShouldBeNil)
+
+		data, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(data, ShouldNotBeNil)
+
+		values := []model.DataForm{data}
+		_, err = leaderConn.RunFunc("tableInsert{loadHaMvccTable('HaMvccTable1')}", values)
+		So(err, ShouldBeNil)
+
+		res, err := leaderConn.RunScript("each(eqObj, (select * from loadHaMvccTable('HaMvccTable1')).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()")
+		So(err, ShouldBeNil)
+		So(res.(*model.Scalar).Value().(bool), ShouldEqual, true)
+	})
+}
+
+func TestNewDolphinDBClient_tableInsert_haMvccTable_follower(t *testing.T) {
+	Convey("TestNewDolphinDBClient_tableInsert_haMvccTable_follower", t, func() {
+		conn, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		err = conn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq := (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getHaMvccLeader(3);\n")
+		So(err, ShouldBeNil)
+		leaderPort, err := strconv.Atoi(leaderRes.(*model.Vector).Get(0).String())
+		So(err, ShouldBeNil)
+
+		followerRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name in (exec sites[0] from getHaMvccRaftGroups() where id==3).split(\",\") and name!=getHaMvccLeader(3) limit 1;\n")
+		So(err, ShouldBeNil)
+		followerPort := int(followerRes.(*model.Vector).Get(0).Value().(int32))
+		So(err, ShouldBeNil)
+
+		leaderConn, err := api.NewDolphinDBClient(context.TODO(), setup.IP+":"+strconv.Itoa(leaderPort), nil)
+		So(err, ShouldBeNil)
+		So(leaderConn, ShouldNotBeNil)
+		defer leaderConn.Close()
+
+		err = leaderConn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq = (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = leaderConn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		opt := &dialer.BehaviorOptions{
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3},
+		}
+		followerConn, err := api.NewDolphinDBClient(context.TODO(), setup.IP+":"+strconv.Itoa(followerPort), opt)
+		So(err, ShouldBeNil)
+		So(followerConn, ShouldNotBeNil)
+		defer followerConn.Close()
+
+		err = followerConn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq = (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = followerConn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		_, err = leaderConn.RunScript("try{dropHaMvccTable(\"HaMvccTable1\")}catch(ex){};\n go;\n haMvccTable(1:0, table(array(INT) as intv,array(SYMBOL) as symbolv),\"HaMvccTable1\",3)")
+		time.Sleep(1 * time.Second)
+		So(err, ShouldBeNil)
+
+		data, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(data, ShouldNotBeNil)
+
+		values := []model.DataForm{data}
+		_, err = followerConn.RunFunc("tableInsert{loadHaMvccTable('HaMvccTable1')}", values)
+		So(err, ShouldBeNil)
+		time.Sleep(1 * time.Second)
+		res, err := followerConn.RunScript("each(eqObj, (select * from loadHaMvccTable('HaMvccTable1')).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()")
+		So(err, ShouldBeNil)
+		So(res.(*model.Scalar).Value().(bool), ShouldEqual, true)
+	})
+}
+
+func TestNewDolphinDBClient_tableInsert_haStreamTable_leader(t *testing.T) {
+	Convey("TestNewDolphinDBClient_tableInsert_haStreamTable_leader", t, func() {
+		conn, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		err = conn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq := (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getStreamingLeader(11);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+		So(err, ShouldBeNil)
+
+		leaderConn, err := api.NewDolphinDBClient(context.TODO(), setup.IP+":"+strconv.Itoa(leaderPort), nil)
+		So(err, ShouldBeNil)
+		So(leaderConn, ShouldNotBeNil)
+		defer leaderConn.Close()
+
+		err = leaderConn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq = (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = leaderConn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		_, err = leaderConn.RunScript("try{dropStreamTable(\"haStreamTable1\")}catch(ex){};\n go;\n haStreamTable(11, table(array(INT) as intv,array(SYMBOL) as symbolv),\"haStreamTable1\",100000)")
+		So(err, ShouldBeNil)
+
+		data, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(data, ShouldNotBeNil)
+
+		values := []model.DataForm{data}
+		_, err = leaderConn.RunFunc("tableInsert{haStreamTable1}", values)
+		So(err, ShouldBeNil)
+
+		res, err := leaderConn.RunScript("each(eqObj, (select * from haStreamTable1).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()")
+		So(err, ShouldBeNil)
+		So(res.(*model.Scalar).Value().(bool), ShouldBeTrue)
+	})
+}
+
+func TestNewDolphinDBClient_tableInsert_haStreamTable_follower(t *testing.T) {
+	Convey("TestNewDolphinDBClient_tableInsert_haStreamTable_follower", t, func() {
+		conn, err := api.NewDolphinDBClient(context.TODO(), setup.Address, nil)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		err = conn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq := (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = conn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getStreamingLeader(11);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+		So(err, ShouldBeNil)
+
+		followerRes, err := conn.RunScript("tmp1=(exec sites[0] from getStreamingRaftGroups() where raftGroupName==\"11\").split(\",\");\ntmp2=each(x->split(x, \":\")[2],tmp1);\nexec port from rpc(getControllerAlias(), getClusterPerf) where name in tmp2  and name!=getStreamingLeader(11) limit 1;\n")
+		So(err, ShouldBeNil)
+		followerPort := int(followerRes.(*model.Vector).Get(0).Value().(int32))
+		So(err, ShouldBeNil)
+
+		leaderConn, err := api.NewDolphinDBClient(context.TODO(), setup.IP+":"+strconv.Itoa(leaderPort), nil)
+		So(err, ShouldBeNil)
+		So(leaderConn, ShouldNotBeNil)
+		defer leaderConn.Close()
+
+		err = leaderConn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq = (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = leaderConn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		opt := &dialer.BehaviorOptions{
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3},
+		}
+		followerConn, err := api.NewDolphinDBClient(context.TODO(), setup.IP+":"+strconv.Itoa(followerPort), opt)
+		So(err, ShouldBeNil)
+		So(followerConn, ShouldNotBeNil)
+		defer followerConn.Close()
+
+		err = followerConn.Connect()
+		So(err, ShouldBeNil)
+
+		loginReq = (&api.LoginRequest{}).
+			SetUserID(setup.UserName).
+			SetPassword(setup.Password)
+		err = followerConn.Login(loginReq)
+		So(err, ShouldBeNil)
+
+		_, err = leaderConn.RunScript("try{dropStreamTable(\"haStreamTable1\")}catch(ex){};\n go;\n haStreamTable(11, table(array(INT) as intv,array(SYMBOL) as symbolv),\"haStreamTable1\",100000)")
+		time.Sleep(1 * time.Second)
+		So(err, ShouldBeNil)
+
+		data, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(data, ShouldNotBeNil)
+
+		values := []model.DataForm{data}
+		_, err = followerConn.RunFunc("tableInsert{haStreamTable1}", values)
+		So(err, ShouldBeNil)
+
+		res, err := followerConn.RunScript("each(eqObj, (select * from haStreamTable1).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()")
+		So(err, ShouldBeNil)
+		So(res.(*model.Scalar).Value().(bool), ShouldBeTrue)
 	})
 }

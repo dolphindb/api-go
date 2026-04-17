@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,6 +17,34 @@ import (
 )
 
 const testAddr = "127.0.0.1:3000"
+
+func TestPollingClientCloseWhileLoadTopicPollerMap(t *testing.T) {
+	pc := NewPollingClient(localhost, 2888)
+	queue := NewUnboundedChan(1)
+	defer closeUnboundedChan(queue)
+	pc.topicPollerMap.Store("topic", &TopicPoller{queue: queue})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 32; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 1000; j++ {
+				pc.topicPollerMap.Load("topic")
+			}
+		}()
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	pc.Close()
+	wg.Wait()
+}
+
+func TestPollingClientCloseIsIdempotent(t *testing.T) {
+	pc := NewPollingClient(localhost, 2888)
+	pc.Close()
+	pc.Close()
+}
 
 var subscribeServer = make([]net.Conn, 0)
 
@@ -244,7 +273,7 @@ func isExit(exit <-chan bool) bool {
 }
 
 func TestPollingClientNormal(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -262,10 +291,10 @@ func TestPollingClientNormal(t *testing.T) {
 	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
-	client := NewPollingClient("localhost", 8848)
+	client := NewPollingClient(testStreamingHost, testStreamingPort)
 
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,
@@ -287,7 +316,7 @@ func TestPollingClientNormal(t *testing.T) {
 }
 
 func TestPollingClientMsgAsTable(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -305,10 +334,10 @@ func TestPollingClientMsgAsTable(t *testing.T) {
 	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
-	client := NewPollingClient("localhost", 8848)
+	client := NewPollingClient(testStreamingHost, testStreamingPort)
 
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: true,
@@ -330,7 +359,7 @@ func TestPollingClientMsgAsTable(t *testing.T) {
 	assert.Equal(t, model.DfVector, tbl.GetValueByName("blob").GetDataForm())
 }
 func TestPollingClientStreamDeserializer(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -348,7 +377,7 @@ func TestPollingClientStreamDeserializer(t *testing.T) {
 	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
-	client := NewPollingClient("localhost", 8848)
+	client := NewPollingClient(testStreamingHost, testStreamingPort)
 
 	sdMap := make(map[string][2]string)
 	sdMap["msg1"] = [2]string{"", "pt1"}
@@ -362,7 +391,7 @@ func TestPollingClientStreamDeserializer(t *testing.T) {
 	util.AssertNil(err)
 
 	req := &SubscribeRequest{
-		Address:         "localhost:8848",
+		Address:         testStreamingAddress,
 		TableName:       "outTables",
 		ActionName:      "action1",
 		Offset:          0,
@@ -409,7 +438,7 @@ func TestPollingClientStreamDeserializer(t *testing.T) {
 }
 
 func TestPollingClientStreamDeserializerErr(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 	util.AssertNil(err)
 
@@ -438,7 +467,7 @@ func TestPollingClientStreamDeserializerErr(t *testing.T) {
 	util.AssertNil(err)
 
 	req := &SubscribeRequest{
-		Address:         "localhost:8848",
+		Address:         testStreamingAddress,
 		TableName:       "outTables",
 		ActionName:      "action1",
 		MsgAsTable:      true,
@@ -446,7 +475,7 @@ func TestPollingClientStreamDeserializerErr(t *testing.T) {
 		Reconnect:       true,
 		MsgDeserializer: sd,
 	}
-	client := NewPollingClient("localhost", 8848)
+	client := NewPollingClient(testStreamingHost, testStreamingPort)
 
 	_, err = client.Subscribe(req)
 	assert.EqualError(t, err, "if MsgAsTable is true, MsgDeserializer must be nil")

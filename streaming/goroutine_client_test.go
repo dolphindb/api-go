@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -47,8 +48,36 @@ func (s *batchHandler) DoEvent(msg []IMessage) {
 	s.lines += len(msg)
 }
 
+func TestGoroutineClientCloseWhileLoadHandlerLoppers(t *testing.T) {
+	tc := NewGoroutineClient(localhost, 2888)
+	looper := &handlerLopper{queue: NewUnboundedChan(1)}
+	defer closeUnboundedChan(looper.queue)
+	tc.handlerLoppers.Store("topic", looper)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 32; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 1000; j++ {
+				tc.handlerLoppers.Load("topic")
+			}
+		}()
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	tc.Close()
+	wg.Wait()
+}
+
+func TestGoroutineClientCloseIsIdempotent(t *testing.T) {
+	tc := NewGoroutineClient(localhost, 2888)
+	tc.Close()
+	tc.Close()
+}
+
 func TestBasicGoroutineClient(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -66,12 +95,12 @@ func TestBasicGoroutineClient(t *testing.T) {
 	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := basicHandler{}
 	throttle := float32(1.1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		UserID:     "admin",
 		Password:   "123456",
 		TableName:  "outTables",
@@ -96,7 +125,7 @@ func TestBasicGoroutineClient(t *testing.T) {
 }
 
 func TestMsgAsTableGoroutineClient(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -114,12 +143,12 @@ func TestMsgAsTableGoroutineClient(t *testing.T) {
 	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := basicHandler{}
 	batch := 6
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: true,
@@ -144,7 +173,7 @@ func TestMsgAsTableGoroutineClient(t *testing.T) {
 }
 
 func TestBatchGoroutineClient(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -162,12 +191,12 @@ func TestBatchGoroutineClient(t *testing.T) {
 	_, err = db.RunScript(scripts)
 	util.AssertNil(err)
 
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := batchHandler{}
 	throttle := 1
 	req := &SubscribeRequest{
-		Address:      "localhost:8848",
+		Address:      testStreamingAddress,
 		TableName:    "outTables",
 		ActionName:   "action1",
 		MsgAsTable:   false,
@@ -186,12 +215,12 @@ func TestBatchGoroutineClient(t *testing.T) {
 }
 
 func TestErrMsgAsTableWithNoBatch(t *testing.T) {
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := batchHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:      "localhost:8848",
+		Address:      testStreamingAddress,
 		TableName:    "outTables",
 		ActionName:   "action1",
 		MsgAsTable:   true,
@@ -207,12 +236,12 @@ func TestErrMsgAsTableWithNoBatch(t *testing.T) {
 }
 
 func TestErrBasicWithBatch(t *testing.T) {
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := batchHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:      "localhost:8848",
+		Address:      testStreamingAddress,
 		TableName:    "outTables",
 		ActionName:   "action1",
 		MsgAsTable:   false,
@@ -227,12 +256,12 @@ func TestErrBasicWithBatch(t *testing.T) {
 }
 
 func TestErrBasicWithNoBatch(t *testing.T) {
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := basicHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,
@@ -311,7 +340,7 @@ func (s *unsubscribeHandler) DoEvent(msg IMessage) {
 
 func TestUnsubscribeInDoEvent(t *testing.T) {
 	ch = make(chan bool)
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -334,7 +363,7 @@ func TestUnsubscribeInDoEvent(t *testing.T) {
 	sh := unsubscribeHandler{}
 	throttle := float32(1)
 	subReq = &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,
@@ -366,7 +395,7 @@ func (s *arrayHandle) DoEvent(msg IMessage) {
 }
 
 func TestArrayVectorStream(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -389,7 +418,7 @@ func TestArrayVectorStream(t *testing.T) {
 	sh := arrayHandle{make([]IMessage, 0)}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,

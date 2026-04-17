@@ -3,6 +3,7 @@ package streaming
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ func (s *poolHandler) DoEvent(msg IMessage) {
 }
 
 func TestBasicGoroutinePooledClient(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -46,7 +47,7 @@ func TestBasicGoroutinePooledClient(t *testing.T) {
 	sh := poolHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,
@@ -83,7 +84,7 @@ func (s *batchPoolHandler) DoEvent(msg []IMessage) {
 }
 
 func TestBatchGoroutinePooledClient(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -104,7 +105,7 @@ func TestBatchGoroutinePooledClient(t *testing.T) {
 	tpc := NewGoroutinePooledClient(localhost, 8848)
 	sh := batchPoolHandler{}
 	req := &SubscribeRequest{
-		Address:      "localhost:8848",
+		Address:      testStreamingAddress,
 		TableName:    "outTables",
 		ActionName:   "action1",
 		MsgAsTable:   false,
@@ -125,7 +126,7 @@ func TestBatchGoroutinePooledClient(t *testing.T) {
 }
 
 func TestBatchMsgAsTableGoroutinePooledClient(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -147,7 +148,7 @@ func TestBatchMsgAsTableGoroutinePooledClient(t *testing.T) {
 	sh := poolHandler{}
 	throttle := float32(0.001)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: true,
@@ -176,7 +177,7 @@ func TestBatchHandlerErrGoroutinePooledClient(t *testing.T) {
 	sh := batchPoolHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:      "localhost:8848",
+		Address:      testStreamingAddress,
 		TableName:    "outTables",
 		ActionName:   "action1",
 		MsgAsTable:   false,
@@ -194,7 +195,7 @@ func TestBatchHandlerMsgAsTableErrGoroutinePooledClient(t *testing.T) {
 	sh := batchPoolHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:      "localhost:8848",
+		Address:      testStreamingAddress,
 		TableName:    "outTables",
 		ActionName:   "action1",
 		MsgAsTable:   true,
@@ -215,7 +216,7 @@ func TestBatchHandlerNilErrGoroutinePooledClient(t *testing.T) {
 	sh := poolHandler{}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,
@@ -268,5 +269,35 @@ func TestGoroutinePooledClient(t *testing.T) {
 	req.ActionName = failedAction
 	err = tpc.Subscribe(req)
 	assert.Equal(t, err.Error(), "client error response. @K")
+	tpc.Close()
+}
+
+func TestGoroutinePooledClientCloseWhileFillBackLog(t *testing.T) {
+	tpc := NewGoroutinePooledClient(localhost, 2888)
+	queue := NewUnboundedChan(1)
+	defer closeUnboundedChan(queue)
+	tpc.queueHandlers.Store("topic", &queueHandlerBinder{queue: queue})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 32; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			backLog := NewUnboundedChan(1)
+			defer closeUnboundedChan(backLog)
+			for j := 0; j < 200; j++ {
+				tpc.fillBackLog(backLog)
+			}
+		}()
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	tpc.Close()
+	wg.Wait()
+}
+
+func TestGoroutinePooledClientCloseIsIdempotent(t *testing.T) {
+	tpc := NewGoroutinePooledClient(localhost, 2888)
+	tpc.Close()
 	tpc.Close()
 }

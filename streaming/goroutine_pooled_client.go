@@ -180,8 +180,7 @@ func (t *GoroutinePooledClient) Close() {
 	// 	return true
 	// })
 
-	close(t.connList.In)
-	t.queueHandlers = sync.Map{}
+	closeUnboundedChan(t.connList)
 	select {
 	case <-t.exit:
 	default:

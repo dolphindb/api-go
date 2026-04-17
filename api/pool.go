@@ -33,6 +33,10 @@ var dialerNewConn = dialer.NewConn
 var openLoadBalanceDiscoveryConn = func(opt *PoolOption) (loadBalanceDiscoveryConn, error) {
 	return newConn(opt.Address, opt)
 }
+var runPoolTask = func(d *DBConnectionPool, conn dialer.Conn, task *Task) (model.DataForm, error) {
+	conn.RefreshTimeout(d.timeout)
+	return d.RunTask(conn, task)
+}
 
 // PoolOption helps you to configure DBConnectionPool by calling NewDBConnectionPool.
 type PoolOption struct {
@@ -46,9 +50,11 @@ type PoolOption struct {
 	// only takes effect when LoadBalance is false
 	PoolSize int
 	// Whether to enable load balancing.
-	// If true, getClusterLiveDataNodes will be called to get all available datanode addresses
-	// and connection to every address will be created.
-	// If the addresses are not available, you can set LoadBalanceAddresses instead.
+	// If true and LoadBalanceAddresses is empty, the pool uses Address together with
+	// HighAvailabilitySites when HighAvailabilitySites is configured; otherwise it
+	// discovers available data nodes and creates connections evenly across them.
+	// If LoadBalanceAddresses is set, the pool creates connections evenly across Address,
+	// LoadBalanceAddresses, and HighAvailabilitySites after deduplication.
 	LoadBalance bool
 
 	// Whether to enable high availability.
@@ -56,13 +62,21 @@ type PoolOption struct {
 	EnableHighAvailability bool
 
 	// Available only if EnableHighAvailability is true.
+	// When LoadBalance is true, these sites are merged into the candidate node list.
+	// If LoadBalanceAddresses is empty, specifying these sites also bypasses
+	// load-balance node discovery.
 	HighAvailabilitySites []string
 
 	// addresses of load balance
+	// When LoadBalance is true, these addresses are combined with Address and
+	// HighAvailabilitySites, then deduplicated.
 	LoadBalanceAddresses []string
 
-	// refresh time of every connection
+	// how long each request waits for the server response
 	Timeout time.Duration
+	// network-layer timeout budget used for TCP connect, Linux
+	// TCP_USER_TIMEOUT and keepalive probing
+	NetTimeout time.Duration
 
 	// whether to reconnect if not enable high availability
 	Reconnect bool
@@ -95,6 +109,12 @@ func NewDBConnectionPool(opt *PoolOption) (*DBConnectionPool, error) {
 	if opt.PoolSize < 1 {
 		return nil, errors.New("PoolSize must be greater than 0")
 	}
+	if !opt.LoadBalance && !opt.EnableHighAvailability && len(opt.HighAvailabilitySites) > 0 {
+		return nil, errors.New("HighAvailabilitySites requires LoadBalance or EnableHighAvailability to be true")
+	}
+	if !opt.LoadBalance && len(opt.LoadBalanceAddresses) > 0 {
+		return nil, errors.New("LoadBalanceAddresses requires LoadBalance to be true")
+	}
 
 	if !opt.LoadBalance {
 		p.connections = make(chan dialer.Conn, opt.PoolSize)
@@ -122,6 +142,8 @@ func newConn(addr string, opt *PoolOption) (dialer.Conn, error) {
 	bOpt := &dialer.BehaviorOptions{
 		EnableHighAvailability: opt.EnableHighAvailability,
 		HighAvailabilitySites:  opt.HighAvailabilitySites,
+		Timeout:                opt.Timeout,
+		NetTimeout:             opt.NetTimeout,
 		Reconnect:              opt.Reconnect,
 		TryReconnectNums:       opt.TryReconnectNums,
 		EnableScram:            opt.EnableScram,
@@ -159,17 +181,33 @@ func (d *DBConnectionPool) Execute(tasks []*Task) error {
 
 		wg.Add(1)
 		go func(task *Task) {
-			conn := <-d.connections
-			conn.RefreshTimeout(d.timeout)
-			task.result, task.err = d.RunTask(conn, task)
-			d.connections <- conn
-			wg.Done()
+			defer wg.Done()
+			d.executeTask(task)
 		}(v)
 	}
 
 	wg.Wait()
 
 	return nil
+}
+
+// ExecuteTask executes one task by a connection in DBConnectionPool.
+func (d *DBConnectionPool) ExecuteTask(task *Task) error {
+	if task == nil {
+		return errors.New("task must not be nil")
+	}
+
+	d.executeTask(task)
+	return task.err
+}
+
+func (d *DBConnectionPool) executeTask(task *Task) {
+	conn := <-d.connections
+	defer func() {
+		d.connections <- conn
+	}()
+
+	task.result, task.err = runPoolTask(d, conn, task)
 }
 
 func (d *DBConnectionPool) RunTask(conn dialer.Conn, task *Task) (model.DataForm, error) {
@@ -211,21 +249,15 @@ func (d *DBConnectionPool) IsClosed() bool {
 }
 
 func (d *DBConnectionPool) initLoadBalanceConnections(opt *PoolOption) error {
-	var address []string
-	var err error
+	addresses, err := d.resolveLoadBalanceAddresses(opt)
+	if err != nil {
+		return err
+	}
+	connOpt := d.loadBalanceConnOption(opt, addresses)
 
 	d.connections = make(chan dialer.Conn, opt.PoolSize)
-	if len(d.loadBalanceAddresses) > 0 {
-		address = d.loadBalanceAddresses
-	} else {
-		address, err = d.getLoadBalanceAddress(opt)
-		if err != nil {
-			return err
-		}
-	}
-
 	for i := 0; i < opt.PoolSize; i++ {
-		conn, err := newConn(address[i%len(address)], opt)
+		conn, err := newConn(addresses[i%len(addresses)], connOpt)
 		if err != nil {
 			fmt.Printf("Failed to instantiate a simple connection: %s\n", err.Error())
 			return err
@@ -235,6 +267,42 @@ func (d *DBConnectionPool) initLoadBalanceConnections(opt *PoolOption) error {
 	}
 
 	return nil
+}
+
+func (d *DBConnectionPool) resolveLoadBalanceAddresses(opt *PoolOption) ([]string, error) {
+	var addresses []string
+	if len(d.loadBalanceAddresses) > 0 {
+		addresses = append(addresses, opt.Address)
+		addresses = append(addresses, d.loadBalanceAddresses...)
+		addresses = append(addresses, opt.HighAvailabilitySites...)
+	} else if len(opt.HighAvailabilitySites) > 0 {
+		addresses = append(addresses, opt.Address)
+		addresses = append(addresses, opt.HighAvailabilitySites...)
+	} else {
+		discovered, err := d.getLoadBalanceAddress(opt)
+		if err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, discovered...)
+	}
+
+	addresses = deduplicateAddresses(addresses)
+	if len(addresses) == 0 {
+		return nil, errors.New("no available load balance addresses configured")
+	}
+
+	return addresses, nil
+}
+
+func (d *DBConnectionPool) loadBalanceConnOption(opt *PoolOption, addresses []string) *PoolOption {
+	copied := *opt
+	if opt.EnableHighAvailability {
+		copied.HighAvailabilitySites = append([]string(nil), addresses...)
+	} else {
+		copied.HighAvailabilitySites = append([]string(nil), opt.HighAvailabilitySites...)
+	}
+
+	return &copied
 }
 
 func (d *DBConnectionPool) getLoadBalanceAddress(opt *PoolOption) ([]string, error) {
@@ -264,5 +332,27 @@ func (d *DBConnectionPool) getLoadBalanceAddress(opt *PoolOption) ([]string, err
 		address[k] = fmt.Sprintf("%s:%s", fields[0], fields[1])
 	}
 
+	if len(address) == 0 {
+		return nil, errors.New("no available data nodes found in the cluster")
+	}
+
 	return address, nil
+}
+
+func deduplicateAddresses(addresses []string) []string {
+	seen := make(map[string]struct{}, len(addresses))
+	deduplicated := make([]string, 0, len(addresses))
+	for _, address := range addresses {
+		if address == "" {
+			continue
+		}
+		if _, ok := seen[address]; ok {
+			continue
+		}
+
+		seen[address] = struct{}{}
+		deduplicated = append(deduplicated, address)
+	}
+
+	return deduplicated
 }

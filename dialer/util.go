@@ -16,6 +16,7 @@ const (
 	IGNORE ErrorType = iota
 	UNKNOWN
 	NEW_LEADER
+	UNKNOWN_LEADER
 	NODE_NOT_AVAIL
 	NO_INITIALIZED
 	LOGIN_REQUIRED
@@ -109,6 +110,12 @@ func readFile(path string) (string, error) {
 }
 
 func parseAddr(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+
+	raw = strings.Fields(raw)[0]
 	strs := strings.Split(raw, ":")
 	if len(strs) < 2 {
 		return ""
@@ -116,6 +123,17 @@ func parseAddr(raw string) string {
 
 	return strings.Join(strs[:2], ":")
 }
+
+func extractTaggedAddr(msg, tag string) string {
+	ind := strings.Index(msg, tag)
+	if ind < 0 {
+		return ""
+	}
+
+	return parseAddr(msg[ind+len(tag):])
+}
+
+var loginWithCredentials = Login
 
 func Login(conn Conn, userID, password string) error {
 	return conn.ConnLogin(userID, password)

@@ -18,7 +18,7 @@ type UnboundedChan struct {
 	In       chan<- T    // channel for write
 	Out      <-chan T    // channel for read
 	buffer   *RingBuffer // buffer
-	closed 	 int32
+	closed   int32
 }
 
 // Len returns len of In plus len of Out plus len of buffer.
@@ -34,9 +34,23 @@ func (c UnboundedChan) Len() int {
 func (c UnboundedChan) BufLen() int {
 	return int(atomic.LoadInt64(&c.bufCount))
 }
+
 func (c UnboundedChan) IsClosed() bool {
-	return atomic.CompareAndSwapInt32(&c.closed, 1, 1)
+	return atomic.LoadInt32(&c.closed) == 1
 }
+
+// Close closes the input side of the channel at most once.
+func (c *UnboundedChan) Close() bool {
+	if c == nil {
+		return false
+	}
+	if !atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
+		return false
+	}
+	close(c.In)
+	return true
+}
+
 // NewUnboundedChan creates the unbounded chan.
 // in is used to write without blocking, which supports multiple writers.
 // and out is used to read, which supports multiple readers.
@@ -102,8 +116,6 @@ loop:
 			}
 		}
 	}
-	atomic.StoreInt32(&ch.closed, 1)
-
 	// // drain
 	// for !ch.buffer.IsEmpty() {
 	// 	fmt.Println("in loop ", ch.buffer.r, ch.buffer.w)

@@ -88,6 +88,40 @@ func Test_Table_DownLoad_DataType_string(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Table_DownLoad_DataType_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_table_boundary:", t, func() {
+		Convey("Test_table_boundary_empty_table_from_raw_data:", func() {
+			tb, err := model.NewTableFromRawData([]string{}, []model.DataTypeByte{}, []interface{}{})
+			So(err, ShouldBeNil)
+			So(tb.Rows(), ShouldEqual, 0)
+			So(tb.Columns(), ShouldEqual, 0)
+		})
+
+		Convey("Test_table_boundary_special_characters_and_duplicates:", func() {
+			tb, err := model.NewTableFromRawData(
+				[]string{"sym", "qty"},
+				[]model.DataTypeByte{model.DtString, model.DtInt},
+				[]interface{}{[]string{"", "A-B", "line1\nline2", "A-B"}, []int32{1, 1, 2, 3}},
+			)
+			So(err, ShouldBeNil)
+			So(tb.Rows(), ShouldEqual, 4)
+			So(tb.Columns(), ShouldEqual, 2)
+			So(tb.GetColumnByName("sym").Get(1).Value(), ShouldEqual, "A-B")
+			So(tb.GetColumnByName("qty").Get(3).Value(), ShouldEqual, int32(3))
+		})
+
+		Convey("Test_table_boundary_mismatched_input:", func() {
+			_, err := model.NewTableFromRawData(
+				[]string{"sym", "qty"},
+				[]model.DataTypeByte{model.DtString},
+				[]interface{}{[]string{"A"}, []int32{1}},
+			)
+			So(err, ShouldNotBeNil)
+		})
+	})
+}
 func Test_Table_DownLoad_DataType_bool(t *testing.T) {
 	t.Parallel()
 	Convey("Test_Table_with_bool:", t, func() {
@@ -1021,6 +1055,7 @@ func Test_Table_DownLoad_DataType_decimal128(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
 func Test_Table_DownLoad_DataType_uuid(t *testing.T) {
 	t.Parallel()
 	Convey("Test_Table_with_uuid:", t, func() {

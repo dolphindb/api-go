@@ -40,15 +40,19 @@ type BehaviorOptions struct {
 	Parallelism *int
 	// FetchSize specifies the fetchSize of the task
 	FetchSize *int
-	// Timeout specifies the timeout of the connection.
+	// Timeout specifies how long a request waits for the server response.
 	Timeout time.Duration
+	// NetTimeout specifies the network-layer timeout budget used for TCP
+	// connect, Linux TCP_USER_TIMEOUT and keepalive probing. Zero uses the SDK
+	// defaults.
+	NetTimeout time.Duration
 
 	// Whether to enable load balancing.
 	// If true, connect to the address with the fewest connections.
 	LoadBalance bool
 
 	// Whether to enable high availability.
-	// If true, when the address is unreached, another address in HighAvailabilitySites will be connected.
+	// If true, the connection tries addr first, then retries HighAvailabilitySites in a shuffled order.
 	EnableHighAvailability bool
 
 	// Available only when EnableHighAvailability is true.

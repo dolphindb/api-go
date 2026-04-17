@@ -14,6 +14,8 @@ import (
 	"github.com/dolphindb/api-go/v3/model"
 )
 
+var sleepBeforeRetry = time.Sleep
+
 type node struct {
 	address string
 	weight  float64
@@ -24,6 +26,11 @@ type nodePool struct {
 	lastInd  int
 	len      int
 	lastAddr string
+}
+
+// connectToAddress is a test seam for stubbing conn.connect in unit tests.
+var connectToAddress = func(c *conn, addr string) error {
+	return c.connect(addr)
 }
 
 func newNode(address string, weight float64) *node {
@@ -65,12 +72,41 @@ func isNotInitialized(msg string) bool {
 	return false
 }
 
-func (n *nodePool) parseError(msg string, no *node) ErrorType {
+func (n *nodePool) parseError(err error, no *node) ErrorType {
+	if err == nil {
+		return UNKNOWN
+	}
+
+	serverErr, ok := AsServerError(err)
+	if ok {
+		switch {
+		case isNotInitialized(serverErr.Detail):
+			return NO_INITIALIZED
+		case serverErr.Is(ServerErrNotLeader):
+			if serverErr.Address == "" {
+				return UNEXPECT
+			}
+			no.address = serverErr.Address
+			return NEW_LEADER
+		case serverErr.Is(ServerErrUnknownLeader):
+			return UNKNOWN_LEADER
+		case serverErr.Is(ServerErrDataNodeNotAvail):
+			if serverErr.Address == "" {
+				return UNEXPECT
+			}
+			no.address = serverErr.Address
+			return NODE_NOT_AVAIL
+		}
+	}
+
+	msg := err.Error()
 	switch {
 	case isNotInitialized(msg):
 		return NO_INITIALIZED
 	case strings.Contains(msg, "<NotLeader>"):
 		return n.getNewLeader(msg, no)
+	case strings.Contains(msg, "<UnknownLeader>"):
+		return UNKNOWN_LEADER
 	case strings.Contains(msg, "<DataNodeNotAvail>"):
 		return n.handleNotAvailError(msg, no)
 	case strings.Contains(msg, "Login is required for script execution with client authentication enabled"):
@@ -81,9 +117,7 @@ func (n *nodePool) parseError(msg string, no *node) ErrorType {
 }
 
 func (n *nodePool) handleNotAvailError(msg string, no *node) ErrorType {
-	ind := strings.Index(msg, ">")
-	raw := msg[:ind+1]
-	addr := parseAddr(raw)
+	addr := extractTaggedAddr(msg, "<DataNodeNotAvail>")
 	if addr == "" {
 		return UNEXPECT
 	}
@@ -93,15 +127,12 @@ func (n *nodePool) handleNotAvailError(msg string, no *node) ErrorType {
 }
 
 func (n *nodePool) getNewLeader(msg string, no *node) ErrorType {
-	ind := strings.Index(msg, ">")
-	raw := msg[:ind+1]
-	addr := parseAddr(raw)
+	addr := extractTaggedAddr(msg, "<NotLeader>")
 	if addr == "" {
 		return UNEXPECT
 	}
 
 	no.address = addr
-	fmt.Println("New leader is ", addr)
 	return NEW_LEADER
 }
 
@@ -118,9 +149,19 @@ func (c *conn) getRetryTimes() int {
 }
 
 func (c *conn) switchDataNode(n *node) (err error) {
-	retryTimes := c.getRetryTimes()
+	return c.switchDataNodeWithAttempts(n, c.getRetryTimes()+1)
+}
+
+func (c *conn) switchDataNodeWithAttempts(n *node, attempts int) (err error) {
+	if attempts <= 0 {
+		return fmt.Errorf("failed to connect to %s", c.addr)
+	}
+
 	connected := false
-	for attempt := 0; attempt <= retryTimes; attempt++ { // at least try once
+	for attempt := 0; attempt < attempts; attempt++ {
+		if n == nil {
+			dialerLogf("starting failover attempt %d/%d from %s", attempt+1, attempts, c.addr)
+		}
 		if n != nil {
 			if connected, err = c.connectNode(n); connected {
 				return nil
@@ -134,8 +175,13 @@ func (c *conn) switchDataNode(n *node) (err error) {
 		if err != nil {
 			return err
 		}
+		if attempt == attempts-1 {
+			dialerLogf("failover attempt %d/%d did not connect; no retries left", attempt+1, attempts)
+			break
+		}
 
-		time.Sleep(time.Second)
+		dialerLogf("failover attempt %d/%d did not connect; retrying in 1s", attempt+1, attempts)
+		sleepBeforeRetry(time.Second)
 	}
 
 	if err != nil {
@@ -147,6 +193,9 @@ func (c *conn) switchDataNode(n *node) (err error) {
 
 func isRetryableConnectError(err error) bool {
 	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.EINVAL) {
 		return false
 	}
 
@@ -177,23 +226,29 @@ func (c *conn) rangeConnectNode() (bool, error) {
 // return false, nil: not connected, need to retry
 // return false, err: failed
 func (c *conn) connectNode(n *node) (bool, error) {
-	fmt.Println("Connect to ", n.address)
-	err := c.connect(n.address)
+	dialerLogf(
+		"connecting to %s (NetTimeout=%s)",
+		n.address,
+		c.connectTimeout(),
+	)
+	err := connectToAddress(c, n.address)
 	if err == nil {
+		dialerLogf("connection to %s is ready", n.address)
 		return true, nil
 	}
 	if isRetryableConnectError(err) {
-		fmt.Printf("Connect to %s failed: %s\n", n.address, err)
+		dialerLogf("connect to %s failed with retryable error: %v", n.address, err)
 		return false, nil
 	}
 
 	node := newNode("", 0)
-	et := c.nodePool.parseError(err.Error(), node)
+	et := c.nodePool.parseError(err, node)
 	if et == UNEXPECT || et == UNKNOWN || et == LOGIN_REQUIRED {
-		fmt.Printf("Connect to %s failed: %s\n", n.address, err)
+		dialerLogf("connect to %s failed: %v", n.address, err)
 		return false, err
 	}
 
+	dialerLogf("connect to %s failed with handled server state: %v", n.address, err)
 	return false, nil
 }
 
@@ -221,15 +276,22 @@ func (c *conn) connected() bool {
 	})
 
 	if err != nil {
+		dialerLogf("connection health probe failed: %v", err)
 		return false
 	}
 
 	s, ok := di.(*model.Scalar)
 	if !ok {
+		dialerLogf("connection health probe returned unexpected response type %T", di)
 		return false
 	}
 
-	return s.Value().(int32) == 2
+	healthy := s.Value().(int32) == 2
+	if !healthy {
+		dialerLogf("connection health probe returned unexpected value: %v", s.Value())
+	}
+
+	return healthy
 }
 
 // NOTE function for get lowest load node

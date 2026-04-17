@@ -33,7 +33,7 @@ func TestPool(t *testing.T) {
 	err = pool.Execute([]*Task{task, task, task})
 	assert.Nil(t, err)
 
-	err = pool.Execute([]*Task{task})
+	err = pool.ExecuteTask(task)
 	assert.Nil(t, err)
 
 	assert.Nil(t, task.GetError())

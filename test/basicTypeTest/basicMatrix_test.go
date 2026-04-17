@@ -61,6 +61,32 @@ func Test_Matrix_DownLoad_int(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Matrix_DownLoad_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_matrix_boundary:", t, func() {
+		Convey("Test_matrix_boundary_empty_matrix:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{})
+			So(err, ShouldBeNil)
+			mtx := model.NewMatrix(model.NewVector(dtl), nil, nil)
+			So(mtx.Rows(), ShouldEqual, 0)
+			So(mtx.GetDataTypeString(), ShouldEqual, "int")
+		})
+
+		Convey("Test_matrix_boundary_single_cell:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"alpha"})
+			So(err, ShouldBeNil)
+			mtx := model.NewMatrix(model.NewVector(dtl), nil, nil)
+			So(mtx.Rows(), ShouldEqual, 1)
+			So(mtx.Get(0, 0).Value(), ShouldEqual, "alpha")
+		})
+
+		Convey("Test_matrix_boundary_invalid_raw_data:", func() {
+			_, err := model.NewDataTypeListFromRawData(model.DtInt, []string{"bad"})
+			So(err, ShouldNotBeNil)
+		})
+	})
+}
 func Test_Matrix_DownLoad_short(t *testing.T) {
 	t.Parallel()
 	Convey("Test_matrix_short:", t, func() {
@@ -313,6 +339,7 @@ func Test_Matrix_DownLoad_symbol(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
 func Test_Matrix_DownLoad_string(t *testing.T) {
 	t.Parallel()
 	Convey("Test_matrix_string:", t, func() {

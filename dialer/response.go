@@ -77,7 +77,7 @@ func (c *conn) validateResponseOK(reader protocol.Reader) error {
 	}
 
 	if !bytes.Equal(bs, protocol.RespOK) {
-		return errors.ResponseNotOKError(bs)
+		return newServerError(string(bs))
 	}
 
 	return nil

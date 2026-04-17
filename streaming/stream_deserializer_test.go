@@ -24,7 +24,7 @@ func (s *sampleHandler) DoEvent(msg IMessage) {
 }
 
 func TestStreamDeserializerInHandler(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -53,12 +53,12 @@ func TestStreamDeserializerInHandler(t *testing.T) {
 	sd, err := NewStreamDeserializer(&opt)
 	util.AssertNil(err)
 
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := sampleHandler{*sd, make([]IMessage, 0)}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:    "localhost:8848",
+		Address:    testStreamingAddress,
 		TableName:  "outTables",
 		ActionName: "action1",
 		MsgAsTable: false,
@@ -115,7 +115,7 @@ func (s *basicHandlerWithoutStreamDeserializer) DoEvent(msg IMessage) {
 }
 
 func TestPassInStreamDeserializer(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -144,12 +144,12 @@ func TestPassInStreamDeserializer(t *testing.T) {
 	sd, err := NewStreamDeserializer(&opt)
 	util.AssertNil(err)
 
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := basicHandlerWithoutStreamDeserializer{make([]IMessage, 0)}
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:         "localhost:8848",
+		Address:         testStreamingAddress,
 		TableName:       "outTables",
 		ActionName:      "action1",
 		MsgAsTable:      false,
@@ -206,7 +206,7 @@ func (s *batchHandlerWithoutStreamDeserializer) DoEvent(msg []IMessage) {
 }
 
 func TestPassInStreamDeserializerInBatch(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -235,13 +235,13 @@ func TestPassInStreamDeserializerInBatch(t *testing.T) {
 	sd, err := NewStreamDeserializer(&opt)
 	util.AssertNil(err)
 
-	client := NewGoroutineClient("localhost", 8848)
+	client := NewGoroutineClient(testStreamingHost, testStreamingPort)
 
 	sh := batchHandlerWithoutStreamDeserializer{make([]IMessage, 0)}
 	throttle := float32(1)
 	batch := 2
 	req := &SubscribeRequest{
-		Address:         "localhost:8848",
+		Address:         testStreamingAddress,
 		TableName:       "outTables",
 		ActionName:      "action1",
 		MsgAsTable:      false,
@@ -302,7 +302,7 @@ func (s *poolDeserializerHandler) DoEvent(msg IMessage) {
 }
 
 func TestPoolStreamDeserializer(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -335,7 +335,7 @@ func TestPoolStreamDeserializer(t *testing.T) {
 	sh := poolDeserializerHandler{}
 	throttle := float32(0.000)
 	req := &SubscribeRequest{
-		Address:         "localhost:8848",
+		Address:         testStreamingAddress,
 		TableName:       "outTables",
 		ActionName:      "action1",
 		MsgAsTable:      false,
@@ -430,7 +430,7 @@ func (s *replayHandle) DoEvent(msgs []IMessage) {
 	}
 }
 func TestStreamDeserializerReplayParam(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)
@@ -465,7 +465,7 @@ func TestStreamDeserializerReplayParam(t *testing.T) {
 	batchSize := 10
 	throttle := float32(1)
 	req := &SubscribeRequest{
-		Address:      "localhost:8848",
+		Address:      testStreamingAddress,
 		TableName:    "outTables",
 		ActionName:   "action1",
 		MsgAsTable:   false,
@@ -490,7 +490,7 @@ func TestStreamDeserializerReplayParam(t *testing.T) {
 }
 
 func TestStreamBug(t *testing.T) {
-	host := "localhost:8848"
+	host := testStreamingAddress
 	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
 
 	util.AssertNil(err)

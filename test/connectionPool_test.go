@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
+	"os/exec"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/dialer"
@@ -75,28 +79,99 @@ func GetConnectionNum() []interface{} {
 	return connectionNum
 }
 
-func GetOriginConnNum() []interface{} {
-	var OriginConnectionNum []interface{}
+func GetConnectionNumByName() map[string]int32 {
+	Table, _ := globalConn.RunScript("select connectionNum, name from rpc(getControllerAlias(), getClusterPerf) where mode = 0 or mode=4")
+	tmpTable := Table.(*model.Table)
+	connectionNumList := tmpTable.GetColumnByName("connectionNum").Data.Value()
+	nameList := tmpTable.GetColumnByName("name").Data.Value()
+	result := make(map[string]int32, len(nameList))
+	for i := range nameList {
+		result[nameList[i].(string)] = connectionNumList[i].(int32)
+	}
+	return result
+}
+
+func GetOriginConnNum() map[string]int32 {
+	var OriginConnectionNum map[string]int32
 	var i = 0
 	for {
-		OriginConnectionNum = GetConnectionNum()
+		OriginConnectionNum = GetConnectionNumByName()
 		if OriginConnectionNum != nil && i == 9 {
 			break
 		}
 		i++
 	}
 	time.Sleep(3 * time.Second)
-	OriginConnectionNum = GetConnectionNum()
+	OriginConnectionNum = GetConnectionNumByName()
 	return OriginConnectionNum
 }
 
-func CheckConnectionNum(OriginConnectionNum []interface{}) bool {
+func CheckConnectionNum(OriginConnectionNum map[string]int32, poolSize int) bool {
 	Table, _ := globalConn.RunScript("select connectionNum, name from rpc(getControllerAlias(), getClusterPerf) where mode = 0 or mode=4")
 	tmpTable := Table.(*model.Table)
-	connectionNumList := tmpTable.GetColumnByName(tmpTable.GetColumnNames()[0])
-	connectionNum := connectionNumList.Data.Value()
-	fmt.Printf("\nNewConnection:%v\n", connectionNum)
-	return CheckConnectionPool(connectionNum)
+	connectionNumList := tmpTable.GetColumnByName("connectionNum").Data.Value()
+	nameList := tmpTable.GetColumnByName("name").Data.Value()
+	newConnectionNum := make(map[string]int32, len(nameList))
+	for i := range nameList {
+		newConnectionNum[nameList[i].(string)] = connectionNumList[i].(int32)
+	}
+	fmt.Printf("\nOriginConnection:%v\n", OriginConnectionNum)
+	fmt.Printf("NewConnection:%v\n", newConnectionNum)
+	if len(OriginConnectionNum) != len(newConnectionNum) {
+		return false
+	}
+	base := int32(poolSize / len(OriginConnectionNum))
+	remainder := poolSize % len(OriginConnectionNum)
+	extraCount := 0
+	for name, originCount := range OriginConnectionNum {
+		newCount, ok := newConnectionNum[name]
+		delta := newCount - originCount
+		if !ok || (delta != base && delta != base+1) {
+			return false
+		}
+		if delta == base+1 {
+			extraCount++
+		}
+	}
+	return extraCount == remainder
+}
+
+func getConnectionAddresses(pool *api.DBConnectionPool) []string {
+	v := reflect.ValueOf(pool).Elem().FieldByName("connections")
+	if !v.IsValid() || v.IsNil() {
+		return nil
+	}
+
+	chanValue := reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem()
+	count := chanValue.Len()
+	addresses := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		conn, ok := chanValue.Recv()
+		if !ok {
+			break
+		}
+		addresses = append(addresses, conn.Interface().(dialer.Conn).GetTCPConn().RemoteAddr().String())
+		chanValue.Send(conn)
+	}
+
+	return addresses
+}
+
+func CheckPoolConnectionAddresses(pool *api.DBConnectionPool, expected map[string]int) bool {
+	counts := make(map[string]int)
+	for _, addr := range getConnectionAddresses(pool) {
+		counts[addr]++
+	}
+	fmt.Printf("\nPoolAddresses:%v\n", counts)
+	if len(counts) != len(expected) {
+		return false
+	}
+	for addr, want := range expected {
+		if counts[addr] != want {
+			return false
+		}
+	}
+	return true
 }
 
 func TestDBConnectionPool_exception(t *testing.T) {
@@ -104,6 +179,18 @@ func TestDBConnectionPool_exception(t *testing.T) {
 		Convey("Test_function_DBConnectionPool_wrong_address_exception \n", func() {
 			opt := &api.PoolOption{
 				Address:     "999.999.12.14",
+				UserID:      setup.UserName,
+				Password:    setup.Password,
+				PoolSize:    2,
+				LoadBalance: false,
+			}
+			pool, err := api.NewDBConnectionPool(opt)
+			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
+		})
+		Convey("Test_function_DBConnectionPool_bad_address_format_exception", func() {
+			opt := &api.PoolOption{
+				Address:     "bad-address",
 				UserID:      setup.UserName,
 				Password:    setup.Password,
 				PoolSize:    2,
@@ -200,6 +287,33 @@ func TestDBConnectionPool_exception(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(pool, ShouldBeNil)
 		})
+		Convey("Test_function_DBConnectionPool_PoolSize_equal_0_exception", func() {
+			opt := &api.PoolOption{
+				Address:     host1,
+				UserID:      setup.UserName,
+				Password:    setup.Password,
+				PoolSize:    0,
+				LoadBalance: false,
+			}
+			pool, err := api.NewDBConnectionPool(opt)
+			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
+		})
+		Convey("Test_function_DBConnectionPool_EnableHighAvailability_empty_sites_exception", func() {
+			opt := &api.PoolOption{
+				Address:                host1,
+				UserID:                 setup.UserName,
+				Password:               setup.Password,
+				PoolSize:               2,
+				LoadBalance:            false,
+				EnableHighAvailability: true,
+				HighAvailabilitySites:  nil,
+			}
+			pool, err := api.NewDBConnectionPool(opt)
+			So(err, ShouldNotBeNil)
+			So(pool, ShouldBeNil)
+			So(err.Error(), ShouldContainSubstring, "if EnableHighAvailability is true, HighAvailabilitySites should be specified")
+		})
 		Convey("Test_function_DBConnectionPool_SetLoadBalanceAddress_LoadBalance_false_exception", func() {
 			OriginConnectionNum := GetOriginConnNum()
 			fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
@@ -212,15 +326,9 @@ func TestDBConnectionPool_exception(t *testing.T) {
 				LoadBalanceAddresses: []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
 			}
 			pool, err := api.NewDBConnectionPool(opt)
-			So(err, ShouldBeNil)
-			re := pool.GetPoolSize()
-			So(re, ShouldEqual, 5)
-			closed := pool.IsClosed()
-			So(closed, ShouldBeFalse)
-			err = pool.Close()
-			So(err, ShouldBeNil)
-			closed = pool.IsClosed()
-			So(closed, ShouldBeTrue)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "LoadBalanceAddresses requires LoadBalance to be true")
+			So(pool, ShouldBeNil)
 		})
 	})
 }
@@ -256,8 +364,203 @@ func TestDBConnectionPool_Execute(t *testing.T) {
 		So(closed, ShouldBeTrue)
 	})
 }
+
+func TestDBConnectionPool_ExecuteTask(t *testing.T) {
+	opt := &api.PoolOption{
+		Address:     host1,
+		UserID:      setup.UserName,
+		Password:    setup.Password,
+		PoolSize:    2,
+		LoadBalance: false,
+	}
+
+	newPool := func() *api.DBConnectionPool {
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
+		So(pool.GetPoolSize(), ShouldEqual, 2)
+		return pool
+	}
+
+	Convey("Test_function_DBConnectionPool_ExecuteTask_task_null", t, func() {
+		pool := &api.DBConnectionPool{}
+		err := pool.ExecuteTask(nil)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, "task must not be nil")
+	})
+
+	Convey("Test_function_DBConnectionPool_ExecuteTask_script_only", t, func() {
+		pool := newPool()
+		defer func() {
+			So(pool.Close(), ShouldBeNil)
+		}()
+		task := &api.Task{Script: "typestr"}
+		err := pool.ExecuteTask(task)
+		So(err, ShouldBeNil)
+		So(task.GetError(), ShouldBeNil)
+		So(task.IsSuccess(), ShouldBeTrue)
+		task1 := &api.Task{Script: "t=table(1..10 as id, 11..20 as value);t;"}
+		err1 := pool.ExecuteTask(task1)
+		So(err1, ShouldBeNil)
+		So(task1.GetResult(), ShouldNotBeNil)
+		table, ok := task1.GetResult().(*model.Table)
+		So(ok, ShouldBeTrue)
+		So(table.Rows(), ShouldEqual, 10)
+		So(table.Columns(), ShouldEqual, 2)
+		So(pool.IsClosed(), ShouldBeFalse)
+	})
+
+	Convey("Test_function_DBConnectionPool_ExecuteTask_with_args", t, func() {
+		pool := newPool()
+		defer func() {
+			So(pool.Close(), ShouldBeNil)
+		}()
+
+		dt, err := model.NewDataType(model.DtString, "true")
+		So(err, ShouldBeNil)
+		s := model.NewScalar(dt)
+		task := &api.Task{
+			Script: "typestr",
+			Args:   []model.DataForm{s},
+		}
+
+		err = pool.ExecuteTask(task)
+		So(err, ShouldBeNil)
+		So(task.GetError(), ShouldBeNil)
+		So(task.IsSuccess(), ShouldBeTrue)
+		So(pool.IsClosed(), ShouldBeFalse)
+	})
+
+	Convey("Test_function_DBConnectionPool_ExecuteTask_task_error", t, func() {
+		pool := newPool()
+		defer func() {
+			So(pool.Close(), ShouldBeNil)
+		}()
+
+		task := &api.Task{Script: "this_script_should_fail()"}
+
+		err := pool.ExecuteTask(task)
+
+		So(err, ShouldNotBeNil)
+		So(task.GetError(), ShouldNotBeNil)
+		So(task.IsSuccess(), ShouldBeFalse)
+		So(pool.IsClosed(), ShouldBeFalse)
+	})
+}
+
+func TestDBConnectionPool_Lifecycle(t *testing.T) {
+	Convey("Test_function_DBConnectionPool_Lifecycle", t, func() {
+		opt := &api.PoolOption{
+			Address:     host1,
+			UserID:      setup.UserName,
+			Password:    setup.Password,
+			PoolSize:    2,
+			LoadBalance: false,
+		}
+
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
+		So(pool.IsClosed(), ShouldBeFalse)
+
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		So(pool.IsClosed(), ShouldBeTrue)
+
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		So(pool.IsClosed(), ShouldBeTrue)
+
+		cmd := exec.Command(os.Args[0], "-test.run=TestDBConnectionPool_ExecuteAfterClose_Process")
+		cmd.Env = append(os.Environ(), "TEST_POOL_EXECUTE_AFTER_CLOSE=1")
+		out, err := cmd.CombinedOutput()
+		So(err, ShouldNotBeNil)
+		So(string(out), ShouldContainSubstring, "panic")
+		So(pool.IsClosed(), ShouldBeTrue)
+	})
+}
+
+func TestDBConnectionPool_ExecuteAfterClose_Process(t *testing.T) {
+	if os.Getenv("TEST_POOL_EXECUTE_AFTER_CLOSE") != "1" {
+		return
+	}
+
+	opt := &api.PoolOption{
+		Address:     host1,
+		UserID:      setup.UserName,
+		Password:    setup.Password,
+		PoolSize:    2,
+		LoadBalance: false,
+	}
+
+	pool, err := api.NewDBConnectionPool(opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	task := &api.Task{Script: "typestr", Args: nil}
+	_ = pool.Execute([]*api.Task{task})
+}
+
 func TestDBConnectionPool_LoadBalance(t *testing.T) {
-	SkipConvey("Test_function_DBConnectionPool_LoadBalance_true", t, func() {
+	Convey("Test_function_DBConnectionPool_LoadBalance_false", t, func() {
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:     host1,
+			UserID:      setup.UserName,
+			Password:    setup.Password,
+			PoolSize:    8,
+			LoadBalance: false,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 8)
+		addrOK := CheckPoolConnectionAddresses(pool, map[string]int{
+			host1: 8,
+		})
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+
+	Convey("Test_function_DBConnectionPool_LoadBalance_false_EnableHighAvailability_true", t, func() {
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:                host1,
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               8,
+			LoadBalance:            false,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 8)
+		addrOK := CheckPoolConnectionAddresses(pool, map[string]int{
+			host1: 8,
+		})
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+
+	Convey("Test_function_DBConnectionPool_LoadBalance_true_not_SetLoadBalanceAddress", t, func() {
 		OriginConnectionNum := GetOriginConnNum()
 		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
 		opt := &api.PoolOption{
@@ -271,10 +574,42 @@ func TestDBConnectionPool_LoadBalance(t *testing.T) {
 		So(err, ShouldBeNil)
 		re := pool.GetPoolSize()
 		So(re, ShouldEqual, 8)
-		IsSucess := WaitConnectionPoolSuccess()
-		So(IsSucess, ShouldBeTrue)
-		connBalance := CheckConnectionNum(OriginConnectionNum)
-		So(connBalance, ShouldBeTrue)
+		addrOK := CheckPoolConnectionAddresses(pool, map[string]int{
+			setup.Address:  2,
+			setup.Address2: 2,
+			setup.Address3: 2,
+			setup.Address4: 2,
+		})
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+
+	Convey("Test_function_DBConnectionPool_LoadBalance_true_not_SetLoadBalanceAddress1", t, func() {
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:     setup.Address,
+			UserID:      setup.UserName,
+			Password:    setup.Password,
+			PoolSize:    10,
+			LoadBalance: true,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 10)
+		addrOK := CheckPoolConnectionAddresses(pool, map[string]int{
+			setup.Address:  2,
+			setup.Address2: 2,
+			setup.Address3: 3,
+			setup.Address4: 3,
+		})
+		So(addrOK, ShouldBeTrue)
 		closed := pool.IsClosed()
 		So(closed, ShouldBeFalse)
 		err = pool.Close()
@@ -283,13 +618,13 @@ func TestDBConnectionPool_LoadBalance(t *testing.T) {
 		So(closed, ShouldBeTrue)
 	})
 }
-func TestDBConnectionPool_SetLoadBalanceAddress(t *testing.T) {
-	SkipConvey("Test_function_DBConnectionPool_SetLoadBalanceAddress", t, func() {
+func TestDBConnectionPool_LoadBalance_true_SetLoadBalanceAddress(t *testing.T) {
+	Convey("Test_function_DBConnectionPool_SetLoadBalanceAddress", t, func() {
 		time.Sleep(3 * time.Second)
-		OriginConnectionNum := GetConnectionNum()
+		OriginConnectionNum := GetOriginConnNum()
 		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
 		opt := &api.PoolOption{
-			Address:              host1,
+			Address:              setup.Address,
 			UserID:               setup.UserName,
 			Password:             setup.Password,
 			PoolSize:             5,
@@ -300,10 +635,331 @@ func TestDBConnectionPool_SetLoadBalanceAddress(t *testing.T) {
 		So(err, ShouldBeNil)
 		re := pool.GetPoolSize()
 		So(re, ShouldEqual, 5)
-		IsSucess := WaitConnectionPoolSuccess()
-		So(IsSucess, ShouldBeTrue)
-		connBalance := CheckConnectionNum(OriginConnectionNum)
-		So(connBalance, ShouldBeTrue)
+		allAddresses := []string{opt.Address, setup.Address, setup.Address2, setup.Address3, setup.Address4}
+		expectedAddressCounts := make(map[string]int)
+		uniqueAddresses := make([]string, 0, len(allAddresses))
+		seenAddresses := make(map[string]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if addr == "" {
+				continue
+			}
+			if _, ok := seenAddresses[addr]; ok {
+				continue
+			}
+			seenAddresses[addr] = struct{}{}
+			uniqueAddresses = append(uniqueAddresses, addr)
+		}
+		baseCount := re / len(uniqueAddresses)
+		remainderCount := re % len(uniqueAddresses)
+		for i, addr := range uniqueAddresses {
+			expectedAddressCounts[addr] = baseCount
+			if i < remainderCount {
+				expectedAddressCounts[addr]++
+			}
+		}
+		addrOK := CheckPoolConnectionAddresses(pool, expectedAddressCounts)
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+
+	Convey("Test_function_DBConnectionPool_LoadBalanceAddresses_not_contian_Address", t, func() {
+		time.Sleep(3 * time.Second)
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:              setup.Address,
+			UserID:               setup.UserName,
+			Password:             setup.Password,
+			PoolSize:             5,
+			LoadBalance:          true,
+			LoadBalanceAddresses: []string{setup.Address2, setup.Address3, setup.Address4},
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 5)
+		allAddresses := []string{opt.Address, setup.Address, setup.Address2, setup.Address3, setup.Address4}
+		expectedAddressCounts := make(map[string]int)
+		uniqueAddresses := make([]string, 0, len(allAddresses))
+		seenAddresses := make(map[string]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if addr == "" {
+				continue
+			}
+			if _, ok := seenAddresses[addr]; ok {
+				continue
+			}
+			seenAddresses[addr] = struct{}{}
+			uniqueAddresses = append(uniqueAddresses, addr)
+		}
+		baseCount := re / len(uniqueAddresses)
+		remainderCount := re % len(uniqueAddresses)
+		for i, addr := range uniqueAddresses {
+			expectedAddressCounts[addr] = baseCount
+			if i < remainderCount {
+				expectedAddressCounts[addr]++
+			}
+		}
+		addrOK := CheckPoolConnectionAddresses(pool, expectedAddressCounts)
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+
+	Convey("Test_function_DBConnectionPool_LoadBalanceAddresses_not_contian_Address1", t, func() {
+		time.Sleep(3 * time.Second)
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:              setup.Address,
+			UserID:               setup.UserName,
+			Password:             setup.Password,
+			PoolSize:             5,
+			LoadBalance:          true,
+			LoadBalanceAddresses: []string{setup.Address3, setup.Address4},
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 5)
+		allAddresses := []string{opt.Address, setup.Address, setup.Address3, setup.Address4}
+		expectedAddressCounts := make(map[string]int)
+		uniqueAddresses := make([]string, 0, len(allAddresses))
+		seenAddresses := make(map[string]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if addr == "" {
+				continue
+			}
+			if _, ok := seenAddresses[addr]; ok {
+				continue
+			}
+			seenAddresses[addr] = struct{}{}
+			uniqueAddresses = append(uniqueAddresses, addr)
+		}
+		baseCount := re / len(uniqueAddresses)
+		remainderCount := re % len(uniqueAddresses)
+		for i, addr := range uniqueAddresses {
+			expectedAddressCounts[addr] = baseCount
+			if i < remainderCount {
+				expectedAddressCounts[addr]++
+			}
+		}
+		addrOK := CheckPoolConnectionAddresses(pool, expectedAddressCounts)
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+}
+
+func TestDBConnectionPool_LoadBalance_true_SetLoadBalanceAddress_EnableHighAvailability_true(t *testing.T) {
+	Convey("TestDBConnectionPool_LoadBalance_true_SetLoadBalanceAddress_EnableHighAvailability_true", t, func() {
+		time.Sleep(3 * time.Second)
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:                setup.Address2,
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               5,
+			LoadBalance:            true,
+			LoadBalanceAddresses:   []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 5)
+		allAddresses := []string{opt.Address, setup.Address, setup.Address2, setup.Address3, setup.Address4}
+		expectedAddressCounts := make(map[string]int)
+		uniqueAddresses := make([]string, 0, len(allAddresses))
+		seenAddresses := make(map[string]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if addr == "" {
+				continue
+			}
+			if _, ok := seenAddresses[addr]; ok {
+				continue
+			}
+			seenAddresses[addr] = struct{}{}
+			uniqueAddresses = append(uniqueAddresses, addr)
+		}
+		baseCount := re / len(uniqueAddresses)
+		remainderCount := re % len(uniqueAddresses)
+		for i, addr := range uniqueAddresses {
+			expectedAddressCounts[addr] = baseCount
+			if i < remainderCount {
+				expectedAddressCounts[addr]++
+			}
+		}
+		addrOK := CheckPoolConnectionAddresses(pool, expectedAddressCounts)
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+
+	Convey("TestDBConnectionPool_LoadBalance_true_SetLoadBalanceAddress_EnableHighAvailability_true_not_set_HighAvailabilitySites", t, func() {
+		time.Sleep(3 * time.Second)
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:                setup.Address2,
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               5,
+			LoadBalance:            true,
+			LoadBalanceAddresses:   []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
+			EnableHighAvailability: true,
+			//HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 5)
+		allAddresses := []string{opt.Address, setup.Address, setup.Address2, setup.Address3, setup.Address4}
+		expectedAddressCounts := make(map[string]int)
+		uniqueAddresses := make([]string, 0, len(allAddresses))
+		seenAddresses := make(map[string]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if addr == "" {
+				continue
+			}
+			if _, ok := seenAddresses[addr]; ok {
+				continue
+			}
+			seenAddresses[addr] = struct{}{}
+			uniqueAddresses = append(uniqueAddresses, addr)
+		}
+		baseCount := re / len(uniqueAddresses)
+		remainderCount := re % len(uniqueAddresses)
+		for i, addr := range uniqueAddresses {
+			expectedAddressCounts[addr] = baseCount
+			if i < remainderCount {
+				expectedAddressCounts[addr]++
+			}
+		}
+		addrOK := CheckPoolConnectionAddresses(pool, expectedAddressCounts)
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+	//取Address+LoadBalanceAddresses+HighAvailabilitySites的并集
+	Convey("TestDBConnectionPool_LoadBalance_true_LoadBalanceAddresses_not_same_HighAvailabilitySites", t, func() {
+		time.Sleep(3 * time.Second)
+		OriginConnectionNum := GetOriginConnNum()
+		fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:                setup.Address2,
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               5,
+			LoadBalance:            true,
+			LoadBalanceAddresses:   []string{setup.Address, setup.Address2},
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address3, setup.Address4},
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 5)
+		allAddresses := []string{opt.Address, setup.Address, setup.Address2, setup.Address3, setup.Address4}
+		expectedAddressCounts := make(map[string]int)
+		uniqueAddresses := make([]string, 0, len(allAddresses))
+		seenAddresses := make(map[string]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if addr == "" {
+				continue
+			}
+			if _, ok := seenAddresses[addr]; ok {
+				continue
+			}
+			seenAddresses[addr] = struct{}{}
+			uniqueAddresses = append(uniqueAddresses, addr)
+		}
+		baseCount := re / len(uniqueAddresses)
+		remainderCount := re % len(uniqueAddresses)
+		for i, addr := range uniqueAddresses {
+			expectedAddressCounts[addr] = baseCount
+			if i < remainderCount {
+				expectedAddressCounts[addr]++
+			}
+		}
+		addrOK := CheckPoolConnectionAddresses(pool, expectedAddressCounts)
+		So(addrOK, ShouldBeTrue)
+		closed := pool.IsClosed()
+		So(closed, ShouldBeFalse)
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		closed = pool.IsClosed()
+		So(closed, ShouldBeTrue)
+	})
+}
+
+func TestDBConnectionPool_LoadBalance_true_EnableHighAvailability_true_part_datanode_disconnect(t *testing.T) {
+	//如果LoadBalanceAddresses中某个节点是不可用 那目前连接这个节点的时候 会切换到HighAvailabilitySites配置的第一个节点 那这种情况  最后的节点不是平均分配
+	SkipConvey("TestDBConnectionPool_LoadBalance_true_EnableHighAvailability_true_part_datanode_disconnect", t, func() {
+		time.Sleep(3 * time.Second)
+		//OriginConnectionNum := GetOriginConnNum()
+		//fmt.Printf("\norigin connection:%v\n", OriginConnectionNum)
+		opt := &api.PoolOption{
+			Address:                setup.Address2,
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               10,
+			LoadBalance:            true,
+			LoadBalanceAddresses:   []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3, setup.Address4},
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		re := pool.GetPoolSize()
+		So(re, ShouldEqual, 10)
+		allAddresses := []string{opt.Address, setup.Address, setup.Address2, setup.Address3, setup.Address4}
+		expectedAddressCounts := make(map[string]int)
+		uniqueAddresses := make([]string, 0, len(allAddresses))
+		seenAddresses := make(map[string]struct{}, len(allAddresses))
+		for _, addr := range allAddresses {
+			if addr == "" {
+				continue
+			}
+			if _, ok := seenAddresses[addr]; ok {
+				continue
+			}
+			seenAddresses[addr] = struct{}{}
+			uniqueAddresses = append(uniqueAddresses, addr)
+		}
+		baseCount := re / len(uniqueAddresses)
+		remainderCount := re % len(uniqueAddresses)
+		for i, addr := range uniqueAddresses {
+			expectedAddressCounts[addr] = baseCount
+			if i < remainderCount {
+				expectedAddressCounts[addr]++
+			}
+		}
+		addrOK := CheckPoolConnectionAddresses(pool, expectedAddressCounts)
+		So(addrOK, ShouldBeTrue)
 		closed := pool.IsClosed()
 		So(closed, ShouldBeFalse)
 		err = pool.Close()
@@ -2087,9 +2743,21 @@ func TestPartitionedTableAppender_SCRAM(t *testing.T) {
 		t.Skip("skip test because create SCRAM user failed")
 	}
 	Convey("TestPartitionedTableAppender_SCRAM_login_success", t, func() {
+		dbname := generateRandomString(8)
+		_, err := globalConn.RunScript(`
+				dbPath = "dfs://` + dbname + `"
+				if(existsDatabase(dbPath))
+					dropDatabase(dbPath)
+				t = table(100:100, ["sym", "id", "datev", "price"], [SYMBOL, INT, DATE, DOUBLE])
+				db = database(dbPath, VALUE, symbol("A"+string(1..6)))
+				pt = db.createPartitionedTable(t, "pt", "sym")
+				grant("scramUser", TABLE_READ, "dfs://` + dbname + `/pt")
+				grant("scramUser", TABLE_WRITE, "dfs://` + dbname + `/pt")
+			`)
+		So(err, ShouldBeNil)
 		opt := &api.PoolOption{
 			EnableScram: true,
-			Address:     host1,
+			Address:     setup.Address,
 			UserID:      "scramUser",
 			Password:    "123456",
 			PoolSize:    10,
@@ -2097,10 +2765,14 @@ func TestPartitionedTableAppender_SCRAM(t *testing.T) {
 		pool, err := api.NewDBConnectionPool(opt)
 		So(err, ShouldBeNil)
 		defer pool.Close()
-		data, _ := globalConn.RunScript("t = table(1..1000 as c1, rand(100.00, 1000) as c2);share table(1:0, `c1`c2, [INT, DOUBLE]) as t2; t")
+		data, err := globalConn.RunScript("t = table(take(`A1, 10) as sym, 1..10 as id, date(2020.01.01)+0..9 as datev, 1.1+0..9 as price)\n" +
+			"t")
+		So(err, ShouldBeNil)
 		appenderOpt := &api.PartitionedTableAppenderOption{
-			Pool:      pool,
-			TableName: "t2",
+			Pool:         pool,
+			DBPath:       "dfs://" + dbname,
+			TableName:    "pt",
+			PartitionCol: "sym",
 		}
 		appender, err := api.NewPartitionedTableAppender(appenderOpt)
 		So(err, ShouldBeNil)
@@ -2109,8 +2781,7 @@ func TestPartitionedTableAppender_SCRAM(t *testing.T) {
 		So(rows, ShouldEqual, 10)
 		err = appender.Close()
 		So(err, ShouldBeNil)
-		globalConn.RunScript("undef(`t2, SHARED)")
-
+		globalConn.RunScript("dropDatabase('dfs://" + dbname + "')")
 	})
 }
 
@@ -2174,12 +2845,12 @@ func TestConnnectionPoolOption_SqlStd(t *testing.T) {
 	Convey("TestConnnectionPoolOption_SqlStd", t, func() {
 		cases := []struct {
 			name       string
-			SqlStd     dialer.SqlStdEnum
+			SqlStd     int
 			shouldFail bool
 		}{
-			{name: "default_dolphindb", SqlStd: dialer.SqlStdDolphinDB, shouldFail: true},
-			{name: "oracle", SqlStd: dialer.SqlStdOracle, shouldFail: false},
-			{name: "mysql", SqlStd: dialer.SqlStdMySQL, shouldFail: false},
+			{name: "default_dolphindb", SqlStd: 0, shouldFail: true},
+			{name: "oracle", SqlStd: 1, shouldFail: false},
+			{name: "mysql", SqlStd: 2, shouldFail: false},
 		}
 
 		for _, tc := range cases {
@@ -2190,7 +2861,7 @@ func TestConnnectionPoolOption_SqlStd(t *testing.T) {
 					UserID:   setup.UserName,
 					Password: setup.Password,
 					PoolSize: 1,
-					SqlStd:   tc.SqlStd,
+					SqlStd:   dialer.SqlStdEnum(tc.SqlStd),
 				}
 
 				pool, err := api.NewDBConnectionPool(opt)
@@ -2212,6 +2883,45 @@ func TestConnnectionPoolOption_SqlStd(t *testing.T) {
 				So(task.GetResult(), ShouldNotBeNil)
 			})
 		}
+	})
+}
+
+func TestConnnectionPoolOption_NetTimeout(t *testing.T) {
+	Convey("TestConnnectionPoolOption_NetTimeout_negative", t, func() {
+		opt := &api.PoolOption{
+			Address:    setup.Address4,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
+			PoolSize:   10,
+			NetTimeout: -1 * time.Second,
+		}
+		_, err := api.NewDBConnectionPool(opt)
+		So(err.Error(), ShouldContainSubstring, "the NetTimeout must be non-negative")
+	})
+	Convey("TestConnnectionPoolOption_NetTimeout_not_set", t, func() {
+		opt := &api.PoolOption{
+			Address:    setup.Address4,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
+			PoolSize:   10,
+			NetTimeout: 0 * time.Second,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
+	})
+
+	Convey("TestConnnectionPoolOption_NetTimeout_0", t, func() {
+		opt := &api.PoolOption{
+			Address:    setup.Address4,
+			UserID:     setup.UserName,
+			Password:   setup.Password,
+			PoolSize:   10,
+			NetTimeout: 0 * time.Second,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
 	})
 }
 
@@ -2328,5 +3038,266 @@ func TestDBConnectionPool_Address_disconnection(t *testing.T) {
 		So(pool.IsClosed(), ShouldBeTrue)
 		err = connCtl.Close()
 		So(err, ShouldBeNil)
+	})
+}
+
+func TestDBConnectionPool_tableInsert_haStreamTable(t *testing.T) {
+	Convey("TestDBConnectionPool_tableInsert_haStreamTable", t, func() {
+		opt := &dialer.BehaviorOptions{
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3},
+		}
+
+		connection, err := api.NewDolphinDBClient(context.TODO(), setup.Address, opt)
+		So(err, ShouldBeNil)
+		So(connection, ShouldNotBeNil)
+		defer connection.Close()
+
+		err = connection.Connect()
+		So(err, ShouldBeNil)
+
+		_, err = connection.RunScript("try{dropStreamTable(\"st_scada_value\")}catch(ex){}\ngo;\nt = table(1:0, `time`value`quality`flags`id`station`type, [TIMESTAMP,DOUBLE,INT,INT,SYMBOL,SYMBOL,SYMBOL]);\nhaStreamTable(11,t,`st_scada_value,100000);")
+		So(err, ShouldBeNil)
+
+		tmp, err := connection.RunScript("re = table(timestamp(1..10) as time, double(1..10) as value, 1..10 as quality,1..10 as flags, 'id'+string(1..10) as id, 'station'+string(1..10) as station, 'type'+string(1..10) as type); re;")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		pool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.Address,
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               3,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{setup.Address, setup.Address2, setup.Address3},
+		})
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
+		defer pool.Close()
+
+		task := &api.Task{Script: "tableInsert{st_scada_value}", Args: values}
+		//fmt.Println("---------------------------------Read data end------------------------------------")
+		time.Sleep(3 * time.Second)
+		//fmt.Println("Start Write!!!!!!!!!!!!!!!!!")
+		for i := 0; i < 10; i++ {
+			err = pool.ExecuteTask(task)
+			So(err, ShouldBeNil)
+			fmt.Println("数据插入", i, "次")
+		}
+		time.Sleep(5 * time.Second)
+		res, err := connection.RunScript("select count(*) from st_scada_value")
+		So(err, ShouldBeNil)
+		So(res, ShouldNotBeNil)
+		fmt.Println("The result is:\n", res.String())
+		So(res.String(), ShouldContainSubstring, "100")
+	})
+}
+
+func TestDBConnectionPool_tableInsert_haMvccTable_leader(t *testing.T) {
+	Convey("TestDBConnectionPool_tableInsert_haMvccTable_leader", t, func() {
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getHaMvccLeader(3);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+
+		pool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(leaderPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
+		defer pool.Close()
+
+		tmp, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		createTask := &api.Task{Script: "try{dropHaMvccTable(\"HaMvccTable1\")}catch(ex){};\n go;\n haMvccTable(1:0, table(array(INT) as intv,array(SYMBOL) as symbolv),\"HaMvccTable1\",3)"}
+		err = pool.ExecuteTask(createTask)
+		So(err, ShouldBeNil)
+
+		time.Sleep(3 * time.Second)
+		insertTask := &api.Task{Script: "tableInsert{loadHaMvccTable('HaMvccTable1')}", Args: values}
+		err = pool.ExecuteTask(insertTask)
+		So(err, ShouldBeNil)
+
+		checkTask := &api.Task{Script: "each(eqObj, (select * from loadHaMvccTable('HaMvccTable1')).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()"}
+		err = pool.ExecuteTask(checkTask)
+		So(err, ShouldBeNil)
+		So(checkTask.GetResult().(*model.Scalar).Value().(bool), ShouldBeTrue)
+	})
+}
+
+func TestDBConnectionPool_tableInsert_haMvccTable_follower(t *testing.T) {
+	Convey("TestDBConnectionPool_tableInsert_haMvccTable_follower", t, func() {
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getHaMvccLeader(3);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+
+		followerRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name in (exec sites[0] from getHaMvccRaftGroups() where id==3).split(\",\") and name!=getHaMvccLeader(3) limit 1;\n")
+		So(err, ShouldBeNil)
+		followerPort := int(followerRes.(*model.Vector).Get(0).Value().(int32))
+
+		leaderPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(leaderPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(leaderPool, ShouldNotBeNil)
+		defer leaderPool.Close()
+
+		followerPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(followerPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(followerPool, ShouldNotBeNil)
+		defer followerPool.Close()
+
+		tmp, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		createTask := &api.Task{Script: "try{dropHaMvccTable(\"HaMvccTable1\")}catch(ex){};\n go;\n haMvccTable(1:0, table(array(INT) as intv,array(SYMBOL) as symbolv),\"HaMvccTable1\",3)"}
+		err = leaderPool.ExecuteTask(createTask)
+		So(err, ShouldBeNil)
+
+		time.Sleep(3 * time.Second)
+		insertTask := &api.Task{Script: "tableInsert{loadHaMvccTable('HaMvccTable1')}", Args: values}
+		err = followerPool.ExecuteTask(insertTask)
+		So(err, ShouldBeNil)
+
+		checkTask := &api.Task{Script: "each(eqObj, (select * from loadHaMvccTable('HaMvccTable1')).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()"}
+		err = followerPool.ExecuteTask(checkTask)
+		So(err, ShouldBeNil)
+		So(checkTask.GetResult().(*model.Scalar).Value().(bool), ShouldBeTrue)
+	})
+}
+
+func TestDBConnectionPool_tableInsert_haStreamTable_leader(t *testing.T) {
+	Convey("TestDBConnectionPool_tableInsert_haStreamTable_leader", t, func() {
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getStreamingLeader(11);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+
+		pool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(leaderPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
+		defer pool.Close()
+
+		tmp, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		createTask := &api.Task{Script: "try{dropStreamTable(\"haStreamTable1\")}catch(ex){};\n go;\n haStreamTable(11, table(array(INT) as intv,array(SYMBOL) as symbolv),\"haStreamTable1\",100000)"}
+		err = pool.ExecuteTask(createTask)
+		So(err, ShouldBeNil)
+
+		time.Sleep(3 * time.Second)
+		insertTask := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+		err = pool.ExecuteTask(insertTask)
+		So(err, ShouldBeNil)
+
+		checkTask := &api.Task{Script: "each(eqObj, (select * from haStreamTable1).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()"}
+		err = pool.ExecuteTask(checkTask)
+		So(err, ShouldBeNil)
+		So(checkTask.GetResult().(*model.Scalar).Value().(bool), ShouldBeTrue)
+	})
+}
+
+func TestDBConnectionPool_tableInsert_haStreamTable_follower(t *testing.T) {
+	Convey("TestDBConnectionPool_tableInsert_haStreamTable_follower", t, func() {
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getStreamingLeader(11);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+
+		followerRes, err := conn.RunScript("tmp1=(exec sites[0] from getStreamingRaftGroups() where raftGroupName==\"11\").split(\",\");\ntmp2=each(x->split(x, \":\")[2],tmp1);\nexec port from rpc(getControllerAlias(), getClusterPerf) where name in tmp2  and name!=getStreamingLeader(11) limit 1;\n")
+		So(err, ShouldBeNil)
+		followerPort := int(followerRes.(*model.Vector).Get(0).Value().(int32))
+
+		leaderPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(leaderPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(leaderPool, ShouldNotBeNil)
+		defer leaderPool.Close()
+
+		followerPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(followerPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(followerPool, ShouldNotBeNil)
+		defer followerPool.Close()
+
+		tmp, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		createTask := &api.Task{Script: "try{dropStreamTable(\"haStreamTable1\")}catch(ex){};\n go;\n haStreamTable(11, table(array(INT) as intv,array(SYMBOL) as symbolv),\"haStreamTable1\",100000)"}
+		err = leaderPool.ExecuteTask(createTask)
+		So(err, ShouldBeNil)
+
+		time.Sleep(3 * time.Second)
+		insertTask := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+		err = followerPool.ExecuteTask(insertTask)
+		So(err, ShouldBeNil)
+
+		checkTask := &api.Task{Script: "each(eqObj, (select * from haStreamTable1).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()"}
+		err = followerPool.ExecuteTask(checkTask)
+		So(err, ShouldBeNil)
+		So(checkTask.GetResult().(*model.Scalar).Value().(bool), ShouldBeTrue)
 	})
 }

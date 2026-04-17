@@ -768,6 +768,8 @@ func TestPollingClient_subscribe_filter_r(t *testing.T) {
 		msgs2 := q2.Poll(2000, 1000)
 		for _, msg := range msgs {
 			val0 := msg.GetValue(0).(*model.Scalar).DataType.String()
+			fmt.Println("val0: ", val0)
+			time.Sleep(1 * time.Millisecond)
 			val1 := msg.GetValue(1).(*model.Scalar).DataType.String()
 			val2 := msg.GetValue(2).(*model.Scalar).DataType.String()
 			script := fmt.Sprintf("tableInsert(objByName(`"+receive+", true), %s,%s,%s)",

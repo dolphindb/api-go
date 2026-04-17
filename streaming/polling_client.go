@@ -115,8 +115,7 @@ func (t *PollingClient) Close() {
 	// 	return true
 	// })
 
-	close(t.connList.In)
-	t.topicPollerMap = sync.Map{}
+	closeUnboundedChan(t.connList)
 	select {
 	case <-t.exit:
 	default:

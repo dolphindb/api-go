@@ -94,6 +94,28 @@ func Test_Set_DownLoad_DataType_int(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Set_DownLoad_DataType_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_set_boundary:", t, func() {
+		Convey("Test_set_boundary_empty_set:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{})
+			So(err, ShouldBeNil)
+			set := model.NewSet(model.NewVector(dtl))
+			So(set.Rows(), ShouldEqual, 0)
+			So(set.GetDataTypeString(), ShouldEqual, "string")
+		})
+
+		Convey("Test_set_boundary_duplicate_values_are_retained_in_vector:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{3, 3, 1, 1})
+			So(err, ShouldBeNil)
+			set := model.NewSet(model.NewVector(dtl))
+			So(set.Rows(), ShouldEqual, 4)
+			So(set.Vector.Get(0).Value(), ShouldEqual, int32(3))
+			So(set.Vector.Get(2).Value(), ShouldEqual, int32(1))
+		})
+	})
+}
 func Test_Set_DownLoad_DataType_string(t *testing.T) {
 	t.Parallel()
 	Convey("Test_set_string:", t, func() {
@@ -159,6 +181,7 @@ func Test_Set_DownLoad_DataType_string(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
 func Test_Set_DownLoad_DataType_char(t *testing.T) {
 	t.Parallel()
 	Convey("Test_set_char:", t, func() {

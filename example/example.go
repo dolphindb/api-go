@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/api"
@@ -11,18 +10,26 @@ import (
 
 func main() {
 	// 配置连接池选项
-	timeout := 1 * time.Second
 	opt := &api.PoolOption{
-		Address:                getenv("DOLPHINDB_ADDR", apis.TestAddr),
-		UserID:                 getenv("DOLPHINDB_USER", apis.User),
-		Password:               getenv("DOLPHINDB_PASSWORD", apis.Password),
-		PoolSize:               5,
+		Address:  apis.TestAddr,
+		UserID:   apis.User,
+		Password: apis.Password,
+		PoolSize: 5,
+		// 开启后若同时配置 LoadBalanceAddresses，
+		// 连接会在 Address、LoadBalanceAddresses、HighAvailabilitySites
+		// 去重后平均分配。
 		LoadBalance:            false,
 		EnableHighAvailability: false,
-		Timeout:                timeout,
 		Reconnect:              true,
 		TryReconnectNums:       new(int),
 	}
+
+	fmt.Printf(
+		"Connecting to %s with request Timeout=%s and NetTimeout=%s\n",
+		opt.Address,
+		describeTimeout(opt.Timeout, time.Minute),
+		describeTimeout(opt.NetTimeout, 3*time.Second),
+	)
 
 	// 创建连接池
 	pool, err := api.NewDBConnectionPool(opt)
@@ -33,8 +40,17 @@ func main() {
 	defer pool.Close()
 
 	// 创建任务
+	singleTask := &api.Task{Script: "1..10"}
+	err = pool.ExecuteTask(singleTask)
+	if err != nil {
+		fmt.Printf("Failed to execute task: %s\n", err.Error())
+		return
+	}
+	fmt.Printf("Single task result: %v\n", singleTask.GetResult())
+
+	// 创建批量任务
 	tasks := []*api.Task{
-		{Script: "sleep(1000000)", Args: nil},
+		{Script: "sleep(100)", Args: nil},
 		{Script: "a=1+1", Args: nil},
 	}
 
@@ -56,10 +72,10 @@ func main() {
 	}
 }
 
-func getenv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+func describeTimeout(value, defaultValue time.Duration) string {
+	if value == 0 {
+		return fmt.Sprintf("default(%s)", defaultValue)
 	}
 
-	return fallback
+	return value.String()
 }

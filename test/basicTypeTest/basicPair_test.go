@@ -61,6 +61,27 @@ func Test_Pair_DownLoad_int(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Pair_DownLoad_DataType_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_pair_boundary:", t, func() {
+		Convey("Test_pair_boundary_special_characters:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"left-value", "right:value"})
+			So(err, ShouldBeNil)
+			pair := model.NewPair(model.NewVector(dtl))
+			So(pair.Rows(), ShouldEqual, 2)
+			So(pair.Vector.Get(0).Value(), ShouldEqual, "left-value")
+			So(pair.Vector.Get(1).Value(), ShouldEqual, "right:value")
+		})
+
+		Convey("Test_pair_boundary_string_typestr:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"hello", "world"})
+			So(err, ShouldBeNil)
+			pair := model.NewPair(model.NewVector(dtl))
+			So(pair.GetDataTypeString(), ShouldEqual, "string")
+		})
+	})
+}
 func Test_Pair_DownLoad_string(t *testing.T) {
 	t.Parallel()
 	Convey("Test_pair_string:", t, func() {
@@ -313,6 +334,7 @@ func Test_Pair_DownLoad_double(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
 func Test_Pair_DownLoad_float(t *testing.T) {
 	t.Parallel()
 	Convey("Test_pair_float:", t, func() {

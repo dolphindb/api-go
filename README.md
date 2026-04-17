@@ -19,6 +19,7 @@
       - [3.3.1.3 Null 值对照表](#3313-null-值对照表)
     - [3.3.2. 完整示例](#332-完整示例)
   - [3.4. 初始化 DBConnectionPool](#34-初始化-dbconnectionpool)
+  - [3.5. 集群连接策略：负载均衡与高可用](#35-集群连接策略负载均衡与高可用)
 - [4. 读写 DolphinDB 数据表](#4-读写-dolphindb-数据表)
   - [4.1. 保存数据到 DolphinDB 数据表](#41-保存数据到-dolphindb-数据表)
     - [4.1.1. 同步追加数据](#411-同步追加数据)
@@ -241,7 +242,7 @@ func main() {
 - FetchSize: 指定分块返回的块大小。
 - LoadBalance: 指定是否开启负载均衡。
 - EnableHighAvailability: 指定是否开启高可用。
-- HighAvailabilitySites: 指定高可用节点地址，当从 Server 获取到的节点地址无法访问时，可通过该配置手动指定。
+- HighAvailabilitySites: 指定高可用节点地址，仅在 `EnableHighAvailability=true` 时可配置；否则会返回错误。
 - Reconnect: 指定是否开启断线重连。
 - IsReverseStreaming: 指定是否开启反向流订阅。
 - IsClearSessionMemory: 指定此任务完成后是否清理 Session 缓存。
@@ -596,11 +597,12 @@ func main() {
 
 ### 3.4. 初始化 DBConnectionPool
 
-`DBConnectionPool` 可以复用多个 Connection。可以直接使用 `DBConnectionPool` 的 `Execute` 方法执行任务，然后使用 `Task` 的 `GetResult` 方法获取该任务的执行结果。
+`DBConnectionPool` 可以复用多个 Connection。可以直接使用 `DBConnectionPool` 的 `ExecuteTask` 方法执行单个任务，或使用 `Execute` 方法执行批量任务，然后使用 `Task` 的 `GetResult` 方法获取对应任务的执行结果。
 
 | 方法名                               | 详情               |
 | :----------------------------------- | :----------------- |
 | NewDBConnectionPool(opt *PoolOption) | 初始化连接池对象   |
+| ExecuteTask(task *Task)              | 执行单个任务       |
 | Execute(tasks []*Task)               | 执行批量任务       |
 | GetPoolSize()                        | 获取连接数         |
 | Close()                              | 关闭连接池         |
@@ -612,10 +614,10 @@ PoolOption 参数说明：
 - Address：字符串，表示所连接的服务器的地址。
 - UserID / Password: 字符串，登录时的用户名和密码。
 - PoolSize：整数，表示连接池的容量。
-- LoadBalance：布尔值，表示是否开启负载均衡，开启后会根据各个数据节点的地址来创建连接池。
-- LoadBalanceAddresses: 字符串数组，用于指定数据节点。
+- LoadBalance：布尔值，表示是否开启负载均衡。开启后如果指定了 `LoadBalanceAddresses`，连接会在 `Address`、`LoadBalanceAddresses`、`HighAvailabilitySites` 的去重结果上均匀分配；如果未指定 `LoadBalanceAddresses` 但指定了 `HighAvailabilitySites`，则使用 `Address` 与 `HighAvailabilitySites` 的去重结果；只有两者都未指定时，才会先从集群发现可用数据节点。
+- LoadBalanceAddresses: 字符串数组，用于显式指定负载均衡节点。指定后会和 `Address`、`HighAvailabilitySites` 一起去重，再将连接平均分配到这些地址上。
 - EnableHighAvailability: 指定是否开启高可用。
-- HighAvailabilitySites: 指定高可用节点地址，当从 Server 获取到的节点地址无法访问时，可通过该配置手动指定。
+- HighAvailabilitySites: 指定高可用节点地址。开启负载均衡时，这些地址也会并入连接池候选节点集合；如果同时开启高可用，内部连接也会在这组去重后的节点中切换。若 `LoadBalance=false` 且 `EnableHighAvailability=false`，配置该参数会返回错误。
 - Timeout: 指定每个任务执行的超时时间。
 
 `Task` 封装了查看任务执行结果的相关方法。
@@ -634,6 +636,9 @@ poolOpt := &api.PoolOption{
     UserID:   "UserID",
     Password: "Password",
     PoolSize: 10,
+    // 显式指定时，会在 Address 和这些地址之间平均分配连接。
+    // LoadBalance: true,
+    // LoadBalanceAddresses: []string{"DataNode1:Port", "DataNode2:Port"},
 }
 
 pool, err := api.NewDBConnectionPool(poolOpt)
@@ -647,7 +652,7 @@ if err != nil {
 
 ```go
 task := &api.Task{Script: "1..10"}
-err = pool.Execute([]*api.Task{task})
+err = pool.ExecuteTask(task)
 if err != nil {
     fmt.Println(err)
     return
@@ -715,6 +720,49 @@ double(1.9459101490553132)
 double(2.0794415416798357)
 double(2.1972245773362196)
 double(2.302585092994046)
+```
+
+### 3.5. 集群连接策略：负载均衡与高可用
+
+`DBConnectionPool` 在集群场景下，分成两个层次处理连接：
+
+- 连接池层：决定初始化时把 `PoolSize` 条连接平均分配到哪些节点。
+- 单连接层：决定某条连接在目标节点不可达时，是否切换到其他节点。
+
+当前实现规则如下：
+
+- `LoadBalance=false` 时，连接池不会做节点分流，所有连接都先以 `Address` 作为目标地址。
+- `LoadBalance=true` 且配置了 `LoadBalanceAddresses` 时，连接池会将 `Address`、`LoadBalanceAddresses`、`HighAvailabilitySites` 合并去重，然后把连接平均分配到这组地址。
+- `LoadBalance=true` 且配置了 `HighAvailabilitySites` 但未配置 `LoadBalanceAddresses` 时，连接池会直接使用 `Address` 与 `HighAvailabilitySites` 的去重结果，不再额外从服务端发现节点。
+- `LoadBalance=true` 且 `LoadBalanceAddresses`、`HighAvailabilitySites` 都未配置时，连接池会先从集群获取可用数据节点，然后把连接平均分配到这组地址。
+- `EnableHighAvailability=true` 时，单条连接会先尝试自己的目标地址；只有该地址连接失败后，才会在候选节点列表中继续尝试其他地址。
+
+可以将上述行为理解为：
+
+- `LoadBalance` 决定“连接池初始化时如何分布连接”。
+- `EnableHighAvailability` 决定“单条连接失败后是否继续切换节点”。
+- 在连接池场景下，`HighAvailabilitySites` 不仅参与故障切换，也会并入候选节点集合，因此通常建议与 `LoadBalanceAddresses` 保持一致，或者直接都填写完整的数据节点列表。
+- 如果 `LoadBalance=false` 且 `EnableHighAvailability=false`，`HighAvailabilitySites` 没有语义，会直接返回参数错误。
+
+推荐的集群配置方式：
+
+- 如果已经明确知道所有可用节点，建议同时开启 `LoadBalance` 和 `EnableHighAvailability`，并让 `LoadBalanceAddresses` 与 `HighAvailabilitySites` 都填写同一组完整节点地址。
+- 如果希望由服务端自动发现可用节点，可以开启 `LoadBalance`，同时不填 `LoadBalanceAddresses` 和 `HighAvailabilitySites`。
+- 如果只是单节点或固定入口地址，不需要分流时，可以关闭 `LoadBalance`；此时 `HighAvailabilitySites` 只用于连接失败后的切换。
+
+示例：
+
+```go
+poolOpt := &api.PoolOption{
+    Address:                "ControllerOrDataNode:Port",
+    UserID:                 "admin",
+    Password:               "123456",
+    PoolSize:               20,
+    LoadBalance:            true,
+    LoadBalanceAddresses:   []string{"DataNode1:Port", "DataNode2:Port", "DataNode3:Port", "DataNode4:Port"},
+    EnableHighAvailability: true,
+    HighAvailabilitySites:  []string{"DataNode1:Port", "DataNode2:Port", "DataNode3:Port", "DataNode4:Port"},
+}
 ```
 
 ## 4. 读写 DolphinDB 数据表

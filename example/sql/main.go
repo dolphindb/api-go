@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/dialer"
@@ -11,9 +10,9 @@ import (
 )
 
 func main() {
-	addr := getenv("DOLPHINDB_ADDR", apis.TestAddr)
-	user := getenv("DOLPHINDB_USER", apis.User)
-	password := getenv("DOLPHINDB_PASSWORD", apis.Password)
+	addr := apis.TestAddr
+	user := apis.User
+	password := apis.Password
 	fmt.Printf("Connecting to DolphinDB at %s\n", addr)
 
 	sql := "sysdate()"
@@ -24,14 +23,6 @@ func main() {
 	runSQL(addr, user, password, dialer.SqlStdMySQL, sql)
 
 	fmt.Println("\nSQL standard comparison completed")
-}
-
-func getenv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-
-	return fallback
 }
 
 func runSQL(addr, user, password string, standard dialer.SqlStdEnum, sql string) {

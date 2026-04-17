@@ -26,7 +26,10 @@ type messageParser struct {
 }
 
 func closeUnboundedChan(q *UnboundedChan) {
-	close(q.In)
+	if q == nil {
+		return
+	}
+	q.Close()
 	// y := 0
 	// for {
 	// 	select {

@@ -50,6 +50,33 @@ func Test_Chart_DownLoad_DataType(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Chart_DownLoad_DataType_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_chart_boundary:", t, func() {
+		Convey("Test_chart_boundary_empty_metadata:", func() {
+			ch := model.NewChart(map[string]model.DataForm{})
+			So(ch.GetDataForm(), ShouldEqual, model.DfChart)
+			So(ch.GetDataTypeString(), ShouldEqual, "any")
+			So(ch.GetTitle(), ShouldEqual, "")
+			So(ch.GetChartType(), ShouldEqual, "")
+			So(ch.GetXAxisName(), ShouldEqual, "")
+			So(ch.GetYAxisName(), ShouldEqual, "")
+		})
+
+		Convey("Test_chart_boundary_partial_metadata:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3})
+			So(err, ShouldBeNil)
+			mtx := model.NewMatrix(model.NewVector(dtl), nil, nil)
+			ch := model.NewChart(map[string]model.DataForm{"data": mtx})
+			So(ch.Rows(), ShouldEqual, 1)
+			So(ch.Data.Rows(), ShouldEqual, 3)
+			So(ch.GetTitle(), ShouldEqual, "")
+			So(ch.GetXAxisName(), ShouldEqual, "")
+			So(ch.GetYAxisName(), ShouldEqual, "")
+		})
+	})
+}
 func Test_Chart_UpLoad_DataType(t *testing.T) {
 	t.Parallel()
 	Convey("Test_Chart_upload:", t, func() {

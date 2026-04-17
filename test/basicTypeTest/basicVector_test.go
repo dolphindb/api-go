@@ -287,6 +287,7 @@ func Test_Vector_Download_Datatype_symbol(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
 func Test_Vector_Download_Datatype_int(t *testing.T) {
 	t.Parallel()
 	Convey("Test_vector_int:", t, func() {
@@ -6215,5 +6216,33 @@ func Test_Vector_gt65535(t *testing.T) {
 			})
 
 		}
+	})
+}
+
+func Test_Vector_Download_Datatype_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_vector_boundary:", t, func() {
+		Convey("Test_vector_boundary_empty_vector:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{})
+			So(err, ShouldBeNil)
+			vec := model.NewVector(dtl)
+			So(vec.Rows(), ShouldEqual, 0)
+			So(vec.GetDataTypeString(), ShouldEqual, "int")
+		})
+
+		Convey("Test_vector_boundary_special_characters:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"", "A-B", "line1\nline2", "A-B"})
+			So(err, ShouldBeNil)
+			vec := model.NewVector(dtl)
+			So(vec.Rows(), ShouldEqual, 4)
+			So(vec.Get(1).Value(), ShouldEqual, "A-B")
+			So(vec.Get(2).Value(), ShouldEqual, "line1\nline2")
+			So(vec.Get(3).Value(), ShouldEqual, "A-B")
+		})
+
+		Convey("Test_vector_boundary_invalid_raw_data:", func() {
+			_, err := model.NewDataTypeListFromRawData(model.DtInt, []string{"bad"})
+			So(err, ShouldNotBeNil)
+		})
 	})
 }

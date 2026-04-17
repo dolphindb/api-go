@@ -3,11 +3,12 @@ package dialer
 import (
 	"context"
 	"crypto/hmac"
-	"crypto/rand"
+	cryptoRand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	mathrand "math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -100,6 +101,17 @@ type conn struct {
 	timeout                time.Duration
 }
 
+var shuffleStringSlice = func(values []string) {
+	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
+	r.Shuffle(len(values), func(i, j int) {
+		values[i], values[j] = values[j], values[i]
+	})
+}
+
+var dialWithDialer = func(d *net.Dialer, network, address string) (net.Conn, error) {
+	return d.Dial(network, address)
+}
+
 // NewConn instantiates a new connection with the addr.
 // BehaviorOpt will affect every request sent by conn.
 // You can input opts to configure conn.
@@ -115,7 +127,7 @@ func NewConn(ctx context.Context, addr string, behaviorOpt *BehaviorOptions) (Co
 		return nil, errors.New("if EnableHighAvailability is true, HighAvailabilitySites should be specified")
 	}
 	if !behaviorOpt.EnableHighAvailability && len(behaviorOpt.HighAvailabilitySites) != 0 {
-		fmt.Println("Warn: HighAvailabilitySites is not empty but EnableHighAvailability is false")
+		return nil, errors.New("HighAvailabilitySites requires EnableHighAvailability to be true")
 	}
 	if behaviorOpt.Priority != nil && (*behaviorOpt.Priority < 0 || *behaviorOpt.Priority > 8) {
 		return nil, errors.New("the job priority must be between 0 and 8")
@@ -126,11 +138,15 @@ func NewConn(ctx context.Context, addr string, behaviorOpt *BehaviorOptions) (Co
 	} else if timeout < 0 {
 		return nil, errors.New("the Timeout must be non-negative")
 	}
+	if behaviorOpt.NetTimeout < 0 {
+		return nil, errors.New("the NetTimeout must be non-negative")
+	}
+	highAvailabilitySites := shuffledSites(behaviorOpt.HighAvailabilitySites)
 	return &conn{
 		behaviorOpt:            behaviorOpt,
 		addr:                   addr,
 		timeout:                timeout,
-		highAvailabilitySites:  behaviorOpt.HighAvailabilitySites,
+		highAvailabilitySites:  highAvailabilitySites,
 		enableHighAvailability: behaviorOpt.EnableHighAvailability,
 		loadBalance:            behaviorOpt.LoadBalance,
 		reconnect:              behaviorOpt.Reconnect,
@@ -180,6 +196,14 @@ func (c *conn) GetLocalAddress() string {
 	}
 
 	return strings.Split(c.LocalAddr().String(), ":")[0]
+}
+
+func (c *conn) currentRemoteAddress() string {
+	if c.Conn != nil && c.Conn.RemoteAddr() != nil {
+		return c.Conn.RemoteAddr().String()
+	}
+
+	return c.addr
 }
 
 // Get init scripts which will be run after you call connect
@@ -242,49 +266,102 @@ func (c *conn) GetTCPConn() *net.TCPConn {
 
 func (c *conn) Connect() error {
 	if c.enableHighAvailability {
-		c.nodePool = &nodePool{
-			nodes: make([]*node, 0),
-		}
-		c.nodePool.add(&node{address: c.addr})
-		for _, v := range c.highAvailabilitySites {
-			c.nodePool.add(&node{address: v})
-		}
-		return c.switchDataNode(nil)
-	} else if c.reconnect {
-		c.nodePool = &nodePool{}
-		c.nodePool.add(&node{address: c.addr})
-		return c.switchDataNode(nil)
-	} else {
-		ok, err := c.connectNode(&node{address: c.addr})
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return fmt.Errorf("failed to connect to %s", c.addr)
-		}
+		return c.connectWithHighAvailability()
+	}
+
+	if c.reconnect {
+		return c.connectWithReconnect()
+	}
+
+	return c.connectWithoutFailover()
+}
+
+func (c *conn) connectWithHighAvailability() error {
+	c.nodePool = newNodePool(c.addr, c.highAvailabilitySites)
+
+	ok, _ := c.connectNode(&node{address: c.addr})
+	if ok {
+		return nil
+	}
+
+	remainingAttempts := c.getRetryTimes()
+	if minAttemptsForFailover := c.nodePool.len - 1; remainingAttempts < minAttemptsForFailover {
+		remainingAttempts = minAttemptsForFailover
+	}
+
+	return c.switchDataNodeWithAttempts(nil, remainingAttempts)
+}
+
+func (c *conn) connectWithReconnect() error {
+	c.nodePool = newNodePool(c.addr, nil)
+	return c.switchDataNode(nil)
+}
+
+func (c *conn) connectWithoutFailover() error {
+	ok, err := c.connectNode(&node{address: c.addr})
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("failed to connect to %s", c.addr)
 	}
 
 	return nil
 }
 
+func newNodePool(primary string, fallbacks []string) *nodePool {
+	pool := &nodePool{
+		nodes: make([]*node, 0, 1+len(fallbacks)),
+	}
+	pool.add(&node{address: primary})
+	for _, addr := range fallbacks {
+		pool.add(&node{address: addr})
+	}
+
+	return pool
+}
+
+func shuffledSites(sites []string) []string {
+	copied := append([]string(nil), sites...)
+	if len(copied) < 2 {
+		return copied
+	}
+
+	shuffleStringSlice(copied)
+	return copied
+}
+
 func (c *conn) connect(addr string) error {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+	dc, err := dialWithDialer(&net.Dialer{Timeout: c.connectTimeout()}, "tcp", addr)
 	if err != nil {
+		dialerLogf("Failed to connect to %s: %v", addr, err)
 		return err
 	}
 
-	dc, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		return err
+	tcpConn, ok := dc.(*net.TCPConn)
+	if !ok {
+		_ = dc.Close()
+		return fmt.Errorf("expected TCP connection, got %T", dc)
 	}
 
-	err = dc.SetKeepAlivePeriod(30 * time.Second)
-	if err != nil {
+	c.reader = protocol.NewReader(tcpConn)
+	c.Conn = tcpConn
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = tcpConn.Close()
+			c.reader = nil
+			c.Conn = nil
+			c.isConnected = false
+			c.isClosed = true
+			c.sessionID = nil
+		}
+	}()
+
+	if err := setTCPSocketOptions(tcpConn, c.tcpSocketOptions()); err != nil {
+		dialerLogf("failed to configure tcp socket options for %s: %v", addr, err)
 		return err
 	}
-
-	c.reader = protocol.NewReader(dc)
-	c.Conn = dc
 
 	h, _, err := c.runInternal(&requestParams{
 		commandType: connectCmd,
@@ -292,6 +369,7 @@ func (c *conn) connect(addr string) error {
 	})
 
 	if err != nil {
+		dialerLogf("session handshake with %s failed: %v", addr, err)
 		return err
 	}
 
@@ -302,20 +380,29 @@ func (c *conn) connect(addr string) error {
 	args := make([]model.DataForm, 0)
 	ret, err := c.runFuncInternal("isNodeInitialized", args)
 	if err != nil {
-		fmt.Println("Server does not support the initialization check. Please upgrade to a newer version.")
+		dialerLogf("server %s does not support node initialization check", addr)
 	} else {
 		if !(ret.(*model.Scalar)).Value().(bool) {
 			c.isConnected = false
-			fmt.Println("connection established, but the node has not been initialized")
+			dialerLogf("connected to %s, but the node is not initialized yet", addr)
 			return fmt.Errorf("<DataNodeNotReady>") // use a special error to indicate that the node is not initialized
 		}
 	}
 	err = nil
 
 	if c.userID != "" || c.password != "" {
-		err = Login(c, c.userID, c.password)
+		err = loginWithCredentials(c, c.userID, c.password)
+		if err != nil {
+			dialerLogf("login to %s failed: %v", addr, err)
+		} else {
+			dialerLogf("login to %s succeeded for user %q", addr, c.userID)
+		}
 	}
 
+	if err == nil {
+		dialerLogf("connected to %s (session=%s)", addr, c.GetSession())
+	}
+	cleanup = err != nil
 	return err
 }
 
@@ -447,19 +534,27 @@ func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, erro
 			return rh, df, nil
 		}
 
-		n := c.nodePool.nodes[c.nodePool.lastInd]
-		et := c.nodePool.parseError(err.Error(), n)
+		currentNode := c.nodePool.nodes[c.nodePool.lastInd]
+		failedAddr := currentNode.address
+		dialerLogf("request on %s failed: %v", failedAddr, err)
+		et := c.nodePool.parseError(err, currentNode)
 
-		if c.connected() && et == UNKNOWN {
+		if et == UNKNOWN && c.isConnected && c.connected() {
 			return rh, df, err
 		}
 		if et == LOGIN_REQUIRED {
 			return rh, df, err
 		}
 
+		n := currentNode
 		if !(et == NEW_LEADER || et == NO_INITIALIZED || et == NODE_NOT_AVAIL) {
 			// not use the current node
 			n = nil
+		}
+		if n != nil {
+			dialerLogf("request failure on %s maps to server-directed retry target %s", failedAddr, n.address)
+		} else {
+			dialerLogf("request failure on %s will trigger high-availability failover", failedAddr)
 		}
 		time.Sleep(300 * time.Millisecond)
 
@@ -490,7 +585,7 @@ func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataFo
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	err := c.SetDeadline(time.Now().Add(c.timeout))
+	err := c.SetWriteDeadline(time.Now().Add(c.timeout))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -499,11 +594,18 @@ func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataFo
 	err = writeRequest(w, params, c.behaviorOpt)
 	if err != nil {
 		c.isConnected = false
+		dialerLogf("request write to %s failed: %v", c.currentRemoteAddress(), err)
+		return nil, nil, err
+	}
+
+	err = c.SetReadDeadline(time.Now().Add(c.timeout))
+	if err != nil {
 		return nil, nil, err
 	}
 
 	h, di, err := c.parseResponse(c.reader)
 	if err != nil {
+		dialerLogf("response read from %s failed: %v", c.currentRemoteAddress(), err)
 		return nil, nil, err
 	}
 
@@ -548,7 +650,7 @@ func (c *conn) ConnLogin(userID, password string) error {
 
 func generateNonce(length int) (string, error) {
 	buffer := make([]byte, length)
-	_, err := rand.Read(buffer)
+	_, err := cryptoRand.Read(buffer)
 	if err != nil {
 		return "", err
 	}
@@ -669,6 +771,6 @@ func (c *conn) scramLogin(userID, password string) error {
 		return fmt.Errorf("invalid SCRAM server signature")
 	}
 
-	fmt.Println("SCRAM login succeeded")
+	dialerLogf("SCRAM login succeeded")
 	return nil
 }

@@ -188,19 +188,23 @@ func (vct *Vector) Get(ind int) DataType {
 func (arrayVector *ArrayVector) formNewLength() []int32 {
 	ret := make([]int32, 0)
 	if arrayVector.unit == 1 {
-		mid := protocol.Int8SliceFromByteSlice(arrayVector.lengths)
+		mid := protocol.Uint8SliceFromByteSlice(arrayVector.lengths)
 		for _, v := range mid {
 			ret = append(ret, int32(v))
 		}
 		return ret
 	} else if arrayVector.unit == 2 {
-		mid := protocol.Int16SliceFromByteSlice(arrayVector.lengths)
+		mid := protocol.Uint16SliceFromByteSlice(arrayVector.lengths)
 		for _, v := range mid {
 			ret = append(ret, int32(v))
 		}
 		return ret
 	}
-	return protocol.Int32SliceFromByteSlice(arrayVector.lengths)
+	mid := protocol.Uint32SliceFromByteSlice(arrayVector.lengths)
+	for _, v := range mid {
+		ret = append(ret, int32(v))
+	}
+	return ret
 }
 
 // GetVectorValue returns the element of the ArrayVector based on the ind.
@@ -789,25 +793,25 @@ func (vct *Vector) formatString() []string {
 func packArrayVector(rowCount uint16, length uint32) (uint16, []byte) {
 	switch {
 	case length < math.MaxUint8:
-		res := make([]int8, rowCount)
+		res := make([]byte, rowCount)
 		for i := 0; i < int(rowCount); i++ {
-			res[i] = int8(length)
+			res[i] = byte(length)
 		}
 
-		return 1, protocol.ByteSliceFromInt8Slice(res)
+		return 1, res
 	case length < math.MaxUint16:
-		res := make([]int16, rowCount)
+		res := make([]byte, int(rowCount)*protocol.Uint16Size)
 		for i := 0; i < int(rowCount); i++ {
-			res[i] = int16(length)
+			protocol.LittleEndian.PutUint16(res[i*protocol.Uint16Size:], uint16(length))
 		}
 
-		return 2, protocol.ByteSliceFromInt16Slice(res)
+		return 2, res
 	default:
-		res := make([]int32, rowCount)
+		res := make([]byte, int(rowCount)*protocol.Uint32Size)
 		for i := 0; i < int(rowCount); i++ {
-			res[i] = int32(length)
+			protocol.LittleEndian.PutUint32(res[i*protocol.Uint32Size:], length)
 		}
 
-		return 4, protocol.ByteSliceFromInt32Slice(res)
+		return 4, res
 	}
 }

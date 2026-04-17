@@ -13,7 +13,7 @@
 
 反常点：
 - 客户端构造语义割裂：`NewDolphinDBClient` / `dialer.NewConn` 只构造不连接，`NewSimpleDolphinDBClient` / `NewSimpleConn` 会直接连接并登录。
-- `PoolOption.Timeout` 目前存在但没有完整透传到连接创建流程。
+- `PoolOption` 里的 `LoadBalanceAddresses` 和 `HighAvailabilitySites` 历史上语义重叠；当前在 `LoadBalance=true` 时会被合并成一组候选节点，分别用于均分建连和 HA 切换。
 - `NewTableAppender` 不是典型 Go 风格：失败时会打印日志并返回 `nil`，而不是显式返回 `error`。
 - API 层大量通过拼接脚本字符串调用服务端，改动时要格外注意引号、句柄名、脚本注入边界和兼容性。
 
@@ -31,6 +31,7 @@
 - HA / reconnect / `TryReconnectNums` 相关语义历史上一直容易出错，改动时需要同时看 `TODO.md`。
 - 对外暴露了 `context.Context`，但内部不少路径并没有真正贯彻取消语义。
 - 日志大量散落在 `fmt.Print*`，调试输出和正式行为混在一起。
+- `BehaviorOptions.Timeout` 现在更接近“请求/响应等待时间”；网络层相关行为对外收敛到 `NetTimeout` 一个配置，内部再换算成首连超时、Linux `TCP_USER_TIMEOUT` 和 keepalive 参数。
 
 写代码建议：
 - 涉及连接、重连、HA 的改动，默认视为高风险改动，先核对 Python/C++ 语义再下手。

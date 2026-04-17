@@ -758,6 +758,22 @@ func CreateStreamingTableWithRandomName(conn api.DolphinDB) (string, string) {
 	return st, re
 }
 
+func CreateHaStreamingTableWithRandomName(conn api.DolphinDB) (string, string) {
+	suffix := getRandomStr(5)
+	_, err := conn.RunScript("login(`admin,`123456);" +
+		"try{dropStreamTable('st1')}catch(ex){};" +
+		"try{dropStreamTable('st2')}catch(ex){};")
+	AssertNil(err)
+	st := "Trades_" + suffix
+	re := "Receive_" + suffix
+	_, err = conn.RunScript("table = table(1:0,  `tag`ts`data,[INT,TIMESTAMP,DOUBLE]);\n" +
+		"haStreamTable(11, table, `" + st + ", 100000);")
+	AssertNil(err)
+	_, err = conn.RunScript(" share streamTable(1:0,`tag`ts`data,[INT,TIMESTAMP,DOUBLE]) as " + re)
+	AssertNil(err)
+	return st, re
+}
+
 func CreateStreamingTableWithRandomName_allTypes(conn api.DolphinDB, dataType model.DataTypeByte, vecVal string) (string, string) {
 	suffix := getRandomStr(5)
 	typeString := strings.ToUpper(model.GetDataTypeString(dataType))
@@ -879,6 +895,15 @@ type MessageHandler_allTypes struct {
 
 type MessageBatchHandler_allTypes struct {
 	appender *api.TableAppender
+}
+type MessageHandler_ha struct {
+	receive string
+	conn    api.DolphinDB
+}
+
+type MessageHandler_orca struct {
+	receive string
+	conn    api.DolphinDB
 }
 
 type MessageHandler_unsubscribeInDoEvent struct {
@@ -1157,6 +1182,32 @@ func (s *sdHandler_av) DoEvent(msg streaming.IMessage) {
 		}
 	}
 	s.lock.Unlock()
+}
+
+func (s *MessageHandler_ha) DoEvent(msg streaming.IMessage) {
+	val0 := msg.GetValue(0).(*model.Vector)
+	val1 := msg.GetValue(1).(*model.Vector)
+	val2 := msg.GetValue(2).(*model.Vector)
+
+	for i := 0; i < len(val0.Data.Value()); i++ {
+		script := fmt.Sprintf("tableInsert(objByName(`"+s.receive+", true), %s,%s,%s)",
+			val0.Data.Get(i).String(), val1.Data.Get(i).String(), val2.Data.Get(i).String())
+		_, err := s.conn.RunScript(script)
+		AssertNil(err)
+	}
+}
+
+func (s *MessageHandler_orca) DoEvent(msg streaming.IMessage) {
+	val0 := msg.GetValue(0).(*model.Vector)
+	val1 := msg.GetValue(1).(*model.Vector)
+	val2 := msg.GetValue(2).(*model.Vector)
+
+	for i := 0; i < len(val0.Data.Value()); i++ {
+		script := fmt.Sprintf("tableInsert(objByName(`"+s.receive+", true), %s,%s,%s)",
+			val0.Data.Get(i).String(), val1.Data.Get(i).String(), val2.Data.Get(i).String())
+		_, err := s.conn.RunScript(script)
+		AssertNil(err)
+	}
 }
 
 func (s *sdBatchHandler_av) DoEvent(msgs []streaming.IMessage) {

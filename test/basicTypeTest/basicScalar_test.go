@@ -47,6 +47,35 @@ func Test_Scalar_DownLoad_Datatype_bool(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
+func Test_Scalar_DownLoad_Datatype_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_scalar_boundary:", t, func() {
+		Convey("Test_scalar_boundary_string_special_characters:", func() {
+			dt, err := model.NewDataType(model.DtString, "line1\nline2\t\"quoted\"")
+			So(err, ShouldBeNil)
+			s := model.NewScalar(dt)
+			So(s.GetDataTypeString(), ShouldEqual, "string")
+			So(s.String(), ShouldContainSubstring, "line1")
+		})
+
+		Convey("Test_scalar_boundary_long_max_value:", func() {
+			dt, err := model.NewDataType(model.DtLong, int64(9223372036854775807))
+			So(err, ShouldBeNil)
+			s := model.NewScalar(dt)
+			So(s.Value(), ShouldEqual, int64(9223372036854775807))
+			So(s.GetDataTypeString(), ShouldEqual, "long")
+		})
+
+		Convey("Test_scalar_boundary_nil_input:", func() {
+			dt, err := model.NewDataType(model.DtInt, nil)
+			So(err, ShouldBeNil)
+			s := model.NewScalar(dt)
+			So(s.IsNull(), ShouldBeTrue)
+			So(s.GetDataTypeString(), ShouldEqual, "int")
+		})
+	})
+}
 func Test_Scalar_DownLoad_Datatype_blob(t *testing.T) {
 	t.Parallel()
 	Convey("Test_scalar_blob:", t, func() {
@@ -112,6 +141,7 @@ func Test_Scalar_DownLoad_Datatype_void(t *testing.T) {
 		So(db.Close(), ShouldBeNil)
 	})
 }
+
 func Test_Scalar_DownLoad_Datatype_char(t *testing.T) {
 	t.Parallel()
 	Convey("Test_scalar_char:", t, func() {

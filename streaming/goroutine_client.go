@@ -160,7 +160,6 @@ func (t *GoroutineClient) Close() {
 	// })
 
 	closeUnboundedChan(t.connList)
-	t.handlerLoppers = sync.Map{}
 
 	select {
 	case <-t.exit:

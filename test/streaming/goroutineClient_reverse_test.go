@@ -1349,3 +1349,123 @@ func TestGoroutineClient_subscribe_with_SCRAM_user_r(t *testing.T) {
 	gc_r.Close()
 	assert.True(t, gc_r.IsClosed())
 }
+
+func TestGoroutineClient_haStreamTable(t *testing.T) {
+	var gcConn1, _ = api.NewSimpleDolphinDBClient(context.TODO(), "192.168.0.69:8804", setup.UserName, setup.Password)
+	var gc_r = streaming.NewGoroutineClient(setup.IP, setup.Reverse_subPort)
+	SkipConvey("TestGoroutineClient_haStreamTable_on_leader", t, func() {
+		st, receive := CreateHaStreamingTableWithRandomName(gcConn1)
+		handler := MessageHandler_ha{
+			receive: receive,
+			conn:    gcConn1,
+		}
+		req := &streaming.SubscribeRequest{
+			UserID:     "admin",
+			Password:   "123456",
+			Address:    "192.168.0.69:8804",
+			TableName:  st,
+			ActionName: "action1",
+			Offset:     0,
+			Reconnect:  true,
+			Handler:    &handler,
+			MsgAsTable: true,
+		}
+		req.SetBatchSize(100).SetThrottle(5)
+		err := gc_r.Subscribe(req)
+		So(err, ShouldBeNil)
+		_, err = gcConn1.RunScript("n=10000;t=table(1..n as tag,now()+1..n as ts,rand(100.0,n) as data);" + st + ".append!(t)")
+		So(err, ShouldBeNil)
+		startTime := time.Now()
+		for {
+			res, err := gcConn1.RunScript("exec * from " + receive)
+			So(err, ShouldBeNil)
+			if res.Rows() == 10000 {
+				break
+			}
+
+			// 检查是否超过1分钟
+			if time.Since(startTime) > 1*time.Minute {
+				t.Errorf("等待数据超时，期望10000行，实际只有%d行", res.Rows())
+				break
+			}
+
+			// 添加短暂休眠，避免过于频繁的查询
+			time.Sleep(100 * time.Millisecond)
+		}
+
+		err = gc_r.UnSubscribe(req)
+		So(err, ShouldBeNil)
+		ClearStreamTable(host, st)
+		ClearStreamTable(host, receive)
+	})
+
+}
+
+func TestGoroutineClient_orca(t *testing.T) {
+	var gcConn1, _ = api.NewSimpleDolphinDBClient(context.TODO(), "192.168.0.69:8807", setup.UserName, setup.Password)
+	var gc_r = streaming.NewGoroutineClient(setup.IP, setup.Reverse_subPort)
+	SkipConvey("TestGoroutineClient_haStreamTable_table", t, func() {
+		st, receive := CreateHaStreamingTableWithRandomName(gcConn1)
+		handler := MessageHandler_orca{
+			receive: receive,
+			conn:    gcConn1,
+		}
+		req := &streaming.SubscribeRequest{
+			UserID:     "admin",
+			Password:   "123456",
+			Address:    "192.168.0.69:8807",
+			TableName:  st,
+			ActionName: "action1",
+			Offset:     0,
+			Reconnect:  true,
+			Handler:    &handler,
+			MsgAsTable: true,
+		}
+		req.SetBatchSize(100).SetThrottle(5)
+		err := gc_r.Subscribe(req)
+		So(err, ShouldBeNil)
+		_, err = gcConn1.RunScript("if (existsCatalog(\"orca\")) {\n" +
+			"\tdropCatalog(\"orca\")\n" +
+			"}\n" +
+			"go\n" +
+			"createCatalog(\"orca\")\n" +
+			"go\n" +
+			"use catalog orca\n" +
+			"g = createStreamGraph('engine')\n" +
+			"g.source(\"trades\", [\"time\",\"sym\",\"volume\"], [TIMESTAMP, SYMBOL, INT])\n" +
+			".timeSeriesEngine(windowSize=60000, step=60000, metrics=<[sum(volume)]>, timeColumn=\"time\", useSystemTime=false, keyColumn=\"sym\", useWindowStartTime=false)\n" +
+			".sink(\"output\")\n" +
+			"g.submit()\n" +
+			"go\n" +
+			"times = [2018.10.08T01:01:01.785, 2018.10.08T01:01:02.125, 2018.10.08T01:01:10.263, 2018.10.08T01:01:12.457, 2018.10.08T01:02:10.789, 2018.10.08T01:02:12.005, 2018.10.08T01:02:30.021, 2018.10.08T01:04:02.236, 2018.10.08T01:04:04.412, 2018.10.08T01:04:05.152]\n" +
+			"syms = [`A, `B, `B, `A, `A, `B, `A, `A, `B, `B]\n" +
+			"volumes = [10, 26, 14, 28, 15, 9, 10, 29, 32, 23]\n" +
+			"\n" +
+			"tmp = table(times as time, syms as sym, volumes as volume)\n" +
+			"appendOrcaStreamTable(\"trades\", tmp)")
+		So(err, ShouldBeNil)
+		startTime := time.Now()
+		for {
+			res, err := gcConn1.RunScript("exec * from " + receive)
+			So(err, ShouldBeNil)
+			if res.Rows() == 10000 {
+				break
+			}
+
+			// 检查是否超过1分钟
+			if time.Since(startTime) > 1*time.Minute {
+				t.Errorf("等待数据超时，期望10000行，实际只有%d行", res.Rows())
+				break
+			}
+
+			// 添加短暂休眠，避免过于频繁的查询
+			time.Sleep(100 * time.Millisecond)
+		}
+
+		err = gc_r.UnSubscribe(req)
+		So(err, ShouldBeNil)
+		ClearStreamTable(host, st)
+		ClearStreamTable(host, receive)
+	})
+
+}

@@ -22,6 +22,11 @@ type subscriber struct {
 	connList *UnboundedChan
 }
 
+type streamFailoverAction struct {
+	address         string
+	friendlyMessage string
+}
+
 // SubscribeRequest is used for subscribing.
 type SubscribeRequest struct {
 	// Server address
@@ -123,10 +128,14 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*UnboundedChan, e
 
 	err = s.publishTable(topic, req, conn)
 	if err != nil {
-		if address, ok := getLeader(err.Error()); ok {
-			fmt.Println(" loop subscribe internal ")
-			req.Address = address
-			return s.subscribeInternal(req)
+		if action, ok := getStreamFailoverAction(err, req.Address); ok {
+			if action.friendlyMessage != "" {
+				fmt.Println(action.friendlyMessage)
+			}
+			if action.address != "" {
+				req.Address = action.address
+				return s.subscribeInternal(req)
+			}
 		}
 		queueMap.Delete(topic)
 
@@ -170,10 +179,17 @@ func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
 
 	err = s.publishTable(topic, req, conn)
 	if err != nil {
-		if address, ok := getLeader(err.Error()); ok {
-			fmt.Println(" loop resubscribe internal ")
-			req.Address = address
-			return s.reSubscribeInternal(req)
+		if action, ok := getStreamFailoverAction(err, req.Address); ok {
+			if action.friendlyMessage != "" {
+				fmt.Println(action.friendlyMessage)
+			}
+			if action.address != "" {
+				req.Address = action.address
+				return s.reSubscribeInternal(req)
+			}
+			if nextReq := s.nextFailoverRequest(topic, req.Address); nextReq != nil {
+				return s.reSubscribeInternal(nextReq)
+			}
 		}
 
 		return err
@@ -186,14 +202,45 @@ func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
 	return nil
 }
 
-func getLeader(err string) (string, bool) {
-	if !strings.Contains(err, "<NotLeader>") {
-		return "", false
+func getStreamFailoverAction(err error, currentAddress string) (streamFailoverAction, bool) {
+	serverErr, ok := dialer.AsServerError(err)
+	if !ok {
+		return streamFailoverAction{}, false
 	}
 
-	site := strings.Split(err, "<NotLeader>")[1]
-	strs := strings.Split(site, ":")
-	return fmt.Sprintf("%s:%s", strs[0], strs[1]), true
+	switch serverErr.Code {
+	case dialer.ServerErrNotLeader:
+		nextAddress, ok := serverErr.TargetAddress()
+		if !ok {
+			return streamFailoverAction{}, false
+		}
+		return streamFailoverAction{
+			address:         nextAddress,
+			friendlyMessage: fmt.Sprintf("Streaming subscription is unavailable on node %s because this node is not the current raft leader. The client will switch to %s.", currentAddress, nextAddress),
+		}, true
+	case dialer.ServerErrUnknownLeader:
+		return streamFailoverAction{
+			friendlyMessage: fmt.Sprintf("Streaming subscription is temporarily unavailable on node %s because it cannot determine the current raft leader. The client will try high-availability failover.", currentAddress),
+		}, true
+	default:
+		return streamFailoverAction{}, false
+	}
+}
+
+func (s *subscriber) nextFailoverRequest(topic, currentAddress string) *SubscribeRequest {
+	raw, ok := trueTopicToRequests.Load(topic)
+	if !ok || raw == nil {
+		return nil
+	}
+
+	requests := raw.([]*SubscribeRequest)
+	for _, candidate := range requests {
+		if candidate != nil && candidate.Address != currentAddress {
+			return candidate
+		}
+	}
+
+	return nil
 }
 
 func (s *subscriber) isReverseStreaming() bool {
