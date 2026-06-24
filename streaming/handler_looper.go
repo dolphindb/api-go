@@ -2,7 +2,6 @@ package streaming
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/model"
@@ -69,6 +68,10 @@ func (h *handlerLopper) run() {
 }
 
 func mergeIMessage(msg []IMessage) (IMessage, error) {
+	if len(msg) == 0 {
+		return nil, errors.New("no message to merge")
+	}
+
 	firstMsg := msg[0].(*Message)
 	colNum := len(firstMsg.nameToIndex)
 	colNames := make([]string, colNum)
@@ -94,7 +97,10 @@ func mergeIMessage(msg []IMessage) (IMessage, error) {
 			}
 		}
 	}
-	table := model.NewTable(colNames, colValues)
+	table, err := model.NewTable(colNames, colValues)
+	if err != nil {
+		return nil, err
+	}
 	ret := &TableMessage{
 		offset: firstMsg.offset,
 		topic:  firstMsg.topic,
@@ -113,7 +119,7 @@ func (h *handlerLopper) handleMessage() {
 	if h.msgAsTable {
 		ret, err := mergeIMessage(msg)
 		if err != nil {
-			fmt.Printf("merge msg to table failed: %s\n", err.Error())
+			streamingLogErrorf("merge msg to table failed: %v", err)
 		}
 		if !h.isStopped() {
 			h.handler.DoEvent(ret)
@@ -124,7 +130,7 @@ func (h *handlerLopper) handleMessage() {
 			for _, v := range msg {
 				ret, err := h.MsgDeserializer.Parse(v)
 				if err != nil {
-					fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())
+					streamingLogErrorf("StreamDeserializer parse failed: %v", err)
 				} else {
 					outMsg = append(outMsg, ret)
 				}
@@ -142,7 +148,7 @@ func (h *handlerLopper) handleMessage() {
 			if h.MsgDeserializer != nil {
 				ret, err := h.MsgDeserializer.Parse(v)
 				if err != nil {
-					fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())
+					streamingLogErrorf("StreamDeserializer parse failed: %v", err)
 				} else {
 					if !h.isStopped() {
 						h.handler.DoEvent(ret)

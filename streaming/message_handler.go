@@ -1,7 +1,6 @@
 package streaming
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -28,14 +27,14 @@ func (d *DefaultMessageHandler) DoEvent(msg IMessage) {
 	}
 
 	atomic.AddInt64(&d.count, 1)
-	fmt.Printf("Get %d messages now.\n", d.count)
+	streamingLogInfof("get %d messages now", d.count)
 	if d.count%100000 == 0 {
 		end := time.Now().Unix()
-		fmt.Printf("%d messages took %d ms total, through: %d messages/s\n",
+		streamingLogInfof("%d messages took %d ms total, through: %d messages/s",
 			d.count, end-d.startTime, d.count/(end-d.startTime))
 	}
 
 	if d.count == 2000000 {
-		fmt.Println("Done")
+		streamingLogInfof("done")
 	}
 }

@@ -803,7 +803,7 @@ func TestTableUpload(t *testing.T) {
 						float64(model.NullDecimal64Value)},
 				})
 
-			tb := model.NewTable([]string{"sym", "int", "double", "bool", "date", "deci32", "deci64"},
+			tb, err := model.NewTable([]string{"sym", "int", "double", "bool", "date", "deci32", "deci64"},
 				[]*model.Vector{model.NewVector(col0),
 					model.NewVector(col1),
 					model.NewVector(col2),
@@ -812,6 +812,7 @@ func TestTableUpload(t *testing.T) {
 					model.NewVector(col5),
 					model.NewVector(col6),
 				})
+			So(err, ShouldBeNil)
 
 			for i := 0; i < tb.Rows(); i++ {
 				fmt.Println(tb.GetRowJSON(i))

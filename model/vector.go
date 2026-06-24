@@ -69,14 +69,14 @@ func NewVector(data DataTypeList) *Vector {
 
 // NewVectorWithArrayVector returns an object of vector according to the data.
 // You can instantiates the data by NewArrayVector.
-func NewVectorWithArrayVector(data []*ArrayVector) *Vector {
+func NewVectorWithArrayVector(data []*ArrayVector) (*Vector, error) {
 	if len(data) == 0 {
-		return nil
+		return nil, errors.New("array vector data must not be empty")
 	}
 
 	dt := data[0].data.DataType() + 64
 	if dt == 81 || dt == 82 {
-		return nil
+		return nil, fmt.Errorf("array vector does not support datatype %s", GetDataTypeString(dt))
 	}
 
 	res := &Vector{
@@ -97,7 +97,7 @@ func NewVectorWithArrayVector(data []*ArrayVector) *Vector {
 	}
 
 	res.category = newCategory(byte(DfVector), byte(dt))
-	return res
+	return res, nil
 }
 
 // NewArrayVector returns an object of ArrayVector with specified data.
@@ -498,7 +498,8 @@ func (vct *Vector) getArrayVectorSubVector(indexes []int) *Vector {
 		rawVec = append(rawVec, vct.GetVectorValue(v))
 	}
 	newData := NewArrayVector(rawVec)
-	return NewVectorWithArrayVector(newData)
+	res, _ := NewVectorWithArrayVector(newData)
+	return res
 }
 
 // GetDataTypeString returns the string format of the DataType.

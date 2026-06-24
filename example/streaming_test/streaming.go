@@ -10,6 +10,7 @@ import (
 	"github.com/dolphindb/api-go/v3/dialer"
 	"github.com/dolphindb/api-go/v3/example/apis"
 	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/logging"
 	"github.com/dolphindb/api-go/v3/model"
 	"github.com/dolphindb/api-go/v3/streaming"
 )
@@ -130,7 +131,7 @@ func GoroutineClient(db api.DolphinDB) {
 
 	streamConn.Close()
 
-	fmt.Println("Run GoroutineClient successful")
+	logging.Info("example.streaming", "run goroutine client successful")
 }
 
 // PollingClient checks whether the PollingClient is valid
@@ -167,7 +168,7 @@ func PollingClient(db api.DolphinDB) {
 
 	streamConn.Close()
 
-	fmt.Println("Run PollingClient successful")
+	logging.Info("example.streaming", "run polling client successful")
 }
 
 // GoroutinePooledClient checks whether the GoroutinePooledClient is valid
@@ -208,5 +209,5 @@ func GoroutinePooledClient(db api.DolphinDB) {
 
 	streamConn.Close()
 
-	fmt.Println("Run GoroutinePooledClient successful")
+	logging.Info("example.streaming", "run goroutine pooled client successful")
 }

@@ -14,7 +14,7 @@ func TestSet(t *testing.T) {
 	data, err := NewDataTypeListFromRawData(DtString, []string{"key1", "key2", "key3"})
 	assert.Nil(t, err)
 
-	set := NewSet(NewVector(data))
+	set := mustNewSet(t, NewVector(data))
 	assert.Equal(t, set.GetDataForm(), DfSet)
 	assert.Equal(t, set.GetDataType(), DtString)
 	assert.Equal(t, set.GetDataTypeString(), "string")

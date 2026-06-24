@@ -91,13 +91,13 @@ func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
 
 	queue, err := t.subscribeInternal(req)
 	if err != nil {
-		fmt.Printf("Failed to subscribe: %s\n", err.Error())
+		streamingLogErrorf("failed to subscribe: %v", err)
 		return err
 	}
 
 	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return err
 	}
 	var queueHandlerThrottle *int
@@ -127,29 +127,21 @@ func (t *GoroutinePooledClient) subscribe(req *SubscribeRequest) error {
 }
 
 func (t *GoroutinePooledClient) reviseSubscriber(req *SubscribeRequest) error {
-	var err error
-	t.subscriber.once.Do(func() {
-		err = t.subscriber.checkServerVersion(req)
-		if err == nil {
-			go listening(t)
-		}
-	})
-
-	return err
+	return t.subscriber.initListening(t, req)
 }
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.
 func (t *GoroutinePooledClient) UnSubscribe(req *SubscribeRequest) error {
 	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return err
 	}
 
 	t.queueHandlers.Delete(topicStr)
 
 	if err := t.unSubscribe(req); err != nil {
-		fmt.Printf("UnSubscribe Failed: %s\n", err.Error())
+		streamingLogErrorf("unsubscribe failed: %v", err)
 		return err
 	}
 
@@ -211,11 +203,11 @@ func (t *GoroutinePooledClient) doReconnect(req *SubscribeRequest) bool {
 	}
 	req.Offset = req.Offset + 1
 	if err := t.reSubscribeInternal(req); err != nil {
-		fmt.Printf("%s %s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String(), topicStr)
+		streamingLogWarnf("%s %s unable to subscribe to the table; try again after 1 second", time.Now().UTC().String(), topicStr)
 		return false
 	}
 
-	fmt.Printf("%s %s Successfully reconnected and subscribed.\n", time.Now().UTC().String(), topicStr)
+	streamingLogInfof("%s %s successfully reconnected and subscribed", time.Now().UTC().String(), topicStr)
 	return true
 }
 
@@ -243,7 +235,7 @@ func (t *GoroutinePooledClient) run() {
 				if binder.msgAsTable {
 					ret, err := mergeIMessage(msg)
 					if err != nil {
-						fmt.Printf("merge msg to table failed: %s\n", err.Error())
+						streamingLogErrorf("merge msg to table failed: %v", err)
 					}
 					go binder.handler.DoEvent(ret)
 				} else if binder.batchSize != nil && *binder.batchSize >= 1 {
@@ -252,7 +244,7 @@ func (t *GoroutinePooledClient) run() {
 						for _, v := range msg {
 							ret, err := binder.MsgDeserializer.Parse(v)
 							if err != nil {
-								fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())
+								streamingLogErrorf("StreamDeserializer parse failed: %v", err)
 							} else {
 								outMsg = append(outMsg, ret)
 							}
@@ -266,7 +258,7 @@ func (t *GoroutinePooledClient) run() {
 						if binder.MsgDeserializer != nil {
 							ret, err := binder.MsgDeserializer.Parse(v)
 							if err != nil {
-								fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())
+								streamingLogErrorf("StreamDeserializer parse failed: %v", err)
 							} else {
 								go binder.handler.DoEvent(ret)
 							}

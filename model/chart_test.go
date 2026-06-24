@@ -31,7 +31,7 @@ func TestChart(t *testing.T) {
 	d, err := NewDataTypeListFromRawData(DtString, []string{"m1", "m2", "m3"})
 	assert.Nil(t, err)
 
-	data := NewMatrix(NewVector(d), nil, nil)
+	data := mustNewMatrix(t, NewVector(d), nil, nil)
 
 	keys, err := NewDataTypeListFromRawData(DtString, []string{"key1", "key2", "key3"})
 	assert.Nil(t, err)
@@ -39,9 +39,9 @@ func TestChart(t *testing.T) {
 	values, err := NewDataTypeListFromRawData(DtString, []string{"value1", "value2", "value3"})
 	assert.Nil(t, err)
 
-	extras := NewDictionary(NewVector(keys), NewVector(values))
+	extras := mustNewDictionary(t, NewVector(keys), NewVector(values))
 
-	ch := NewChart(map[string]DataForm{
+	ch := mustNewChart(t, map[string]DataForm{
 		"title":     ti,
 		"chartType": ct,
 		"stacking":  st,

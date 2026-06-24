@@ -1,16 +1,28 @@
 package streaming
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/dolphindb"
 	"github.com/dolphindb/api-go/v3/example/util"
 	"github.com/dolphindb/api-go/v3/model"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestStreamDeserializerValidatesOption(t *testing.T) {
+	_, err := NewStreamDeserializer(nil)
+	assert.EqualError(t, err, "the StreamDeserializerOption is null")
+
+	_, err = NewStreamDeserializer(&StreamDeserializerOption{})
+	assert.EqualError(t, err, "the Conn is null")
+
+	_, err = initWithConn(&StreamDeserializerOption{
+		TableNames: map[string][2]string{"msg1": {"", ""}},
+	})
+	assert.EqualError(t, err, "the table name for filter msg1 must not be empty")
+}
 
 type sampleHandler struct {
 	sd   StreamDeserializer
@@ -25,18 +37,7 @@ func (s *sampleHandler) DoEvent(msg IMessage) {
 
 func TestStreamDeserializerInHandler(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts) //script defined in goroutine_client_test.go
@@ -116,18 +117,7 @@ func (s *basicHandlerWithoutStreamDeserializer) DoEvent(msg IMessage) {
 
 func TestPassInStreamDeserializer(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts) //script defined in goroutine_client_test.go
@@ -207,18 +197,7 @@ func (s *batchHandlerWithoutStreamDeserializer) DoEvent(msg []IMessage) {
 
 func TestPassInStreamDeserializerInBatch(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts) //script defined in goroutine_client_test.go
@@ -303,18 +282,7 @@ func (s *poolDeserializerHandler) DoEvent(msg IMessage) {
 
 func TestPoolStreamDeserializer(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts)
@@ -431,18 +399,7 @@ func (s *replayHandle) DoEvent(msgs []IMessage) {
 }
 func TestStreamDeserializerReplayParam(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(arrayVectorReplayScript) //script defined in goroutine_client_test.go
@@ -491,18 +448,7 @@ func TestStreamDeserializerReplayParam(t *testing.T) {
 
 func TestStreamBug(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(arrayVectorReplayScript) //script defined in goroutine_client_test.go

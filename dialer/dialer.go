@@ -10,6 +10,7 @@ import (
 	"fmt"
 	mathrand "math/rand"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -65,11 +66,15 @@ type Conn interface {
 
 	// RunScript sends script to dolphindb and returns the execution result
 	RunScript(s string) (model.DataForm, error)
+	// RunScriptWithTrace sends script to dolphindb and returns execution trace information.
+	RunScriptWithTrace(s string) (model.DataForm, *ExecutionTrace, error)
 	// RunFile sends script from a specific file to dolphindb and returns the execution result
 	RunFile(path string) (model.DataForm, error)
 	// RunFunc sends function request to dolphindb and returns the execution result.
 	// See DolphinDB function and command references: https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/index.html
 	RunFunc(s string, args []model.DataForm) (model.DataForm, error)
+	// RunFuncWithTrace sends function request to dolphindb and returns execution trace information.
+	RunFuncWithTrace(s string, args []model.DataForm) (model.DataForm, *ExecutionTrace, error)
 	// Upload sends local objects to dolphindb server and the specified variable is generated on the dolphindb
 	Upload(vars map[string]model.DataForm) (model.DataForm, error)
 	// GetTCPConn returns the TCPConn
@@ -99,6 +104,10 @@ type conn struct {
 
 	userID, password, addr string
 	timeout                time.Duration
+	logName                string
+	publicNameByAddress    map[string]string
+	addressByPublicName    map[string]string
+	isPublicName           bool
 }
 
 var shuffleStringSlice = func(values []string) {
@@ -112,57 +121,63 @@ var dialWithDialer = func(d *net.Dialer, network, address string) (net.Conn, err
 	return d.Dial(network, address)
 }
 
+// runInternalRequest is a test seam for request retry and trace tests.
+var runInternalRequest = func(c *conn, params *requestParams) (*responseHeader, model.DataForm, error) {
+	return c.runInternal(params)
+}
+
 // NewConn instantiates a new connection with the addr.
 // BehaviorOpt will affect every request sent by conn.
 // You can input opts to configure conn.
 func NewConn(ctx context.Context, addr string, behaviorOpt *BehaviorOptions) (Conn, error) {
-	if behaviorOpt == nil {
-		return &conn{
-			behaviorOpt: behaviorOpt,
-			addr:        addr,
-			timeout:     defaultTimeout,
-		}, nil
+	normalizedBehaviorOpt, err := normalizeBehaviorOptions(behaviorOpt)
+	if err != nil {
+		return nil, err
 	}
-	if behaviorOpt.EnableHighAvailability && len(behaviorOpt.HighAvailabilitySites) == 0 {
+	if normalizedBehaviorOpt.EnableHighAvailability && len(normalizedBehaviorOpt.HighAvailabilitySites) == 0 {
 		return nil, errors.New("if EnableHighAvailability is true, HighAvailabilitySites should be specified")
 	}
-	if !behaviorOpt.EnableHighAvailability && len(behaviorOpt.HighAvailabilitySites) != 0 {
+	if !normalizedBehaviorOpt.EnableHighAvailability && len(normalizedBehaviorOpt.HighAvailabilitySites) != 0 {
 		return nil, errors.New("HighAvailabilitySites requires EnableHighAvailability to be true")
 	}
-	if behaviorOpt.Priority != nil && (*behaviorOpt.Priority < 0 || *behaviorOpt.Priority > 8) {
+	if *normalizedBehaviorOpt.Priority < 0 || *normalizedBehaviorOpt.Priority > 8 {
 		return nil, errors.New("the job priority must be between 0 and 8")
 	}
-	timeout := behaviorOpt.Timeout
+	timeout := normalizedBehaviorOpt.Timeout
 	if timeout == 0 {
 		timeout = defaultTimeout
 	} else if timeout < 0 {
 		return nil, errors.New("the Timeout must be non-negative")
 	}
-	if behaviorOpt.NetTimeout < 0 {
+	if normalizedBehaviorOpt.NetTimeout < 0 {
 		return nil, errors.New("the NetTimeout must be non-negative")
 	}
-	highAvailabilitySites := shuffledSites(behaviorOpt.HighAvailabilitySites)
+	highAvailabilitySites := shuffledSites(normalizedBehaviorOpt.HighAvailabilitySites)
 	return &conn{
-		behaviorOpt:            behaviorOpt,
+		behaviorOpt:            normalizedBehaviorOpt,
 		addr:                   addr,
 		timeout:                timeout,
 		highAvailabilitySites:  highAvailabilitySites,
-		enableHighAvailability: behaviorOpt.EnableHighAvailability,
-		loadBalance:            behaviorOpt.LoadBalance,
-		reconnect:              behaviorOpt.Reconnect,
+		enableHighAvailability: normalizedBehaviorOpt.EnableHighAvailability,
+		loadBalance:            normalizedBehaviorOpt.LoadBalance,
+		reconnect:              normalizedBehaviorOpt.Reconnect,
 	}, nil
 }
 
-// NewSimpleConn instantiates a new connection with the addr,
-// which connects to the server and logs in with the userID and pwd.
-func NewSimpleConn(ctx context.Context, address, userID, pwd string) (Conn, error) {
-	return NewSimpleConnWithBehavior(ctx, address, userID, pwd, nil)
+// Deprecated: use Dial instead.
+func NewSimpleConn(_ context.Context, address, userID, pwd string) (Conn, error) {
+	return Dial(address, userID, pwd, nil)
 }
 
-// NewSimpleConnWithBehavior instantiates a new connection with the addr,
-// which connects to the server and logs in with the userID and pwd.
-func NewSimpleConnWithBehavior(ctx context.Context, address, userID, pwd string, behaviorOpt *BehaviorOptions) (Conn, error) {
-	conn, err := NewConn(ctx, address, behaviorOpt)
+// Deprecated: use Dial instead.
+func NewSimpleConnWithBehavior(_ context.Context, address, userID, pwd string, behaviorOpt *BehaviorOptions) (Conn, error) {
+	return Dial(address, userID, pwd, behaviorOpt)
+}
+
+// Dial creates a connection, connects to the server and logs in with the provided credentials.
+// It uses context.Background internally until the connect path supports cancellation end-to-end.
+func Dial(address, userID, pwd string, behaviorOpt *BehaviorOptions) (Conn, error) {
+	conn, err := NewConn(context.Background(), address, behaviorOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -182,6 +197,16 @@ func (c *conn) GetReader() protocol.Reader {
 	return c.reader
 }
 
+// SetLogName sets a short diagnostic name attached to connection logs.
+func (c *conn) SetLogName(name string) {
+	c.logName = name
+}
+
+// LogName returns the diagnostic name attached to connection logs.
+func (c *conn) LogName() string {
+	return c.logName
+}
+
 // Add an init script which will be run after you call connect
 // func (c *conn) AddInitScript(script string) {
 // 	if c.initScripts == nil {
@@ -195,7 +220,12 @@ func (c *conn) GetLocalAddress() string {
 		return ""
 	}
 
-	return strings.Split(c.LocalAddr().String(), ":")[0]
+	host, _, err := net.SplitHostPort(c.LocalAddr().String())
+	if err != nil {
+		return ""
+	}
+
+	return host
 }
 
 func (c *conn) currentRemoteAddress() string {
@@ -284,17 +314,34 @@ func (c *conn) connectWithHighAvailability() error {
 		return nil
 	}
 
-	remainingAttempts := c.getRetryTimes()
+	retryLimit := c.getRetryLimit()
+	if retryLimit == nil {
+		_, err := c.switchDataNodeWithoutLimit(nil)
+		return err
+	}
+
+	remainingAttempts := *retryLimit
 	if minAttemptsForFailover := c.nodePool.len - 1; remainingAttempts < minAttemptsForFailover {
 		remainingAttempts = minAttemptsForFailover
 	}
 
-	return c.switchDataNodeWithAttempts(nil, remainingAttempts)
+	_, err := c.switchDataNodeWithAttempts(nil, remainingAttempts)
+	return err
 }
 
 func (c *conn) connectWithReconnect() error {
 	c.nodePool = newNodePool(c.addr, nil)
-	return c.switchDataNode(nil)
+
+	ok, err := c.connectNode(&node{address: c.addr})
+	if err != nil {
+		return err
+	}
+	if ok {
+		return nil
+	}
+
+	_, err = c.switchDataNode(nil)
+	return err
 }
 
 func (c *conn) connectWithoutFailover() error {
@@ -322,7 +369,7 @@ func newNodePool(primary string, fallbacks []string) *nodePool {
 }
 
 func shuffledSites(sites []string) []string {
-	copied := append([]string(nil), sites...)
+	copied := slices.Clone(sites)
 	if len(copied) < 2 {
 		return copied
 	}
@@ -334,7 +381,7 @@ func shuffledSites(sites []string) []string {
 func (c *conn) connect(addr string) error {
 	dc, err := dialWithDialer(&net.Dialer{Timeout: c.connectTimeout()}, "tcp", addr)
 	if err != nil {
-		dialerLogf("Failed to connect to %s: %v", addr, err)
+		c.dialerLogDebugf("failed to connect to %s: %v", addr, err)
 		return err
 	}
 
@@ -359,7 +406,7 @@ func (c *conn) connect(addr string) error {
 	}()
 
 	if err := setTCPSocketOptions(tcpConn, c.tcpSocketOptions()); err != nil {
-		dialerLogf("failed to configure tcp socket options for %s: %v", addr, err)
+		c.dialerLogWarnf("failed to configure tcp socket options for %s: %v", addr, err)
 		return err
 	}
 
@@ -369,7 +416,7 @@ func (c *conn) connect(addr string) error {
 	})
 
 	if err != nil {
-		dialerLogf("session handshake with %s failed: %v", addr, err)
+		c.dialerLogErrorf("session handshake with %s failed: %v", addr, err)
 		return err
 	}
 
@@ -380,11 +427,11 @@ func (c *conn) connect(addr string) error {
 	args := make([]model.DataForm, 0)
 	ret, err := c.runFuncInternal("isNodeInitialized", args)
 	if err != nil {
-		dialerLogf("server %s does not support node initialization check", addr)
+		c.dialerLogDebugf("server %s does not support node initialization check", addr)
 	} else {
 		if !(ret.(*model.Scalar)).Value().(bool) {
 			c.isConnected = false
-			dialerLogf("connected to %s, but the node is not initialized yet", addr)
+			c.dialerLogWarnf("connected to %s, but the node is not initialized yet", addr)
 			return fmt.Errorf("<DataNodeNotReady>") // use a special error to indicate that the node is not initialized
 		}
 	}
@@ -393,14 +440,15 @@ func (c *conn) connect(addr string) error {
 	if c.userID != "" || c.password != "" {
 		err = loginWithCredentials(c, c.userID, c.password)
 		if err != nil {
-			dialerLogf("login to %s failed: %v", addr, err)
+			c.dialerLogErrorf("login to %s failed: %v", addr, err)
 		} else {
-			dialerLogf("login to %s succeeded for user %q", addr, c.userID)
+			c.dialerLogDebugf("login to %s succeeded for user %q", addr, c.userID)
 		}
 	}
 
 	if err == nil {
-		dialerLogf("connected to %s (session=%s)", addr, c.GetSession())
+		c.dialerLogDebugf("connected to %s (session=%s)", addr, c.GetSession())
+		c.refreshPublicNameAddressMap(addr)
 	}
 	cleanup = err != nil
 	return err
@@ -439,12 +487,19 @@ func (c *conn) IsConnected() bool {
 
 // RunScript sends script to dolphindb and return the execution result.
 func (c *conn) RunScript(s string) (model.DataForm, error) {
-	_, di, err := c.run(&requestParams{
+	di, _, err := c.RunScriptWithTrace(s)
+	return di, err
+}
+
+// RunScriptWithTrace sends script to dolphindb and returns the execution result
+// along with request-level execution trace information.
+func (c *conn) RunScriptWithTrace(s string) (model.DataForm, *ExecutionTrace, error) {
+	_, di, trace, err := c.runWithTrace(&requestParams{
 		commandType: scriptCmd,
 		Command:     generateScriptCommand(s),
 	})
 
-	return di, err
+	return di, trace, err
 }
 
 // RunFile sends script from a specific file to dolphindb and return the execution result.
@@ -470,17 +525,23 @@ func (c *conn) GetSession() string {
 // RunFunc sends function request to dolphindb and return the execution result.
 // Refer to https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/index.html for more details.
 func (c *conn) RunFunc(s string, args []model.DataForm) (model.DataForm, error) {
+	di, _, err := c.RunFuncWithTrace(s, args)
+	return di, err
+}
+
+// RunFuncWithTrace sends function request to dolphindb and returns the execution
+// result along with request-level execution trace information.
+func (c *conn) RunFuncWithTrace(s string, args []model.DataForm) (model.DataForm, *ExecutionTrace, error) {
 	bo := defaultByteOrder
 
-	_, di, err := c.run(&requestParams{
+	_, di, trace, err := c.runWithTrace(&requestParams{
 		commandType: functionCmd,
 		Command:     generateFunctionCommand(s, bo, args),
-		SessionID:   []byte(c.GetSession()),
 		Args:        args,
 		ByteOrder:   bo,
 	})
 
-	return di, err
+	return di, trace, err
 }
 
 func (c *conn) runFuncInternal(s string, args []model.DataForm) (model.DataForm, error) {
@@ -489,7 +550,6 @@ func (c *conn) runFuncInternal(s string, args []model.DataForm) (model.DataForm,
 	_, di, err := c.runInternal(&requestParams{
 		commandType: functionCmd,
 		Command:     generateFunctionCommand(s, bo, args),
-		SessionID:   []byte(c.GetSession()),
 		Args:        args,
 		ByteOrder:   bo,
 	})
@@ -515,7 +575,6 @@ func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 	_, di, err := c.run(&requestParams{
 		commandType: variableCmd,
 		Command:     generateVariableCommand(strings.Join(names, ","), bo, count),
-		SessionID:   []byte(c.GetSession()),
 		Args:        args,
 		ByteOrder:   bo,
 	})
@@ -524,47 +583,122 @@ func (c *conn) Upload(vars map[string]model.DataForm) (model.DataForm, error) {
 }
 
 func (c *conn) run(params *requestParams) (*responseHeader, model.DataForm, error) {
+	rh, df, _, err := c.runWithTrace(params)
+	return rh, df, err
+}
+
+func (c *conn) runWithTrace(params *requestParams) (*responseHeader, model.DataForm, *ExecutionTrace, error) {
+	trace := newExecutionTrace()
 	if c.nodePool == nil || c.nodePool.len <= 0 {
-		return c.runInternal(params)
+		rh, df, err := runInternalRequest(c, params)
+		return rh, df, trace, err
 	}
 
-	rh, df, err := c.runInternal(params)
-	for i := 0; i <= c.getRetryTimes(); i++ {
+	rh, df, err := runInternalRequest(c, params)
+	retryLimit := c.getRetryLimit()
+	retriedTargets := make(map[string]struct{})
+	var connectedAddress string
+	for attempt := 0; retryLimit == nil || attempt <= *retryLimit; attempt++ {
 		if err == nil {
-			return rh, df, nil
+			return rh, df, trace, nil
 		}
 
 		currentNode := c.nodePool.nodes[c.nodePool.lastInd]
 		failedAddr := currentNode.address
-		dialerLogf("request on %s failed: %v", failedAddr, err)
-		et := c.nodePool.parseError(err, currentNode)
+		et, targetAddress := c.nodePool.parseError(err)
+		failoverErr := err
 
 		if et == UNKNOWN && c.isConnected && c.connected() {
-			return rh, df, err
+			return rh, df, trace, err
 		}
 		if et == LOGIN_REQUIRED {
-			return rh, df, err
+			return rh, df, trace, err
 		}
 
-		n := currentNode
-		if !(et == NEW_LEADER || et == NO_INITIALIZED || et == NODE_NOT_AVAIL) {
-			// not use the current node
-			n = nil
-		}
-		if n != nil {
-			dialerLogf("request failure on %s maps to server-directed retry target %s", failedAddr, n.address)
+		fallbackAddress := ""
+		var retryNode *node
+		if targetAddress != "" {
+			rawTargetAddress := targetAddress
+			targetPair := c.serverDirectedAddressPair(targetAddress)
+			targetAddress, fallbackAddress = targetPair.preferred(c.isPublicName)
+			if _, ok := retriedTargets[targetAddress]; ok {
+				c.dialerLogWarnf("request failure on %s maps to already retried target %s; stopping retry (reason=%v err=%v rawTarget=%s)", failedAddr, targetAddress, et, failoverErr, rawTargetAddress)
+				return rh, df, trace, err
+			}
+			if fallbackAddress != "" && fallbackAddress != targetAddress {
+				if _, ok := retriedTargets[fallbackAddress]; ok {
+					c.dialerLogWarnf("request failure on %s maps to already retried fallback %s; stopping retry (reason=%v err=%v rawTarget=%s target=%s)", failedAddr, fallbackAddress, et, failoverErr, rawTargetAddress, targetAddress)
+					return rh, df, trace, err
+				}
+			}
+			retryNode = newNodeWithFallback(targetAddress, fallbackAddress)
+			c.dialerLogInfof("request failure on %s maps to server-directed retry target %s (reason=%v err=%v rawTarget=%s fallback=%s)", failedAddr, retryNode.address, et, failoverErr, rawTargetAddress, fallbackAddress)
 		} else {
-			dialerLogf("request failure on %s will trigger high-availability failover", failedAddr)
+			c.dialerLogWarnf("request failure on %s will trigger high-availability failover (reason=%v err=%v)", failedAddr, et, failoverErr)
 		}
 		time.Sleep(300 * time.Millisecond)
 
-		// for loop would break when switchDataNode run out of retry times
-		if err := c.switchDataNode(n); err != nil {
-			return nil, nil, err
+		failoverErrText := ""
+		if failoverErr != nil {
+			failoverErrText = failoverErr.Error()
 		}
-		rh, df, err = c.runInternal(params)
+		trace.Failovers = append(trace.Failovers, FailoverTrace{
+			Reason: failoverReason(targetAddress),
+			From:   failedAddr,
+			To:     targetAddress,
+			Err:    failoverErrText,
+		})
+		traceIndex := len(trace.Failovers) - 1
+
+		// for loop would break when switchDataNode run out of retry times
+		connectedAddress, err = c.switchDataNode(retryNode)
+		if err != nil {
+			return nil, nil, trace, err
+		}
+		if connectedAddress == "" {
+			if trace.Failovers[traceIndex].To == "" {
+				trace.Failovers[traceIndex].To = c.currentRemoteAddress()
+			}
+		} else if targetAddress == "" || connectedAddress == targetAddress {
+			trace.Failovers[traceIndex].To = connectedAddress
+		} else if fallbackAddress != "" && connectedAddress == fallbackAddress {
+			trace.Failovers = append(trace.Failovers, FailoverTrace{
+				Reason: FailoverReasonServerDirectedFallback,
+				From:   targetAddress,
+				To:     connectedAddress,
+				Err:    failoverErrText,
+			})
+		} else {
+			trace.Failovers = append(trace.Failovers, FailoverTrace{
+				Reason: FailoverReasonHighAvailability,
+				From:   targetAddress,
+				To:     connectedAddress,
+				Err:    failoverErrText,
+			})
+		}
+		retryAddress := connectedAddress
+		if retryAddress == "" {
+			retryAddress = trace.Failovers[len(trace.Failovers)-1].To
+		}
+		if retryAddress != "" {
+			retriedTargets[retryAddress] = struct{}{}
+		}
+		rh, df, err = runInternalRequest(c, params)
+		if err == nil {
+			c.dialerLogInfof("conn-level retry on %s succeeded", retryAddress)
+		} else {
+			c.dialerLogWarnf("conn-level retry on %s failed: %v", retryAddress, err)
+		}
 	}
-	return rh, df, err
+	return rh, df, trace, err
+}
+
+func failoverReason(targetAddress string) FailoverReason {
+	if targetAddress != "" {
+		return FailoverReasonNotLeader
+	}
+
+	return FailoverReasonHighAvailability
 }
 
 func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataForm, error) {
@@ -574,11 +708,15 @@ func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataFo
 
 	if params.commandType == scriptCmd || params.commandType == functionCmd || params.commandType == connectCmd {
 		if c.behaviorOpt == nil {
-			c.behaviorOpt = &BehaviorOptions{}
+			normalizedBehaviorOpt, normalizeErr := normalizeBehaviorOptions(nil)
+			if normalizeErr != nil {
+				return nil, nil, normalizeErr
+			}
+			c.behaviorOpt = normalizedBehaviorOpt
 		}
 
-		if c.behaviorOpt.GetFetchSize() > 0 && c.behaviorOpt.GetFetchSize() < 8192 {
-			return nil, nil, fmt.Errorf("fetchSize %d must be equal or greater than 8192", c.behaviorOpt.GetFetchSize())
+		if *c.behaviorOpt.FetchSize > 0 && *c.behaviorOpt.FetchSize < 8192 {
+			return nil, nil, fmt.Errorf("fetchSize %d must be equal or greater than 8192", *c.behaviorOpt.FetchSize)
 		}
 	}
 
@@ -591,10 +729,9 @@ func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataFo
 	}
 
 	w := protocol.NewWriter(c.Conn)
-	err = writeRequest(w, params, c.behaviorOpt)
+	err = writeRequest(w, c.prepareRequestParams(params), c.behaviorOpt)
 	if err != nil {
 		c.isConnected = false
-		dialerLogf("request write to %s failed: %v", c.currentRemoteAddress(), err)
 		return nil, nil, err
 	}
 
@@ -604,12 +741,25 @@ func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataFo
 	}
 
 	h, di, err := c.parseResponse(c.reader)
+	if h != nil {
+		c.refreshHeaderForResponse(h)
+	}
 	if err != nil {
-		dialerLogf("response read from %s failed: %v", c.currentRemoteAddress(), err)
 		return nil, nil, err
 	}
 
 	return h, di, nil
+}
+
+func (c *conn) prepareRequestParams(params *requestParams) *requestParams {
+	prepared := *params
+	if params.commandType == connectCmd {
+		prepared.SessionID = nil
+	} else {
+		prepared.SessionID = []byte(c.GetSession())
+	}
+
+	return &prepared
 }
 
 func (c *conn) refreshHeaderForResponse(h *responseHeader) {
@@ -771,6 +921,6 @@ func (c *conn) scramLogin(userID, password string) error {
 		return fmt.Errorf("invalid SCRAM server signature")
 	}
 
-	dialerLogf("SCRAM login succeeded")
+	c.dialerLogDebugf("SCRAM login succeeded")
 	return nil
 }

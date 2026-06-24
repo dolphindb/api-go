@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -303,14 +304,14 @@ func (q *queue) add(in []interface{}) error {
 }
 
 func (q *queue) popAll() [][]interface{} {
+	q.lock.Lock()
+	defer q.lock.Unlock()
 	if len(q.buf) == 0 {
 		return nil
 	}
-	q.lock.Lock()
-	defer q.lock.Unlock()
-	ret := make([][]interface{}, len(q.buf))
-	copy(ret, q.buf)
-	q.buf = make([][]interface{}, 0, 32)
+	ret := slices.Clone(q.buf)
+	clear(q.buf)
+	q.buf = q.buf[:0]
 	q.l = 0
 	q.lastLength = 0
 	return ret

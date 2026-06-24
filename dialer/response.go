@@ -25,13 +25,13 @@ func (c *conn) parseResponse(reader protocol.Reader) (*responseHeader, model.Dat
 
 	err = c.validateResponseOK(reader)
 	if err != nil {
-		return nil, nil, err
+		return h, nil, err
 	}
 
 	di, err := c.parseResponseContent(reader, h.objectCount, h.byteOrder)
 	if err != nil {
 		c.isConnected = false
-		return nil, nil, err
+		return h, nil, err
 	}
 	return h, di, nil
 }

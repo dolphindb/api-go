@@ -33,15 +33,19 @@ type TableAPI interface {
 	ExistsTable(e *ExistsTableRequest) (bool, error)
 	// Table creates an in-memory table with columns.
 	// See DolphinDB function `table`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/t/table.html?highlight=table
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	Table(t *TableRequest) (*Table, error)
 	// TableWithCapacity creates an in-memory table with a specific capacity.
 	// See DolphinDB function `table`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/t/table.html?highlight=table
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	TableWithCapacity(t *TableWithCapacityRequest) (*Table, error)
 	// SaveTable saves a table.
 	// See DolphinDB function `saveTable`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/CommandsReferences/s/saveTable.html?highlight=savetable
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	SaveTable(s *SaveTableRequest) error
 	// LoadTable loads a table into memory.
 	// See DolphinDB function `loadTable`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/l/loadTable.html?highlight=loadtable
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	LoadTable(l *LoadTableRequest) (*Table, error)
 	// LoadText loads text from a file.
 	// See DolphinDB function `loadText`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/l/loadText.html?highlight=loadtext
@@ -54,12 +58,15 @@ type TableAPI interface {
 	PloadText(l *PloadTextRequest) (*Table, error)
 	// LoadTableBySQL loads a table using a SQL query.
 	// See DolphinDB function `loadTableBySQL`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/l/loadTableBySQL.html?highlight=loadtablebysql
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	LoadTableBySQL(l *LoadTableBySQLRequest) (*Table, error)
 	// DropPartition drops the specified partition from a database.
 	// See DolphinDB function `dropPartition`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/CommandsReferences/d/dropPartition.html?highlight=droppartition
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	DropPartition(l *DropPartitionRequest) error
 	// DropTable drops a table.
 	// See DolphinDB function `dropTable`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/CommandsReferences/d/dropTable.html?highlight=droptable
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	DropTable(d *DropTableRequest) error
 	// Undef releases the specified objects
 	// See DolphinDB function `undef`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/CommandsReferences/u/undef.html?highlight=unde
@@ -80,10 +87,12 @@ type DatabaseAPI interface {
 
 	// Database creates a database
 	// See DolphinDB function `database`：https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/FunctionReferences/d/database.html?highlight=database
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	Database(d *DatabaseRequest) (*Database, error)
 
 	// DropDatabase drops a database.
 	// See DolphinDB function `dropDatabase`: https://www.dolphindb.cn/cn/help/130/FunctionsandCommands/CommandsReferences/d/dropDatabase.html?highlight=dropdatabase
+	// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 	DropDatabase(d *DropDatabaseRequest) error
 }
 
@@ -105,16 +114,16 @@ func NewDolphinDBClient(ctx context.Context, addr string, flags *dialer.Behavior
 	return c, nil
 }
 
-// NewSimpleDolphinDBClient returns an instance of DolphinDB which has logged in.
-func NewSimpleDolphinDBClient(ctx context.Context, addr, userID, pwd string) (DolphinDB, error) {
+// Deprecated: use dolphindb.Dial instead.
+func NewSimpleDolphinDBClient(_ context.Context, addr, userID, pwd string) (DolphinDB, error) {
 	var err error
 
 	c := &dolphindb{
-		ctx:  ctx,
+		ctx:  context.Background(),
 		addr: addr,
 	}
 
-	c.Conn, err = dialer.NewSimpleConn(ctx, addr, userID, pwd)
+	c.Conn, err = dialer.Dial(addr, userID, pwd, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +140,7 @@ func (c *dolphindb) ExistsDatabase(e *ExistsDatabaseRequest) (bool, error) {
 	return res.(*model.Scalar).Bool()
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) Database(d *DatabaseRequest) (*Database, error) {
 	cmd := generateCreateDatabaseParam(d)
 	if d.DBHandle == "" {
@@ -148,6 +158,7 @@ func (c *dolphindb) Database(d *DatabaseRequest) (*Database, error) {
 	}, nil
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) DropDatabase(d *DropDatabaseRequest) error {
 	_, err := c.RunScript(fmt.Sprintf("dropDatabase('%s')", d.Directory))
 	if err != nil {
@@ -166,6 +177,7 @@ func (c *dolphindb) ExistsTable(t *ExistsTableRequest) (bool, error) {
 	return res.(*model.Scalar).Bool()
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) SaveTable(t *SaveTableRequest) error {
 	if t.DBHandle == "" {
 		t.DBHandle = generateDBName()
@@ -266,6 +278,7 @@ func (c *dolphindb) PloadText(p *PloadTextRequest) (*Table, error) {
 	}, nil
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) LoadTable(l *LoadTableRequest) (*Table, error) {
 	handle := generateTableName()
 	_, err := c.RunScript(fmt.Sprintf(`%s=loadTable("%s","%s",%s,%t)`, handle, l.Database, l.TableName, l.Partitions, l.MemoryMode))
@@ -285,6 +298,7 @@ func (c *dolphindb) LoadTable(l *LoadTableRequest) (*Table, error) {
 	}, nil
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) LoadTableBySQL(l *LoadTableBySQLRequest) (*Table, error) {
 	if l.DBHandle == "" {
 		l.DBHandle = generateDBName()
@@ -329,6 +343,7 @@ func (c *dolphindb) LoadTableBySQL(l *LoadTableBySQLRequest) (*Table, error) {
 	}, nil
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) TableWithCapacity(t *TableWithCapacityRequest) (*Table, error) {
 	_, err := c.RunScript(fmt.Sprintf("%s=table(%d:%d, `%s, [%s])", t.TableName, t.Capacity,
 		t.Size, strings.Join(t.ColNames, "`"), strings.Join(t.ColTypes, ",")))
@@ -348,6 +363,7 @@ func (c *dolphindb) TableWithCapacity(t *TableWithCapacityRequest) (*Table, erro
 	}, nil
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) Table(t *TableRequest) (*Table, error) {
 	names := make([]string, len(t.TableParams))
 	for k, v := range t.TableParams {
@@ -374,6 +390,7 @@ func (c *dolphindb) Table(t *TableRequest) (*Table, error) {
 	}, nil
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) DropTable(d *DropTableRequest) error {
 	if d.DBHandle == "" {
 		d.DBHandle = generateDBName()
@@ -391,6 +408,7 @@ func (c *dolphindb) DropTable(d *DropTableRequest) error {
 	return nil
 }
 
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *dolphindb) DropPartition(d *DropPartitionRequest) error {
 	if d.DBHandle == "" {
 		d.DBHandle = generateDBName()

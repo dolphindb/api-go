@@ -1,6 +1,7 @@
 package streaming
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,4 +64,28 @@ func TestUtil(t *testing.T) {
 
 	b = IsClosed("topic")
 	assert.Equal(t, b, false)
+}
+
+func TestTopicSiteRejectsMalformedTopic(t *testing.T) {
+	site, ok := topicSite("malformed-topic")
+	assert.False(t, ok)
+	assert.Empty(t, site)
+}
+
+func TestSetReconnectItemIgnoreMalformedTopic(t *testing.T) {
+	reconnectTable = sync.Map{}
+
+	setReconnectItem("malformed-topic", 1)
+
+	_, ok := reconnectTable.Load("malformed-topic")
+	assert.False(t, ok)
+}
+
+func TestGetAllTopicBySiteIgnoreMalformedTopic(t *testing.T) {
+	trueTopicToRequests = sync.Map{}
+	trueTopicToRequests.Store("malformed-topic", []*SubscribeRequest{{}})
+	trueTopicToRequests.Store("127.0.0.1:3000:local3000/table/action", []*SubscribeRequest{{}})
+
+	topics := getAllTopicBySite("127.0.0.1:3000:local3000")
+	assert.Equal(t, []string{"127.0.0.1:3000:local3000/table/action"}, topics)
 }

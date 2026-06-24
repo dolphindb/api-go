@@ -14,7 +14,7 @@ func TestPair(t *testing.T) {
 	data, err := NewDataTypeListFromRawData(DtString, []string{"key1", "key2"})
 	assert.Nil(t, err)
 
-	pair := NewPair(NewVector(data))
+	pair := mustNewPair(t, NewVector(data))
 	assert.Equal(t, pair.GetDataForm(), DfPair)
 	assert.Equal(t, pair.GetDataType(), DtString)
 	assert.Equal(t, pair.GetDataTypeString(), "string")

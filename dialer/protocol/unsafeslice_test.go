@@ -61,3 +61,16 @@ func TestUnsafeSlice(t *testing.T) {
 	s := StringFromByteSlice(bs)
 	assert.Equal(t, s, "test")
 }
+
+func TestUnsafeSliceEmptyInput(t *testing.T) {
+	assert.Empty(t, Int8SliceFromByteSlice(nil))
+	assert.Empty(t, Int16SliceFromByteSlice(nil))
+	assert.Empty(t, Uint16SliceFromByteSlice(nil))
+	assert.Empty(t, Int32SliceFromByteSlice(nil))
+	assert.Empty(t, Uint32SliceFromByteSlice(nil))
+	assert.Empty(t, Int64SliceFromByteSlice(nil))
+	assert.Empty(t, Uint64SliceFromByteSlice(nil))
+	assert.Empty(t, Float32SliceFromByteSlice(nil))
+	assert.Empty(t, Float64SliceFromByteSlice(nil))
+	assert.Equal(t, "", StringFromByteSlice(nil))
+}

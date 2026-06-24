@@ -20,7 +20,7 @@ func TestMatrix(t *testing.T) {
 	cl, err := NewDataTypeListFromRawData(DtString, []string{"value1", "value2", "value3"})
 	assert.Nil(t, err)
 
-	mtx := NewMatrix(NewVector(data), NewVector(rl), NewVector(cl))
+	mtx := mustNewMatrix(t, NewVector(data), NewVector(rl), NewVector(cl))
 	assert.Equal(t, mtx.GetDataForm(), DfMatrix)
 	assert.Equal(t, mtx.GetDataType(), DtString)
 	assert.Equal(t, mtx.GetDataTypeString(), "string")

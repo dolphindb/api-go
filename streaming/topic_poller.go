@@ -1,7 +1,6 @@
 package streaming
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -11,7 +10,7 @@ type TopicPoller struct {
 	cache []IMessage
 
 	MsgDeserializer *StreamDeserializer
-	msgAsTable bool
+	msgAsTable      bool
 }
 
 // Poll retrieves and removes the head of this queue, waiting up to the specified
@@ -32,18 +31,22 @@ func (t *TopicPoller) Poll(timeout, size int) []IMessage {
 		}
 	}
 	if t.msgAsTable {
+		if len(retMsgSlice) == 0 {
+			return retMsgSlice
+		}
+
 		tbl, err := mergeIMessage(retMsgSlice)
 		if err != nil {
-			fmt.Printf("merge msg to table failed: %s\n", err.Error());
+			streamingLogErrorf("merge msg to table failed: %v", err)
 			return make([]IMessage, 0)
 		}
 		retMsgSlice = []IMessage{tbl}
-	} else if(t.MsgDeserializer != nil) {
+	} else if t.MsgDeserializer != nil {
 		outMsg := make([]IMessage, 0)
 		for _, v := range retMsgSlice {
 			ret, err := t.MsgDeserializer.Parse(v)
 			if err != nil {
-				fmt.Printf("StreamDeserializer parse failed: %s\n", err.Error())
+				streamingLogErrorf("StreamDeserializer parse failed: %v", err)
 			} else {
 				outMsg = append(outMsg, ret)
 			}

@@ -1,7 +1,6 @@
 package streaming
 
 import (
-	"fmt"
 	"runtime"
 	"time"
 )
@@ -12,9 +11,6 @@ type reconnectDetector struct {
 
 func (r *reconnectDetector) run() {
 	for !r.IsClosed() {
-		// HACK use print to avoid stuck of regression test
-		fmt.Print("")
-		// fmt.Println("streaming reconnect detecting")
 		for _, site := range getAllReconnectSites() {
 			err := r.handleReconnectSites(site)
 			if err != nil {
@@ -46,7 +42,7 @@ func (r *reconnectDetector) handleReconnectSites(site string) error {
 		}
 		err := r.activeCloseConnection(s)
 		if err != nil {
-			fmt.Printf("Failed to reconnect closed connection: %s\n", err.Error())
+			streamingLogErrorf("failed to reconnect closed connection: %v", err)
 			return err
 		}
 
@@ -68,7 +64,7 @@ func (r *reconnectDetector) reconnectWithSite(site string) error {
 
 	err := r.activeCloseConnection(s)
 	if err != nil {
-		fmt.Printf("Failed to reconnect closed connection: %s\n", err.Error())
+		streamingLogErrorf("failed to reconnect closed connection: %v", err)
 		return err
 	}
 

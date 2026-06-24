@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"math/rand"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/dialer"
+	"github.com/dolphindb/api-go/v3/logging"
 	"github.com/dolphindb/api-go/v3/model"
 	"github.com/dolphindb/api-go/v3/test/setup"
 	. "github.com/smartystreets/goconvey/convey"
@@ -146,12 +148,30 @@ func getConnectionAddresses(pool *api.DBConnectionPool) []string {
 	count := chanValue.Len()
 	addresses := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		conn, ok := chanValue.Recv()
+		pc, ok := chanValue.Recv()
 		if !ok {
 			break
 		}
-		addresses = append(addresses, conn.Interface().(dialer.Conn).GetTCPConn().RemoteAddr().String())
-		chanValue.Send(conn)
+
+		// DBConnectionPool 内部 channel 存的是 api.pooledConn，而不是 dialer.Conn。
+		// pooledConn.conn 是未导出字段，直接 Interface() 可能拿不到；因此先把 pc 拷贝到一个可寻址的值上。
+		pcAddr := reflect.New(pc.Type()).Elem()
+		pcAddr.Set(pc)
+		connField := pcAddr.FieldByName("conn")
+		if !connField.IsValid() {
+			chanValue.Send(pc)
+			continue
+		}
+		if !connField.CanInterface() {
+			if connField.CanAddr() {
+				connField = reflect.NewAt(connField.Type(), unsafe.Pointer(connField.UnsafeAddr())).Elem()
+			}
+		}
+		realConn, ok := connField.Interface().(dialer.Conn)
+		if ok {
+			addresses = append(addresses, realConn.GetTCPConn().RemoteAddr().String())
+		}
+		chanValue.Send(pc)
 	}
 
 	return addresses
@@ -445,6 +465,37 @@ func TestDBConnectionPool_ExecuteTask(t *testing.T) {
 		So(task.GetError(), ShouldNotBeNil)
 		So(task.IsSuccess(), ShouldBeFalse)
 		So(pool.IsClosed(), ShouldBeFalse)
+	})
+}
+
+func TestDBConnectionPoolClosedState(t *testing.T) {
+	Convey("Test_function_DBConnectionPoolClosedState", t, func() {
+		opt := &api.PoolOption{
+			Address:     host1,
+			UserID:      setup.UserName,
+			Password:    setup.Password,
+			PoolSize:    1,
+			LoadBalance: false,
+		}
+		pool, err := api.NewDBConnectionPool(opt)
+		So(err, ShouldBeNil)
+		So(pool.IsClosed(), ShouldBeFalse)
+
+		err = pool.Close()
+		So(err, ShouldBeNil)
+		So(pool.IsClosed(), ShouldBeTrue)
+
+		// _, err = pool.Acquire()
+		// So(err, ShouldNotBeNil)
+		// So(err.Error(), ShouldEqual, "connection pool is closed")
+
+		// err = pool.Release(nil)
+		// So(err, ShouldBeNil)
+
+		task := &api.Task{Script: "typestr"}
+		err = pool.ExecuteTask(task)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, "connection pool is closed")
 	})
 }
 
@@ -1007,7 +1058,8 @@ func TestDBConnectionPool_hash_hash_string(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1064,7 +1116,8 @@ func TestDBConnectionPool_value_hash_symbol(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1121,7 +1174,8 @@ func TestDBConnectionPool_hash_hash_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1182,7 +1236,8 @@ func TestDBConnectionPool_value_hash_datetime(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtDatetime, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1242,7 +1297,8 @@ func TestDBConnectionPool_range_hash_date(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtDate, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1303,7 +1359,8 @@ func TestDBConnectionPool_range_range_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1364,7 +1421,8 @@ func TestDBConnectionPool_value_range_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1425,7 +1483,8 @@ func TestDBConnectionPool_range_range_month(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1486,7 +1545,8 @@ func TestDBConnectionPool_hash_range_date(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtNanoTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1547,7 +1607,8 @@ func TestDBConnectionPool_hash_range_datetime(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtDatetime, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1608,7 +1669,8 @@ func TestDBConnectionPool_hash_value_symbol(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtDatetime, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1669,7 +1731,8 @@ func TestDBConnectionPool_value_value_date(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1730,7 +1793,8 @@ func TestDBConnectionPool_value_value_month(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1791,7 +1855,8 @@ func TestDBConnectionPool_range_value_int(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1852,7 +1917,8 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 		So(err, ShouldBeNil)
 		datetimev, err := model.NewDataTypeListFromRawData(model.DtTimestamp, datetimearr)
 		So(err, ShouldBeNil)
-		newtable := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		newtable, err := model.NewTable([]string{"datev", "sym"}, []*model.Vector{model.NewVector(datetimev), model.NewVector(sym)})
+		So(err, ShouldBeNil)
 		for i := 0; i < 100; i++ {
 			num, err := appender.Append(newtable)
 			AssertNil(err)
@@ -1871,6 +1937,96 @@ func TestDBConnectionPool_loadBalance_false(t *testing.T) {
 	})
 }
 
+func TestValidatePartitionedTableAppenderOption(t *testing.T) {
+	Convey("Test_function_ValidatePartitionedTableAppenderOption", t, func() {
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_option_nil", func() {
+			_, err := api.NewPartitionedTableAppender(nil)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender option must not be nil")
+		})
+
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_pool_nil", func() {
+			_, err := api.NewPartitionedTableAppender(&api.PartitionedTableAppenderOption{
+				TableName:    "test",
+				PartitionCol: "col1",
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender connection pool must not be nil")
+		})
+
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_not_set_table_name", func() {
+			pool := CreateDBConnectionPool(2, false)
+			_, err := api.NewPartitionedTableAppender(&api.PartitionedTableAppenderOption{
+				Pool: pool,
+				//TableName:    "",
+				PartitionCol: "col1",
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender table name must not be empty")
+			pool.Close()
+		})
+
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_empty_table_name", func() {
+			pool := CreateDBConnectionPool(2, false)
+			_, err := api.NewPartitionedTableAppender(&api.PartitionedTableAppenderOption{
+				Pool:         pool,
+				TableName:    "",
+				PartitionCol: "col1",
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender table name must not be empty")
+			pool.Close()
+		})
+
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_blank_table_name", func() {
+			pool := CreateDBConnectionPool(2, false)
+			_, err := api.NewPartitionedTableAppender(&api.PartitionedTableAppenderOption{
+				Pool:         pool,
+				TableName:    "   ",
+				PartitionCol: "col1",
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender table name must not be empty")
+			pool.Close()
+		})
+
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_not_set_partition_col", func() {
+			pool := CreateDBConnectionPool(2, false)
+			_, err := api.NewPartitionedTableAppender(&api.PartitionedTableAppenderOption{
+				Pool:      pool,
+				TableName: "test",
+				//PartitionCol: "",
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender partition column must not be empty")
+			pool.Close()
+		})
+
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_empty_partition_col", func() {
+			pool := CreateDBConnectionPool(2, false)
+			_, err := api.NewPartitionedTableAppender(&api.PartitionedTableAppenderOption{
+				Pool:         pool,
+				TableName:    "test",
+				PartitionCol: "",
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender partition column must not be empty")
+			pool.Close()
+		})
+
+		Convey("Test_function_ValidatePartitionedTableAppenderOption_blank_partition_col", func() {
+			pool := CreateDBConnectionPool(2, false)
+			_, err := api.NewPartitionedTableAppender(&api.PartitionedTableAppenderOption{
+				Pool:         pool,
+				TableName:    "test",
+				PartitionCol: "   ",
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "partitioned table appender partition column must not be empty")
+			pool.Close()
+		})
+	})
+}
 func TestPartitionedTableAppender(t *testing.T) {
 	Convey("Test_function_PartitionedTableAppender_prepare", t, func() {
 		Convey("Test_function_PartitionedTableAppender_range_int", func() {
@@ -1901,7 +2057,8 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
@@ -1951,7 +2108,8 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
@@ -2001,7 +2159,8 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
@@ -2051,7 +2210,8 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			num, err := appender.Append(newtable)
 			So(err, ShouldBeNil)
 			So(num, ShouldEqual, 5)
@@ -2101,7 +2261,8 @@ func TestPartitionedTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			num, err := appender.Append(newtable)
 			// fmt.Println(newtable)
 			So(err, ShouldBeNil)
@@ -2307,6 +2468,24 @@ func TestDBConnectionPool_task(t *testing.T) {
 
 func TestTableAppender(t *testing.T) {
 	Convey("Test_function_TableAppender_prepare", t, func() {
+		Convey("Test_function_TableAppender_option_nil", func() {
+			_, err := api.NewTableAppender(nil)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "table appender option must not be nil")
+		})
+
+		Convey("Test_function_TableAppender_conn_nil", func() {
+			_, err := api.NewTableAppender(&api.TableAppenderOption{TableName: "pt"})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "table appender connection must not be nil")
+		})
+
+		Convey("Test_function_TableAppender_TableName_not_set", func() {
+			_, err := api.NewTableAppender(&api.TableAppenderOption{Conn: globalConn})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "table appender table name must not be empty")
+		})
+
 		Convey("Test_function_TableAppender_range_int", func() {
 			tb := "test_akldwjgof"
 			_, err := globalConn.RunScript(tb + `= table(100:0, ["sym", "id", "datev", "price"],[SYMBOL, INT, DATE, DOUBLE])`)
@@ -2315,7 +2494,8 @@ func TestTableAppender(t *testing.T) {
 				TableName: tb,
 				Conn:      globalConn,
 			}
-			appender := api.NewTableAppender(appenderOpt)
+			appender, err := api.NewTableAppender(appenderOpt)
+			So(err, ShouldBeNil)
 			sym, err := model.NewDataTypeListFromRawData(model.DtString, []string{"AAPL", "BLS", "DBKS", "NDLN", "DBKS"})
 			So(err, ShouldBeNil)
 			id, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{2, 10, 12, 22, 23})
@@ -2324,7 +2504,8 @@ func TestTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			// fmt.Println(newtable)
 			_, err = appender.Append(newtable)
 			So(err, ShouldBeNil)
@@ -2349,6 +2530,20 @@ func TestTableAppender(t *testing.T) {
 			IsClose = appender.IsClosed()
 			So(IsClose, ShouldBeTrue)
 		})
+
+		Convey("Test_function_TableAppender_schema_request_error", func() {
+			conn, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, setup.UserName, setup.Password)
+			So(err, ShouldBeNil)
+			defer conn.Close()
+
+			_, err = api.NewTableAppender(&api.TableAppenderOption{
+				TableName: "table_does_not_exist_12345",
+				Conn:      conn,
+			})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, " Cannot recognize the token table_does_not_exist_12345")
+		})
+
 		Convey("Test_function_TableAppender_disk", func() {
 			globalConnx, err := api.NewSimpleDolphinDBClient(context.TODO(), host1, setup.UserName, setup.Password)
 			So(err, ShouldBeNil)
@@ -2366,7 +2561,8 @@ func TestTableAppender(t *testing.T) {
 				TableName: "pt",
 				Conn:      globalConnx,
 			}
-			appender := api.NewTableAppender(appenderOpt)
+			appender, err := api.NewTableAppender(appenderOpt)
+			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
 			sym, err := model.NewDataTypeListFromRawData(model.DtString, []string{"A1", "A2", "A3", "A4", "A5"})
 			So(err, ShouldBeNil)
@@ -2376,7 +2572,8 @@ func TestTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			_, err = appender.Append(newtable)
 			So(err, ShouldBeNil)
 			re, err := globalConnx.RunScript("select * from loadTable(\"" + DiskDBPath + "\", 'pt') order by id, sym, datev, price")
@@ -2420,7 +2617,8 @@ func TestTableAppender(t *testing.T) {
 				TableName: "pt",
 				Conn:      globalConnx,
 			}
-			appender := api.NewTableAppender(appenderOpt)
+			appender, err := api.NewTableAppender(appenderOpt)
+			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
 			sym, err := model.NewDataTypeListFromRawData(model.DtString, []string{"A1", "A2", "A3", "A4", "A5"})
 			So(err, ShouldBeNil)
@@ -2430,7 +2628,8 @@ func TestTableAppender(t *testing.T) {
 			So(err, ShouldBeNil)
 			price, err := model.NewDataTypeListFromRawData(model.DtDouble, []float64{21.2, 4.4, 5.5, 2.3, 6.6})
 			So(err, ShouldBeNil)
-			newtable := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			newtable, err := model.NewTable([]string{"sym", "id", "datev", "price"}, []*model.Vector{model.NewVector(sym), model.NewVector(id), model.NewVector(datev), model.NewVector(price)})
+			So(err, ShouldBeNil)
 			_, err = appender.Append(newtable)
 			So(err, ShouldBeNil)
 			re, err := globalConnx.RunScript("select * from loadTable('" + DfsDBPath + "', 'pt') order by id, sym, datev, price")
@@ -2583,11 +2782,9 @@ func TestConnnectionPoolOption(t *testing.T) {
 		tasks := make([]*api.Task, 1)
 		tasks[0] = &api.Task{Script: "sleep(62000);go;1+1"}
 		err = pool.Execute(tasks)
-		So(err, ShouldBeNil)
-		if tasks[0].GetError() != nil {
-			threadErr := tasks[0].GetError().Error()
-			So(threadErr, ShouldContainSubstring, "timeout")
-		}
+		// So(err, ShouldBeNil)
+		So(tasks[0].GetError(), ShouldNotBeNil)
+		So(tasks[0].GetError().Error(), ShouldContainSubstring, "timeout")
 	})
 	Convey("TestConnnectionPoolOption_RefreshTimeout", t, func() {
 		opt := &api.PoolOption{
@@ -2610,7 +2807,14 @@ func TestConnnectionPoolOption(t *testing.T) {
 			tasks[i] = &api.Task{Script: "1+1"}
 		}
 		err = pool.Execute(tasks)
-		So(err, ShouldBeNil)
+		for i := 0; i < 10; i++ {
+			if i > 4 {
+				So(tasks[i].GetError(), ShouldNotBeNil)
+				So(tasks[i].GetError().Error(), ShouldContainSubstring, "timeout")
+				continue
+			}
+			So(tasks[i].GetError(), ShouldBeNil)
+		}
 		for i := 0; i < 10; i++ {
 			succeed := false
 			for {
@@ -2661,8 +2865,8 @@ func TestConnnectionPoolOption(t *testing.T) {
 		tasks[0] = &api.Task{Script: "sleep(30000);go;1+1"}
 		start := time.Now()
 		err = pool.Execute(tasks)
-		So(err, ShouldBeNil)
-		// fmt.Println("err: ",tasks[0].GetError().Error())
+		// So(err, ShouldBeNil)
+		So(tasks[0].GetError(), ShouldNotBeNil)
 		So(tasks[0].GetError().Error(), ShouldContainSubstring, "timeout")
 		end := time.Now()
 		So(end.Sub(start).Seconds(), ShouldBeGreaterThanOrEqualTo, 2)
@@ -2801,7 +3005,8 @@ func TestTableAppender_SCRAM(t *testing.T) {
 			Conn:      conn,
 			TableName: "t2",
 		}
-		appender := api.NewTableAppender(appenderOpt)
+		appender, err := api.NewTableAppender(appenderOpt)
+		So(err, ShouldBeNil)
 		So(err, ShouldBeNil)
 		_, err = appender.Append(data.(*model.Table))
 		So(err, ShouldBeNil)
@@ -2814,7 +3019,37 @@ func TestTableAppender_SCRAM(t *testing.T) {
 }
 
 // https://dolphindb1.atlassian.net/browse/AG-175
-func TestConnnectionPoolOption_reconnect_true_TryReconnectNums_ConnectionNum(t *testing.T) {
+func TestConnnectionPoolOption_reconnect_true_TryReconnectNums(t *testing.T) {
+	Convey("TestConnnectionPoolOption_reconnect_true_TryReconnectNums_negative", t, func() {
+		reconnNum := -10
+		opt := api.PoolOption{
+			Address:          setup.CtlAdress,
+			UserID:           setup.UserName,
+			Password:         setup.Password,
+			PoolSize:         10,
+			Reconnect:        true,
+			TryReconnectNums: &reconnNum,
+		}
+		_, err := api.NewDBConnectionPool(&opt)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "TryReconnectNums must be nil or greater than 0")
+	})
+
+	Convey("TestConnnectionPoolOption_reconnect_true_TryReconnectNums_0", t, func() {
+		reconnNum := 0
+		opt := api.PoolOption{
+			Address:          setup.CtlAdress,
+			UserID:           setup.UserName,
+			Password:         setup.Password,
+			PoolSize:         10,
+			Reconnect:        true,
+			TryReconnectNums: &reconnNum,
+		}
+		_, err := api.NewDBConnectionPool(&opt)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "TryReconnectNums must be nil or greater than 0")
+	})
+
 	Convey("TestConnnectionPoolOption_reconnect_true_TryReconnectNums_ConnectionNum", t, func() {
 		connCtl, _ := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
 		time.Sleep(2 * time.Second)
@@ -2870,12 +3105,13 @@ func TestConnnectionPoolOption_SqlStd(t *testing.T) {
 
 				task := &api.Task{Script: "sysdate()"}
 				err = pool.Execute([]*api.Task{task})
-				So(err, ShouldBeNil)
 
 				if tc.shouldFail {
 					So(task.GetError(), ShouldNotBeNil)
 					So(task.GetError().Error(), ShouldContainSubstring, "sysdate")
 					return
+				} else {
+					So(err, ShouldBeNil)
 				}
 
 				So(task.GetError(), ShouldBeNil)
@@ -2926,6 +3162,28 @@ func TestConnnectionPoolOption_NetTimeout(t *testing.T) {
 }
 
 func TestDBConnectionPool_Address_disconnection(t *testing.T) {
+	logging.SetLogger(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	SkipConvey("TestDBConnectionPool_Address_disconnection_EnableHighAvailability_true_TryReconnectNums_nil", t, func() {
+		//
+		time.Sleep(3 * time.Second)
+		//reconnNum := 3
+		opt := &api.PoolOption{
+			Address:  "192.168.0.69:7100",
+			UserID:   setup.UserName,
+			Password: setup.Password,
+			PoolSize: 5,
+			Timeout:  time.Second * 2,
+			//Reconnect:              true,
+			TryReconnectNums: nil,
+			//LoadBalance:            true,
+			//LoadBalanceAddresses:   []string{setup.Address2, setup.Address3, setup.Address4},
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  []string{"192.168.0.69:7200"},
+		}
+		api.NewDBConnectionPool(opt)
+		//无限重连
+	})
+
 	SkipConvey("TestDBConnectionPool_Address_disconnection_EnableHighAvailability_true_TryReconnectNums_notSet", t, func() {
 		//
 		time.Sleep(3 * time.Second)
@@ -2946,10 +3204,10 @@ func TestDBConnectionPool_Address_disconnection(t *testing.T) {
 		api.NewDBConnectionPool(opt)
 		//无限重连
 	})
-	SkipConvey("TestDBConnectionPool_Address_disconnection_EnableHighAvailability_true_TryReconnectNums_10", t, func() {
+	SkipConvey("TestDBConnectionPool_Address_disconnection_EnableHighAvailability_true_TryReconnectNums_5", t, func() {
 		//
 		time.Sleep(3 * time.Second)
-		reconnNum := 10
+		reconnNum := 5
 		opt := &api.PoolOption{
 			Address:  "192.168.0.69:7100",
 			UserID:   setup.UserName,
@@ -2964,7 +3222,7 @@ func TestDBConnectionPool_Address_disconnection(t *testing.T) {
 			HighAvailabilitySites:  []string{"192.168.0.69:7200"},
 		}
 		api.NewDBConnectionPool(opt)
-		//重连10次后不再重连
+		//重连5次后不再重连
 	})
 
 	Convey("TestDBConnectionPool_Address_stop_start_EnableHighAvailability_true", t, func() {
@@ -3268,15 +3526,17 @@ func TestDBConnectionPool_tableInsert_haStreamTable_follower(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(leaderPool, ShouldNotBeNil)
 		defer leaderPool.Close()
-
+		fmt.Println("--------------------1111111111111------------------------------------")
 		followerPool, err := api.NewDBConnectionPool(&api.PoolOption{
 			Address:                setup.IP + ":" + strconv.Itoa(followerPort),
 			UserID:                 setup.UserName,
 			Password:               setup.Password,
-			PoolSize:               1,
+			PoolSize:               10,
 			EnableHighAvailability: true,
 			HighAvailabilitySites:  setup.HA_sites,
 		})
+		So(followerPool.GetPoolSize(), ShouldEqual, 10)
+		fmt.Println("-------------------------222222222222-------------------------------")
 		So(err, ShouldBeNil)
 		So(followerPool, ShouldNotBeNil)
 		defer followerPool.Close()
@@ -3291,13 +3551,197 @@ func TestDBConnectionPool_tableInsert_haStreamTable_follower(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		time.Sleep(3 * time.Second)
+		fmt.Println("--------------------------tableInsert之前------------------------------")
 		insertTask := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
 		err = followerPool.ExecuteTask(insertTask)
+		fmt.Println("--------------------------tableInsert之后------------------------------")
+		So(followerPool.GetPoolSize(), ShouldEqual, 10)
 		So(err, ShouldBeNil)
+		time.Sleep(10 * time.Second)
 
 		checkTask := &api.Task{Script: "each(eqObj, (select * from haStreamTable1).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()"}
 		err = followerPool.ExecuteTask(checkTask)
 		So(err, ShouldBeNil)
 		So(checkTask.GetResult().(*model.Scalar).Value().(bool), ShouldBeTrue)
+		fmt.Println("--------------------------tableInsert之前1111111------------------------------")
+		insertTask1 := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+		err = followerPool.ExecuteTask(insertTask1)
+		fmt.Println("--------------------------tableInsert之前22222------------------------------")
+		time.Sleep(3 * time.Second)
+		checkTask1 := &api.Task{Script: "exec count(*) from haStreamTable1"}
+		err = followerPool.ExecuteTask(checkTask1)
+
+		So(err, ShouldBeNil)
+		So(checkTask1.GetResult().(*model.Scalar).Value().(int32), ShouldEqual, 200)
+
+		followerPool.Close()
+		So(followerPool.GetPoolSize(), ShouldEqual, 0)
+	})
+
+	Convey("TestDBConnectionPool_tableInsert_haStreamTable_follower1", t, func() {
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getStreamingLeader(11);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+
+		followerRes, err := conn.RunScript("tmp1=(exec sites[0] from getStreamingRaftGroups() where raftGroupName==\"11\").split(\",\");\ntmp2=each(x->split(x, \":\")[2],tmp1);\nexec port from rpc(getControllerAlias(), getClusterPerf) where name in tmp2  and name!=getStreamingLeader(11) limit 1;\n")
+		So(err, ShouldBeNil)
+		followerPort := int(followerRes.(*model.Vector).Get(0).Value().(int32))
+
+		leaderPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(leaderPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(leaderPool, ShouldNotBeNil)
+		defer leaderPool.Close()
+		fmt.Println("--------------------1111111111111------------------------------------")
+		followerPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(followerPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               10,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+
+		followerPool1, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(followerPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               5,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		fmt.Println("followerPool.GetPoolSize():", followerPool1.GetPoolSize())
+		fmt.Println("-------------------------222222222222-------------------------------")
+		So(err, ShouldBeNil)
+		So(followerPool1, ShouldNotBeNil)
+		defer followerPool1.Close()
+
+		tmp, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		createTask := &api.Task{Script: "try{dropStreamTable(\"haStreamTable1\")}catch(ex){};\n go;\n haStreamTable(11, table(array(INT) as intv,array(SYMBOL) as symbolv),\"haStreamTable1\",100000)"}
+		err = leaderPool.ExecuteTask(createTask)
+		So(err, ShouldBeNil)
+
+		time.Sleep(3 * time.Second)
+		fmt.Println("--------------------------tableInsert之前------------------------------")
+		insertTask := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+		err = followerPool.ExecuteTask(insertTask)
+		fmt.Println("--------------------------tableInsert之后------------------------------")
+		fmt.Println("followerPool.GetPoolSize():", followerPool.GetPoolSize())
+		So(err, ShouldBeNil)
+		time.Sleep(3 * time.Second)
+
+		checkTask := &api.Task{Script: "each(eqObj, (select * from haStreamTable1).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()"}
+		err = followerPool.ExecuteTask(checkTask)
+		So(err, ShouldBeNil)
+		So(checkTask.GetResult().(*model.Scalar).Value().(bool), ShouldBeTrue)
+		fmt.Println("--------------------------tableInsert之前1111111------------------------------")
+		insertTask1 := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+		err = followerPool1.ExecuteTask(insertTask1)
+		fmt.Println("--------------------------tableInsert之后22222------------------------------")
+		time.Sleep(3 * time.Second)
+
+		checkTask1 := &api.Task{Script: "exec count(*) from haStreamTable1"}
+		err = followerPool1.ExecuteTask(checkTask1)
+		So(err, ShouldBeNil)
+		So(checkTask1.GetResult().(*model.Scalar).Value().(int32), ShouldEqual, 200)
+	})
+
+	Convey("TestDBConnectionPool_tableInsert_haStreamTable_follower2", t, func() {
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		leaderRes, err := conn.RunScript(" exec port from rpc(getControllerAlias(), getClusterPerf) where name=getStreamingLeader(11);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+
+		followerRes, err := conn.RunScript("tmp1=(exec sites[0] from getStreamingRaftGroups() where raftGroupName==\"11\").split(\",\");\ntmp2=each(x->split(x, \":\")[2],tmp1);\nexec port from rpc(getControllerAlias(), getClusterPerf) where name in tmp2  and name!=getStreamingLeader(11) limit 1;\n")
+		So(err, ShouldBeNil)
+		followerPort := int(followerRes.(*model.Vector).Get(0).Value().(int32))
+
+		leaderPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(leaderPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               1,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		So(err, ShouldBeNil)
+		So(leaderPool, ShouldNotBeNil)
+		defer leaderPool.Close()
+		fmt.Println("--------------------1111111111111------------------------------------")
+		followerPool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(followerPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               10,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+
+		followerPool1, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(followerPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               5,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+		})
+		fmt.Println("followerPool.GetPoolSize():", followerPool1.GetPoolSize())
+		fmt.Println("-------------------------222222222222-------------------------------")
+		So(err, ShouldBeNil)
+		So(followerPool1, ShouldNotBeNil)
+		defer followerPool1.Close()
+
+		tmp, err := conn.RunScript("table(1..100 as intv,take(`qq`ee`rr,100) as symbolv)")
+		So(err, ShouldBeNil)
+		So(tmp, ShouldNotBeNil)
+
+		values := []model.DataForm{tmp}
+		createTask := &api.Task{Script: "try{dropStreamTable(\"haStreamTable1\")}catch(ex){};\n go;\n haStreamTable(11, table(array(INT) as intv,array(SYMBOL) as symbolv),\"haStreamTable1\",100000)"}
+		err = leaderPool.ExecuteTask(createTask)
+		So(err, ShouldBeNil)
+
+		time.Sleep(3 * time.Second)
+		fmt.Println("--------------------------tableInsert之前------------------------------")
+		insertTask := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+		err = followerPool.ExecuteTask(insertTask)
+		fmt.Println("--------------------------tableInsert之后------------------------------")
+		fmt.Println("followerPool.GetPoolSize():", followerPool.GetPoolSize())
+		So(err, ShouldBeNil)
+		time.Sleep(3 * time.Second)
+
+		checkTask := &api.Task{Script: "each(eqObj, (select * from haStreamTable1).values(), table(1..100 as intv,take(`qq`ee`rr,100) as symbolv).values()).all()"}
+		err = followerPool.ExecuteTask(checkTask)
+		So(err, ShouldBeNil)
+		So(checkTask.GetResult().(*model.Scalar).Value().(bool), ShouldBeTrue)
+
+		insertTask1 := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+		err = followerPool.ExecuteTask(insertTask1)
+
+		time.Sleep(3 * time.Second)
+		fmt.Println("--------------------------tableInsert之前1111111------------------------------")
+		checkTask1 := &api.Task{Script: "exec count(*) from haStreamTable1"}
+		err = followerPool1.ExecuteTask(checkTask1)
+		fmt.Println("--------------------------tableInsert之后22222------------------------------")
+		So(err, ShouldBeNil)
+		So(checkTask1.GetResult().(*model.Scalar).Value().(int32), ShouldEqual, 200)
 	})
 }

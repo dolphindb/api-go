@@ -7,10 +7,10 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-var API_VERSION = "3.0.5"
+const Version = "3.1.0"
 
 func GetAPIVersion() string {
-	return API_VERSION
+	return Version
 }
 
 func generateDBName() string {

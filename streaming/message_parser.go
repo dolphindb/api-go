@@ -3,7 +3,6 @@ package streaming
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -67,14 +66,14 @@ func (m *messageParser) run() {
 func (m *messageParser) parseHeader(r protocol.Reader, bo protocol.ByteOrder) (uint64, error) {
 	bytes, err := r.ReadCertainBytes(16)
 	if err != nil {
-		fmt.Printf("Failed to read msgID from conn: %s\n", err.Error())
+		streamingLogErrorf("failed to read msgID from conn: %v", err)
 		return 0, err
 	}
 
 	msgID := bo.Uint64(bytes[8:])
 	bytes, err = r.ReadBytes(protocol.StringSep)
 	if err != nil {
-		fmt.Printf("Failed to read topic from conn: %s\n", err.Error())
+		streamingLogErrorf("failed to read topic from conn: %v", err)
 		return 0, err
 	}
 
@@ -98,7 +97,7 @@ func (m *messageParser) parse() error {
 				return err
 			}
 
-			fmt.Printf("Failed to read ByteOrder byte from conn: %s\n", err.Error())
+			streamingLogErrorf("failed to read ByteOrder byte from conn: %v", err)
 			return err
 		}
 
@@ -109,7 +108,7 @@ func (m *messageParser) parse() error {
 
 		msgID, err := m.parseHeader(r, bo)
 		if err != nil {
-			fmt.Printf("Failed to parse header: %s\n", err.Error())
+			streamingLogErrorf("failed to parse header: %v", err)
 			return err
 		}
 
@@ -125,7 +124,7 @@ func (m *messageParser) parse() error {
 func (m *messageParser) parseData(msgID uint64, r protocol.Reader, bo protocol.ByteOrder) error {
 	df, err := model.ParseDataForm(r, bo)
 	if err != nil {
-		fmt.Printf("Failed to parse DataForm: %s\n", err.Error())
+		streamingLogErrorf("failed to parse DataForm: %v", err)
 		return err
 	}
 
@@ -135,7 +134,7 @@ func (m *messageParser) parseData(msgID uint64, r protocol.Reader, bo protocol.B
 	case df.GetDataForm() == model.DfVector:
 		m.parseVector(msgID, df.(*model.Vector))
 	default:
-		fmt.Println("Invalid format in the message body. Vector or table is expected")
+		streamingLogErrorf("invalid format in the message body; vector or table is expected")
 	}
 
 	return nil
@@ -145,6 +144,11 @@ func (m *messageParser) parseTable(tb *model.Table) {
 	for _, v := range strings.Split(m.topic, ",") {
 		// TODO bad design
 		setReconnectItem(v, 0)
+	}
+
+	if tb == nil || tb.Columns() == 0 {
+		streamingLogWarnf("ignore empty schema table for topic %q", m.topic)
+		return
 	}
 
 	nameToIndex := make(map[string]int)
@@ -166,9 +170,20 @@ func (m *messageParser) isTupleMsg(firstElement model.DataForm) bool {
 
 func (m *messageParser) parseVector(msgID uint64, vct *model.Vector) {
 	colSize := vct.Rows()
-	rowSize := vct.Data.ElementValue(0).(model.DataForm).Rows()
+	if vct == nil || colSize == 0 {
+		streamingLogWarnf("ignore empty vector payload for topic %q", m.topic)
+		return
+	}
+
+	first, ok := vct.Data.ElementValue(0).(model.DataForm)
+	if !ok || first == nil {
+		streamingLogWarnf("ignore invalid vector payload for topic %q", m.topic)
+		return
+	}
+
+	rowSize := first.Rows()
 	// form := vct.Data.ElementValue(0).(model.DataForm).GetDataForm()
-	if m.isTupleMsg(vct.Data.ElementValue(0).(model.DataForm)) {
+	if m.isTupleMsg(first) {
 		dispatch(m.generateMessage(int64(msgID), vct))
 	} else {
 		m.parseVectorWithMultiRows(rowSize, colSize, msgID, vct)

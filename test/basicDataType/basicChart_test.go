@@ -1,0 +1,208 @@
+package test
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/dialer/protocol"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/test/setup"
+	. "github.com/smartystreets/goconvey/convey"
+)
+
+func Test_Chart_DownLoad_DataType(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Chart:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_chart_plot:", func() {
+			s, err := db.RunScript("x=1*(1..5);t=table(x);plot(t,x)")
+			So(err, ShouldBeNil)
+			result := s.(*model.Chart)
+			re := result.String()
+			So(re, ShouldNotBeNil)
+			reType := result.GetDataType()
+			So(reType, ShouldEqual, 25)
+			reTypeString := result.GetDataTypeString()
+			So(reTypeString, ShouldEqual, "any")
+			form := result.GetDataForm()
+			So(form, ShouldEqual, model.DfChart)
+			row := result.Rows()
+			So(row, ShouldEqual, model.DtInt)
+			title := result.GetTitle()
+			So(title, ShouldEqual, "")
+			ctype := result.GetChartType()
+			So(ctype, ShouldEqual, "CT_LINE")
+			xna := result.GetXAxisName()
+			yna := result.GetYAxisName()
+			So(xna, ShouldEqual, "x")
+			So(yna, ShouldEqual, "")
+			by := bytes.NewBufferString("")
+			w := protocol.NewWriter(by)
+			err = result.Render(w, protocol.LittleEndian)
+			So(err, ShouldBeNil)
+			w.Flush()
+			by.Reset()
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Chart_DownLoad_DataType_boundary(t *testing.T) {
+	t.Parallel()
+	Convey("Test_chart_boundary:", t, func() {
+		Convey("Test_chart_boundary_empty_metadata:", func() {
+			ch, err := model.NewChart(map[string]model.DataForm{})
+			So(err, ShouldNotBeNil)
+			So(ch, ShouldBeNil)
+		})
+
+		Convey("Test_chart_boundary_partial_metadata:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3})
+			So(err, ShouldBeNil)
+			mtx, err := model.NewMatrix(model.NewVector(dtl), nil, nil)
+			So(err, ShouldBeNil)
+			ch, err := model.NewChart(map[string]model.DataForm{"data": mtx})
+			So(err, ShouldBeNil)
+			So(ch.Rows(), ShouldEqual, 1)
+			So(ch.Data.Rows(), ShouldEqual, 3)
+			So(ch.GetTitle(), ShouldEqual, "")
+			So(ch.GetXAxisName(), ShouldEqual, "")
+			So(ch.GetYAxisName(), ShouldEqual, "")
+		})
+
+		Convey("Test_chart_boundary_unsupported_field:", func() {
+			_, err := model.NewChart(map[string]model.DataForm{"unknown": nil})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "unsupported chart field \"unknown\"")
+		})
+
+		Convey("Test_chart_boundary_invalid_title_type:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1})
+			So(err, ShouldBeNil)
+			mtx, err := model.NewMatrix(model.NewVector(dtl), nil, nil)
+			So(err, ShouldBeNil)
+			_, err = model.NewChart(map[string]model.DataForm{"title": mtx})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "chart field \"title\" must be *Vector or *Scalar")
+		})
+
+		Convey("Test_chart_boundary_invalid_data_type:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3})
+			So(err, ShouldBeNil)
+			_, err = model.NewChart(map[string]model.DataForm{"data": model.NewVector(dtl)})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "chart field \"data\" must be *Matrix")
+		})
+	})
+}
+func Test_Chart_UpLoad_DataType(t *testing.T) {
+	t.Parallel()
+	Convey("Test_Chart_upload:", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		Convey("Test_chart_upload:", func() {
+			dtl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"chart", "xaxis", "yaxis"})
+			So(err, ShouldBeNil)
+			So(dtl.DataType(), ShouldEqual, model.DtString)
+			dl, err := model.NewDataTypeListFromRawData(model.DtString, []string{"chart", "xaxis", "yaxis"})
+			So(err, ShouldBeNil)
+			ti := model.NewVector(dl)
+			dt, err := model.NewDataType(model.DtInt, int32(4))
+			So(err, ShouldBeNil)
+			ct := model.NewScalar(dt)
+			dt, err = model.NewDataType(model.DtBool, byte(0))
+			So(err, ShouldBeNil)
+			st := model.NewScalar(dt)
+			d, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3, 4, 5})
+			So(err, ShouldBeNil)
+			rl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2, 3, 4, 5})
+			So(err, ShouldBeNil)
+			cl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1})
+			So(err, ShouldBeNil)
+			data, err := model.NewMatrix(model.NewVector(d), model.NewVector(rl), model.NewVector(cl))
+			So(err, ShouldBeNil)
+			ch, err := model.NewChart(map[string]model.DataForm{
+				"title":     ti,
+				"chartType": ct,
+				"stacking":  st,
+				"data":      data,
+			})
+			So(err, ShouldBeNil)
+			fmt.Print(ch)
+			So(ch.GetDataForm(), ShouldEqual, model.DfChart)
+			So(ch.GetDataType(), ShouldEqual, model.DtAny)
+			So(ch.GetDataTypeString(), ShouldEqual, "any")
+			So(ch.GetTitle(), ShouldEqual, "chart")
+			So(ch.GetXAxisName(), ShouldEqual, "xaxis")
+			So(ch.GetYAxisName(), ShouldEqual, "yaxis")
+			So(ch.GetChartType(), ShouldEqual, "CT_LINE")
+			_, err = db.Upload(map[string]model.DataForm{"s": ch})
+			res, _ := db.RunScript("s")
+			ty, _ := db.RunScript("typestr(s)")
+			fmt.Print(res)
+			re := res.(*model.Dictionary).Values
+			So(re.Get(3).String(), ShouldEqual, data.String())
+			So(re.Get(2).String(), ShouldEqual, st.String())
+			So(re.Get(1).String(), ShouldEqual, ct.String())
+			So(re.Get(0).String(), ShouldEqual, ti.String())
+			fmt.Print(re)
+			So(err, ShouldBeNil)
+			So(ty.String(), ShouldEqual, "string(STRING->ANY DICTIONARY)")
+			So(res.GetDataType(), ShouldEqual, model.DtAny)
+		})
+		So(db.Close(), ShouldBeNil)
+	})
+}
+
+func Test_Chart(t *testing.T) {
+	Convey("Test_Chart_withExtras", t, func() {
+		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+
+		titleDt, err := model.NewDataType(model.DtString, "title")
+		So(err, ShouldBeNil)
+		title := model.NewScalar(titleDt)
+
+		dtKey, err := model.NewDataTypeListFromRawData(model.DtString, []string{"key1", "key2"})
+		So(err, ShouldBeNil)
+		keys := model.NewVector(dtKey)
+
+		dtVal, err := model.NewDataTypeListFromRawData(model.DtString, []string{"val1", "val2"})
+		So(err, ShouldBeNil)
+		vals := model.NewVector(dtVal)
+		extras, err := model.NewDictionary(keys, vals)
+		So(err, ShouldBeNil)
+		ch, err := model.NewChart(map[string]model.DataForm{"extras": extras})
+		So(err, ShouldBeNil)
+
+		ch.Title = title
+		So(ch.GetTitle(), ShouldEqual, "title")
+		So(ch.GetChartType(), ShouldEqual, "")
+		So(ch.GetXAxisName(), ShouldEqual, "")
+		So(ch.GetYAxisName(), ShouldEqual, "")
+		So(ch.String(), ShouldNotBeNil)
+
+		ch.Title = nil
+		So(ch.GetTitle(), ShouldEqual, "")
+		So(ch.GetXAxisName(), ShouldEqual, "")
+		So(ch.GetYAxisName(), ShouldEqual, "")
+		So(ch.String(), ShouldNotBeNil)
+
+		_, err = db.Upload(map[string]model.DataForm{"ch": ch})
+		So(err, ShouldBeNil)
+
+		t, err := model.NewDataTypeListFromRawData(model.DtString, []string{"title"})
+		So(err, ShouldBeNil)
+		ch.Title = model.NewVector(t)
+		So(ch.GetXAxisName(), ShouldEqual, "")
+		So(ch.GetYAxisName(), ShouldEqual, "")
+
+		ch.Title = ch
+		ch.Stacking = model.NullAny
+		So(ch.String(), ShouldNotBeEmpty)
+	})
+}

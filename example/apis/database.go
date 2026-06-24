@@ -1,9 +1,8 @@
 package apis
 
 import (
-	"fmt"
-
 	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/logging"
 )
 
 // Database checks whether the Database api is valid.
@@ -12,8 +11,7 @@ func Database(db api.DolphinDB) (*api.Database, error) {
 		SetDirectory(dbPath).
 		SetDBHandle(dbName)
 	dt, err := db.Database(d)
-
-	fmt.Println("CreateDatabase")
+	logging.Info("example.apis", "create database")
 	return dt, err
 }
 
@@ -28,8 +26,7 @@ func SegmentDatabase(db api.DolphinDB) (*api.Database, error) {
 		SetAtomic("").
 		SetDBHandle(dbName)
 	dt, err := db.Database(d)
-
-	fmt.Println("CreateSegmentDatabase")
+	logging.Info("example.apis", "create segment database")
 	return dt, err
 }
 
@@ -38,8 +35,7 @@ func DropSegmentDatabase(db api.DolphinDB) error {
 	d := new(api.DropDatabaseRequest).
 		SetDirectory(segmentDBPath)
 	err := db.DropDatabase(d)
-
-	fmt.Println("DropSegmentDatabase")
+	logging.Info("example.apis", "drop segment database")
 	return err
 }
 
@@ -48,8 +44,7 @@ func DropDatabase(db api.DolphinDB) error {
 	d := new(api.DropDatabaseRequest).
 		SetDirectory(dbPath)
 	err := db.DropDatabase(d)
-
-	fmt.Println("DropDatabase")
+	logging.Info("example.apis", "drop database")
 	return err
 }
 
@@ -58,7 +53,6 @@ func ExistsDatabase(db api.DolphinDB) error {
 	d := new(api.ExistsDatabaseRequest).
 		SetPath(dbPath)
 	b, err := db.ExistsDatabase(d)
-
-	fmt.Println("ExistsDatabase", b)
+	logging.Info("example.apis", "exists database", "exists", b)
 	return err
 }

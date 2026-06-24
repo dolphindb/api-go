@@ -21,7 +21,7 @@ type RingBuffer struct {
 
 func NewRingBuffer(initialSize int) *RingBuffer {
 	if initialSize <= 0 {
-		panic("initial size must be great than zero")
+		initialSize = 2
 	}
 	// initial size must >= 2
 	if initialSize == 1 {
@@ -52,7 +52,7 @@ func (r *RingBuffer) Read() (T, error) {
 func (r *RingBuffer) Pop() T {
 	v, err := r.Read()
 	if err == ErrIsEmpty { // Empty
-		panic(ErrIsEmpty.Error())
+		return nil
 	}
 
 	return v
@@ -60,7 +60,7 @@ func (r *RingBuffer) Pop() T {
 
 func (r *RingBuffer) Peek() T {
 	if r.r == r.w { // Empty
-		panic(ErrIsEmpty.Error())
+		return nil
 	}
 
 	v := r.buf[r.r]

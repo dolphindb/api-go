@@ -2,11 +2,11 @@ package script
 
 import (
 	"bytes"
-	"fmt"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/logging"
 	"github.com/dolphindb/api-go/v3/model"
 )
 
@@ -42,7 +42,8 @@ func CheckDataForm(db api.DolphinDB) {
 	vct := model.NewVector(dls)
 	av := model.NewArrayVector([]*model.Vector{vct})
 
-	avc := model.NewVectorWithArrayVector(av)
+	avc, err := model.NewVectorWithArrayVector(av)
+	util.AssertNil(err)
 	_, err = db.Upload(map[string]model.DataForm{"arrvec": avc})
 	util.AssertNil(err)
 
@@ -64,7 +65,8 @@ func CheckDataForm(db api.DolphinDB) {
 	util.AssertEqual(res.GetDataForm(), model.DfScalar)
 
 	// test render datatform set
-	set := model.NewSet(vc)
+	set, err := model.NewSet(vc)
+	util.AssertNil(err)
 	_, err = db.Upload(map[string]model.DataForm{"set": set})
 	util.AssertNil(err)
 
@@ -75,7 +77,8 @@ func CheckDataForm(db api.DolphinDB) {
 	util.AssertEqual(res.GetDataForm(), model.DfSet)
 
 	// test render datatform table
-	tb := model.NewTable([]string{"key"}, []*model.Vector{vc})
+	tb, err := model.NewTable([]string{"key"}, []*model.Vector{vc})
+	util.AssertNil(err)
 	_, err = db.Upload(map[string]model.DataForm{"table": tb})
 	util.AssertNil(err)
 
@@ -89,7 +92,8 @@ func CheckDataForm(db api.DolphinDB) {
 	util.AssertNil(err)
 
 	// test render datatform dictionary
-	dict := model.NewDictionary(vc, vc)
+	dict, err := model.NewDictionary(vc, vc)
+	util.AssertNil(err)
 	_, err = db.Upload(map[string]model.DataForm{"dict": dict})
 	util.AssertNil(err)
 
@@ -103,7 +107,8 @@ func CheckDataForm(db api.DolphinDB) {
 
 	// test render datatform pair
 	vc = model.NewVector(model.NewDataTypeList(model.DtString, []model.DataType{dt, dt1}))
-	pair := model.NewPair(vc)
+	pair, err := model.NewPair(vc)
+	util.AssertNil(err)
 
 	_, err = db.Upload(map[string]model.DataForm{"pair": pair})
 	util.AssertNil(err)
@@ -128,7 +133,7 @@ func CheckDataForm(db api.DolphinDB) {
 	util.AssertEqual(res.String(), mtr.String())
 	util.AssertEqual(res.GetDataForm(), model.DfMatrix)
 
-	fmt.Println("CheckDataForm Successful")
+	logging.Info("example.script", "check data form successful")
 }
 
 // CheckDataType checks whether the DataType serialization and deserialization are valid.
@@ -576,5 +581,5 @@ func CheckDataType(db api.DolphinDB) {
 	util.AssertEqual(res.DataType.DataType(), model.DtUUID)
 	util.AssertEqual(res.String(), s.String())
 
-	fmt.Println("CheckDataType Successful")
+	logging.Info("example.script", "check data type successful")
 }

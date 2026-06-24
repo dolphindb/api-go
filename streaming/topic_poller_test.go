@@ -46,3 +46,14 @@ func TestTopicPoller(t *testing.T) {
 	assert.Equal(t, ms[0].GetOffset(), int64(1))
 	assert.Equal(t, ms[0].GetTopic(), "topic1")
 }
+
+func TestTopicPollerPollAsTableWithEmptyResult(t *testing.T) {
+	tp := &TopicPoller{
+		queue:      NewUnboundedChan(1),
+		cache:      make([]IMessage, 0),
+		msgAsTable: true,
+	}
+
+	ms := tp.Poll(1, 1)
+	assert.Empty(t, ms)
+}

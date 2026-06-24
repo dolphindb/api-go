@@ -11,32 +11,38 @@ import (
 
 func TestNodePoolGetNewLeaderParsesAddressAfterMarker(t *testing.T) {
 	pool := &nodePool{}
-	target := &node{}
 
-	errType := pool.getNewLeader("client error response. <NotLeader>192.168.0.69:8803:dnode2", target)
+	errType, address := pool.getNewLeader("client error response. <NotLeader>192.168.0.69:8803:dnode2")
 
 	assert.Equal(t, NEW_LEADER, errType)
-	assert.Equal(t, "192.168.0.69:8803", target.address)
-}
-
-func TestNodePoolHandleNotAvailErrorParsesAddressAfterMarker(t *testing.T) {
-	pool := &nodePool{}
-	target := &node{}
-
-	errType := pool.handleNotAvailError("client error response. <DataNodeNotAvail>192.168.0.69:8803:dnode2", target)
-
-	assert.Equal(t, NODE_NOT_AVAIL, errType)
-	assert.Equal(t, "192.168.0.69:8803", target.address)
+	assert.Equal(t, "192.168.0.69:8803", address)
 }
 
 func TestNodePoolParseErrorRecognizesUnknownLeader(t *testing.T) {
 	pool := &nodePool{}
-	target := &node{}
 
-	errType := pool.parseError(newServerError("<UnknownLeader>test"), target)
+	errType, address := pool.parseError(newServerError("<UnknownLeader>test"))
 
 	assert.Equal(t, UNKNOWN_LEADER, errType)
-	assert.Equal(t, "", target.address)
+	assert.Equal(t, "", address)
+}
+
+func TestNodePoolParseErrorRecognizesDataNodeNotAvailWithoutTargetAddress(t *testing.T) {
+	pool := &nodePool{}
+
+	errType, address := pool.parseError(newServerError("<DataNodeNotAvail>test"))
+
+	assert.Equal(t, NODE_NOT_AVAIL, errType)
+	assert.Equal(t, "", address)
+}
+
+func TestNewNodePoolKeepsPrimaryAddressFirst(t *testing.T) {
+	pool := newNodePool("primary:8848", []string{"secondary:8848", "primary:8848", "tertiary:8848"})
+
+	require.Len(t, pool.nodes, 3)
+	assert.Equal(t, "primary:8848", pool.nodes[0].address)
+	assert.Equal(t, "secondary:8848", pool.nodes[1].address)
+	assert.Equal(t, "tertiary:8848", pool.nodes[2].address)
 }
 
 func TestConnectNodeTreatsUnknownLeaderAsFailoverSignal(t *testing.T) {

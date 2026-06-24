@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -34,7 +35,7 @@ type Chart struct {
 }
 
 // NewChart returns an object of chart according to in.
-func NewChart(in map[string]DataForm) *Chart {
+func NewChart(in map[string]DataForm) (*Chart, error) {
 	ch := &Chart{
 		rowCount: len(in),
 		category: newCategory(byte(DfChart), byte(DtAny)),
@@ -43,18 +44,45 @@ func NewChart(in map[string]DataForm) *Chart {
 	for k, v := range in {
 		switch k {
 		case "title":
-			ch.Title = v.(*Vector)
+			switch t := v.(type) {
+			case *Vector, *Scalar:
+				ch.Title = t
+			default:
+				return nil, fmt.Errorf("chart field %q must be *Vector or *Scalar, got %T", k, v)
+			}
 		case "chartType":
-			ch.ChartType = v.(*Scalar)
+			sca, ok := v.(*Scalar)
+			if !ok {
+				return nil, fmt.Errorf("chart field %q must be *Scalar, got %T", k, v)
+			}
+			ch.ChartType = sca
 		case "stacking":
-			ch.Stacking = v.(*Scalar)
+			sca, ok := v.(*Scalar)
+			if !ok {
+				return nil, fmt.Errorf("chart field %q must be *Scalar, got %T", k, v)
+			}
+			ch.Stacking = sca
 		case "data":
-			ch.Data = v.(*Matrix)
+			mtx, ok := v.(*Matrix)
+			if !ok {
+				return nil, fmt.Errorf("chart field %q must be *Matrix, got %T", k, v)
+			}
+			ch.Data = mtx
 		case "extras":
-			ch.Extras = v.(*Dictionary)
+			dict, ok := v.(*Dictionary)
+			if !ok {
+				return nil, fmt.Errorf("chart field %q must be *Dictionary, got %T", k, v)
+			}
+			ch.Extras = dict
+		default:
+			return nil, fmt.Errorf("unsupported chart field %q", k)
 		}
 	}
-	return ch
+	if ch.ChartType == nil && ch.Stacking == nil && ch.Title == nil && ch.Data == nil && ch.Extras == nil {
+		return nil, errors.New("chart must contain at least one field")
+	}
+
+	return ch, nil
 }
 
 // GetDataForm returns the byte type of the DataForm.

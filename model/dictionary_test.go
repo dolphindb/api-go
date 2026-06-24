@@ -17,7 +17,7 @@ func TestDictionary(t *testing.T) {
 	values, err := NewDataTypeListFromRawData(DtString, []string{"value1", "value2", "value3"})
 	assert.Nil(t, err)
 
-	dict := NewDictionary(NewVector(keys), NewVector(values))
+	dict := mustNewDictionary(t, NewVector(keys), NewVector(values))
 	assert.Equal(t, dict.GetDataForm(), DfDictionary)
 	assert.Equal(t, dict.GetDataType(), DtString)
 	assert.Equal(t, dict.GetDataTypeString(), "string")

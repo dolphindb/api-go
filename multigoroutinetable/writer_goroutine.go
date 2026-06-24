@@ -92,7 +92,12 @@ func (w *writerGoroutine) writeAllData() bool {
 
 	for _, v := range items {
 		isWriteDone := true
-		writeTable, addRowCount, newItems := w.generateWriteTableFromInterface(v)
+		writeTable, addRowCount, newItems, err := w.generateWriteTableFromInterface(v)
+		if err != nil {
+			isWriteDone = false
+			w.handleError(err.Error())
+		}
+
 		if writeTable != nil && addRowCount > 0 {
 			err := w.runScript(writeTable, addRowCount)
 			if err != nil {
@@ -106,6 +111,9 @@ func (w *writerGoroutine) writeAllData() bool {
 		}
 
 		if !isWriteDone {
+			if addRowCount < 0 {
+				addRowCount = 0
+			}
 			w.failedQueue.addBatch(v, addRowCount)
 		}
 	}
@@ -122,7 +130,7 @@ func (w *writerGoroutine) handlePanic(items [][]interface{}) {
 
 		buf := make([]byte, 4096)
 		n := runtime.Stack(buf, false)
-		fmt.Println("Failed to insert data into the table: ", string(buf[:n]))
+		multiGoroutineTableLogErrorf("failed to insert data into the table: %s", string(buf[:n]))
 		w.handleError(string(buf))
 	}
 }
@@ -153,7 +161,7 @@ func (w *writerGoroutine) generateTableCols(items [][]model.DataType) []*model.V
 			}
 
 			av := model.NewArrayVector(vl)
-			vct = model.NewVectorWithArrayVector(av)
+			vct, _ = model.NewVectorWithArrayVector(av)
 		default:
 			dtl := model.NewEmptyDataTypeList(model.DataTypeByte(v), len(items))
 			vct = model.NewVector(dtl)
@@ -165,202 +173,37 @@ func (w *writerGoroutine) generateTableCols(items [][]model.DataType) []*model.V
 	return colValues
 }
 
-func (w *writerGoroutine) generateWriteTableFromInterface(items []interface{}) (*model.Table, int, []interface{}) {
-	count := 0
-	// for column
+func (w *writerGoroutine) generateWriteTableFromInterface(items []interface{}) (*model.Table, int, []interface{}, error) {
+	count := -1
 	colValues := make([]*model.Vector, len(w.tableWriter.colTypes))
 	newItems := make([]interface{}, len(items))
 	for ind, dtValue := range w.tableWriter.colTypes {
-		var vct *model.Vector
-		var dtl model.DataTypeList
-		var err error
-		dt := model.DataTypeByte(dtValue)
-		switch {
-		case dt >= 128:
-			//FIXME
-			dtl := model.NewEmptyDataTypeList(model.DataTypeByte(dt-128), len(items))
-			vct = model.NewVector(dtl)
-		case dt >= 64:
-			vl := make([]*model.Vector, 0)
-			vec := items[ind].([]model.DataType)
-
-			for i := 0; i < len(vec); i++ {
-				item := vec[i].Value().(*model.Vector)
-				vl = append(vl, item)
-			}
-			av := model.NewArrayVector(vl)
-			vct = model.NewVectorWithArrayVector(av)
-			count = len(vec)
-			newItems[ind] = vec[:0]
-		case dt == model.DtBool:
-			vec := items[ind].([]byte)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtBlob:
-			vec := items[ind].([][]byte)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtChar || dt == model.DtCompress:
-			vec := items[ind].([]byte)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtComplex || dt == model.DtPoint:
-			vec := items[ind].([][2]float64)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case (dt >= model.DtDate && dt <= model.DtNanoTimestamp) || (dt >= model.DtDateHour && dt <= model.DtDateMinute):
-			vec := items[ind].([]time.Time)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtShort:
-			vec := items[ind].([]int16)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtInt:
-			vec := items[ind].([]int32)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtLong:
-			vec := items[ind].([]int64)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtFloat:
-			vec := items[ind].([]float32)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtDouble:
-			vec := items[ind].([]float64)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-
-		case dt == model.DtDecimal32:
-			vec := items[ind].([]*model.Decimal32)
-			count = len(vec)
-			dtl = model.NewEmptyDataTypeList(dt, count)
-			for ind, v := range vec {
-				err := dtl.SetWithRawData(ind, v)
-				if err != nil {
-					w.handleError(err.Error())
-					return nil, -1, nil
-				}
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtDecimal64:
-			vec := items[ind].([]*model.Decimal64)
-			count = len(vec)
-			dtl = model.NewEmptyDataTypeList(dt, count)
-			for ind, v := range vec {
-				err := dtl.SetWithRawData(ind, v)
-				if err != nil {
-					w.handleError(err.Error())
-					return nil, -1, nil
-				}
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtDecimal128:
-			vec := items[ind].([]*model.Decimal128)
-			count = len(vec)
-			dtl = model.NewEmptyDataTypeList(dt, count)
-			for ind, v := range vec {
-				err := dtl.SetWithRawData(ind, v)
-				if err != nil {
-					w.handleError(err.Error())
-					return nil, -1, nil
-				}
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-
-		case dt == model.DtUUID || dt == model.DtString || dt == model.DtSymbol || dt == model.DtDuration || dt == model.DtInt128 || dt == model.DtIP:
-			vec := items[ind].([]string)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		case dt == model.DtAny:
-			vec := items[ind].([]model.DataForm)
-			count = len(vec)
-			dtl, err = model.NewDataTypeListFromRawData(dt, vec)
-			if err != nil {
-				w.handleError(err.Error())
-				return nil, -1, nil
-			}
-			vct = model.NewVector(dtl)
-			newItems[ind] = vec[:0]
-		default:
-			return nil, -1, nil
+		prepared, err := prepareBatchColumn(model.DataTypeByte(dtValue), items[ind])
+		if err != nil {
+			return nil, -1, nil, fmt.Errorf("col %d of type %s: %w", ind, model.GetDataTypeString(model.DataTypeByte(dtValue)), err)
 		}
-		colValues[ind] = vct
+
+		if count == -1 {
+			count = prepared.count
+		} else if prepared.count != count {
+			return nil, -1, nil, fmt.Errorf("column batch sizes don't match: expect %d, got %d for col %d", count, prepared.count, ind)
+		}
+
+		colValues[ind] = prepared.vector
+		newItems[ind] = prepared.empty
 	}
 	items = nil
 
-	return model.NewTable(w.tableWriter.colNames, colValues), count, newItems
+	if count < 0 {
+		count = 0
+	}
+
+	tb, err := model.NewTable(w.tableWriter.colNames, colValues)
+	if err != nil {
+		return nil, -1, nil, err
+	}
+
+	return tb, count, newItems, nil
 }
 
 func (w *writerGoroutine) generateWriteTable(items [][]model.DataType) (*model.Table, bool) {
@@ -372,7 +215,7 @@ func (w *writerGoroutine) generateWriteTable(items [][]model.DataType) (*model.T
 			if col.ArrayVector == nil {
 				err := col.Set(k, row[ind])
 				if err != nil {
-					fmt.Println("Failed to set DataType into Vector: ", err)
+					multiGoroutineTableLogErrorf("failed to set DataType into Vector: %v", err)
 					isWriteDone = false
 					w.handleError(err.Error())
 					break
@@ -382,7 +225,12 @@ func (w *writerGoroutine) generateWriteTable(items [][]model.DataType) (*model.T
 	}
 
 	if isWriteDone {
-		return model.NewTable(w.tableWriter.colNames, colValues), true
+		tb, err := model.NewTable(w.tableWriter.colNames, colValues)
+		if err == nil {
+			return tb, true
+		}
+		multiGoroutineTableLogErrorf("failed to build table from vectors: %v", err)
+		w.handleError(err.Error())
 	}
 
 	return nil, false
@@ -393,14 +241,14 @@ func (w *writerGoroutine) runScript(df model.DataForm, count int) error {
 	args[0] = df
 	_, err := w.RunFunc(w.insertScript, args)
 	if err != nil {
-		fmt.Printf("Failed to run func: %s\n", err.Error())
+		multiGoroutineTableLogErrorf("failed to run func: %v", err)
 		return err
 	}
 
 	if w.saveScript != "" {
 		_, err = w.RunScript(w.saveScript)
 		if err != nil {
-			fmt.Printf("Failed to run script: %s\n", err.Error())
+			multiGoroutineTableLogErrorf("failed to run script: %v", err)
 			return err
 		}
 	}

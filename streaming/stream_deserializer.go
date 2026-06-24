@@ -3,8 +3,8 @@ package streaming
 import (
 	"errors"
 	"fmt"
+	"strings"
 
-	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/model"
 )
 
@@ -15,7 +15,9 @@ type StreamDeserializer struct {
 type StreamDeserializerOption struct {
 	// Filters    interface{}
 	TableNames map[string][2]string
-	Conn       api.DolphinDB
+	Conn       interface {
+		RunScript(script string) (model.DataForm, error)
+	}
 }
 
 func NewStreamDeserializer(opt *StreamDeserializerOption) (*StreamDeserializer, error) {
@@ -26,10 +28,14 @@ func NewStreamDeserializer(opt *StreamDeserializerOption) (*StreamDeserializer, 
 	// 	return sd, err
 	// }
 
-	if opt.Conn != nil {
-		sd.msgDeserializerMap, err = initWithConn(opt)
+	if opt == nil {
+		return nil, errors.New("the StreamDeserializerOption is null")
+	}
+	if opt.Conn == nil {
+		return nil, errors.New("the Conn is null")
 	}
 
+	sd.msgDeserializerMap, err = initWithConn(opt)
 	return sd, err
 }
 
@@ -43,6 +49,9 @@ func initWithConn(opt *StreamDeserializerOption) (map[string]*msgDeserializer, e
 	for k, v := range opt.TableNames {
 		dbName := v[0]
 		tbName := v[1]
+		if strings.TrimSpace(tbName) == "" {
+			return nil, fmt.Errorf("the table name for filter %s must not be empty", k)
+		}
 		if dbName == "" {
 			raw, err := opt.Conn.RunScript(fmt.Sprintf("schema(%s)", tbName))
 			if err != nil {

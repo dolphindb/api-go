@@ -2,7 +2,6 @@ package apis
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/dialer"
 	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/logging"
 	"github.com/dolphindb/api-go/v3/model"
 )
 
@@ -83,7 +83,9 @@ func PartitionedTableAppenderWithValueDomain(db api.DolphinDB) {
 
 	cols[1] = model.NewVector(l)
 	for i := 0; i < 1000; i++ {
-		m, err := appender.Append(model.NewTable(colNames, cols))
+		tb, err := model.NewTable(colNames, cols)
+		util.AssertNil(err)
+		m, err := appender.Append(tb)
 		util.AssertNil(err)
 		util.AssertEqual(m, 10000)
 	}
@@ -95,7 +97,7 @@ func PartitionedTableAppenderWithValueDomain(db api.DolphinDB) {
 	util.AssertNil(err)
 	util.AssertEqual(df.String(), "long(10000000)")
 
-	fmt.Println("Run PartitionedTableAppenderWithValueDomain successful")
+	logging.Info("example.apis", "partitioned table appender with value domain successful")
 }
 
 // PartitionedTableAppenderWithHashDomain checks whether the PartitionedTableAppender is valid with hash domain.
@@ -159,7 +161,9 @@ func PartitionedTableAppenderWithHashDomain(db api.DolphinDB) {
 
 	cols[1] = model.NewVector(l)
 	for i := 0; i < 1000; i++ {
-		m, err := appender.Append(model.NewTable(colNames, cols))
+		tb, err := model.NewTable(colNames, cols)
+		util.AssertNil(err)
+		m, err := appender.Append(tb)
 		util.AssertNil(err)
 		util.AssertEqual(m, 10000)
 	}
@@ -171,7 +175,7 @@ func PartitionedTableAppenderWithHashDomain(db api.DolphinDB) {
 	util.AssertNil(err)
 	util.AssertEqual(df.String(), "long(10000000)")
 
-	fmt.Println("Run PartitionedTableAppenderWithHashDomain successful")
+	logging.Info("example.apis", "partitioned table appender with hash domain successful")
 }
 
 // TableAppender checks whether the TableAppender is valid.
@@ -189,7 +193,7 @@ func TableAppender(db api.DolphinDB) {
 
 	defer dropDatabase(db, "dfs://tableAppenderTest")
 
-	conn, err := dialer.NewSimpleConn(context.TODO(), TestAddr, User, Password)
+	conn, err := dialer.Dial(TestAddr, User, Password, nil)
 	util.AssertNil(err)
 
 	opt := &api.TableAppenderOption{
@@ -198,7 +202,7 @@ func TableAppender(db api.DolphinDB) {
 		Conn:      conn,
 	}
 
-	appender := api.NewTableAppender(opt)
+	appender, err := api.NewTableAppender(opt)
 	util.AssertNil(err)
 
 	tb := packTable()
@@ -209,7 +213,7 @@ func TableAppender(db api.DolphinDB) {
 	util.AssertNil(err)
 	util.AssertEqual(df.String(), "long(100000)")
 
-	fmt.Println("Run TableAppender successful")
+	logging.Info("example.apis", "table appender successful")
 }
 
 func packTable() *model.Table {
@@ -238,5 +242,7 @@ func packTable() *model.Table {
 
 	timeVct := model.NewVector(dtl)
 
-	return model.NewTable([]string{"id", "time", "data"}, []*model.Vector{idVct, timeVct, dataVct})
+	tb, err := model.NewTable([]string{"id", "time", "data"}, []*model.Vector{idVct, timeVct, dataVct})
+	util.AssertNil(err)
+	return tb
 }

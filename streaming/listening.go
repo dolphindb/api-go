@@ -11,17 +11,29 @@ var (
 	TCPNetWork = "tcp"
 )
 
-func listening(c AbstractClient) {
+func startListening(c AbstractClient) error {
+	if int(c.getSubscriber().listeningPort) == 0 {
+		go listening(c, nil)
+		return nil
+	}
+
 	address := &net.TCPAddr{
 		Port: int(c.getSubscriber().listeningPort),
 	}
 
 	ln, err := net.ListenTCP(TCPNetWork, address)
 	if err != nil {
-		panic(fmt.Errorf("failed to listening 0.0.0.0:%d, %w", int(c.getSubscriber().listeningPort), err))
+		return fmt.Errorf("failed to listen on 0.0.0.0:%d: %w", int(c.getSubscriber().listeningPort), err)
 	}
 
-	defer ln.Close()
+	go listening(c, ln)
+	return nil
+}
+
+func listening(c AbstractClient, ln *net.TCPListener) {
+	if ln != nil {
+		defer ln.Close()
+	}
 
 	ctx, f := context.WithCancel(context.TODO())
 
@@ -33,10 +45,8 @@ func listening(c AbstractClient) {
 
 	cs := make([]net.Conn, 0)
 	for !c.IsClosed() {
-		// fmt.Println("subscriber listening new connection")
-		// HACK use print to avoid stuck of regression test
-		fmt.Print("")
 		var conn net.Conn
+		var err error
 		var ok bool
 		var isReversed bool
 		if int(c.getSubscriber().listeningPort) == 0 {
@@ -44,18 +54,18 @@ func listening(c AbstractClient) {
 			conn, ok = c.getConn()
 			if !ok {
 				runtime.Gosched()
-				continue;
+				continue
 			}
 		} else {
 			isReversed = false
 			connTcp, err := ln.AcceptTCP()
 			if err != nil {
-				fmt.Printf("Failed to accept tcp: %s\n", err.Error())
+				streamingLogErrorf("failed to accept tcp: %v", err)
 				continue
 			}
 			err = connTcp.SetKeepAlive(true)
 			if err != nil {
-				fmt.Printf("Failed to set conn keepAlive: %s\n", err.Error())
+				streamingLogErrorf("failed to set conn keepAlive: %v", err)
 				continue
 			}
 			conn = connTcp

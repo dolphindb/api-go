@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolphindb/api-go/v3/dialer"
 	"github.com/dolphindb/api-go/v3/model"
@@ -32,7 +33,17 @@ type TableAppenderOption struct {
 }
 
 // NewTableAppender instantiates a new TableAppender object according to the option.
-func NewTableAppender(opt *TableAppenderOption) *TableAppender {
+func NewTableAppender(opt *TableAppenderOption) (*TableAppender, error) {
+	if opt == nil {
+		return nil, fmt.Errorf("table appender option must not be nil")
+	}
+	if opt.Conn == nil {
+		return nil, fmt.Errorf("table appender connection must not be nil")
+	}
+	if strings.TrimSpace(opt.TableName) == "" {
+		return nil, fmt.Errorf("table appender table name must not be empty")
+	}
+
 	ta := &TableAppender{
 		Conn:      opt.Conn,
 		DBPath:    opt.DBPath,
@@ -48,24 +59,24 @@ func NewTableAppender(opt *TableAppenderOption) *TableAppender {
 
 	ret, err := opt.Conn.RunScript(script)
 	if err != nil {
-		fmt.Printf("Failed to get table %s schema: %s\n", opt.TableName, err.Error())
-		return nil
+		apiLogErrorf("failed to get table %s schema: %v", opt.TableName, err)
+		return nil, err
 	}
 
 	err = packTableAppenderWithColDefs(ret, ta)
 	if err != nil {
-		fmt.Printf("Failed to get colDefs from table: %s\n", err.Error())
-		return nil
+		apiLogErrorf("failed to get colDefs from table: %v", err)
+		return nil, err
 	}
 
-	return ta
+	return ta, nil
 }
 
 func packTableAppenderWithColDefs(ret model.DataForm, ta *TableAppender) error {
 	tableInfo := ret.(*model.Dictionary)
 	dt, err := tableInfo.Get("colDefs")
 	if err != nil {
-		fmt.Printf("Failed to get colDefs from table: %s\n", err.Error())
+		apiLogErrorf("failed to get colDefs from table: %v", err)
 		return err
 	}
 
@@ -97,7 +108,7 @@ func (p *TableAppender) IsClosed() bool {
 func (p *TableAppender) Append(tb *model.Table) (model.DataForm, error) {
 	paramTable, err := p.packageTable(tb)
 	if err != nil {
-		fmt.Printf("Failed to package table: %s\n", err.Error())
+		apiLogErrorf("failed to package table: %v", err)
 		return nil, err
 	}
 
@@ -119,7 +130,7 @@ func (p *TableAppender) packageTable(tb *model.Table) (*model.Table, error) {
 			srcDt == model.DtNanoTimestamp || srcDt == model.DtDateHour) && srcDt != p.columnTypes[k] {
 			raw, err := model.CastDateTime(tb.GetColumnByIndex(k), p.columnTypes[k])
 			if err != nil {
-				fmt.Printf("Failed to cast DateTime before appending: %s\n", err.Error())
+				apiLogErrorf("failed to cast DateTime before appending: %v", err)
 				return nil, err
 			}
 
@@ -129,5 +140,5 @@ func (p *TableAppender) packageTable(tb *model.Table) (*model.Table, error) {
 		}
 	}
 
-	return model.NewTable(p.nameList, cols), nil
+	return model.NewTable(p.nameList, cols)
 }

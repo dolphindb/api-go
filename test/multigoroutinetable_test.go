@@ -179,6 +179,12 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 		So(err, ShouldBeNil)
 		defer ddb.Close()
 		Convey("test_multiGoroutineTable_exception", func() {
+			Convey("test_multiGoroutineTable_nil", func() {
+				_, err := mtw.NewMultiGoroutineTable(nil)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "the parameter Option must not be nil")
+			})
+
 			Convey("test_multiGoroutineTable_error_hostName_exception", func() {
 				scriptDFSHASH := `
 				  if(existsDatabase("` + DBdfsPath + `")){
@@ -386,7 +392,37 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "the parameter TableName must not be empty")
 			})
+
+			Convey("test_multiGoroutineTable_TableName_blank", func() {
+				scriptDFSHASH := `
+				if(existsDatabase("` + DBdfsPath + `")){
+					dropDatabase("` + DBdfsPath + `")
+				}
+				datetest=table(1000:0,["datev", "id"],[DATE,LONG])
+				db=database("` + DBdfsPath + `",HASH, [MONTH,10])
+				pt=db.createPartitionedTable(datetest,"` + DfsTableName1 + `",'datev')
+				`
+				_, err = ddb.RunScript(scriptDFSHASH)
+				So(err, ShouldBeNil)
+				defer ddb.DropDatabase(new(api.DropDatabaseRequest).SetDirectory(DBdfsPath))
+				opt := &mtw.Option{
+					GoroutineCount: 2,
+					BatchSize:      1,
+					Throttle:       1000,
+					PartitionCol:   "datev",
+					Database:       DBdfsPath,
+					TableName:      "   ",
+					UserID:         setup.UserName,
+					Password:       setup.Password,
+					Address:        host12,
+				}
+				_, err := mtw.NewMultiGoroutineTable(opt)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "the parameter TableName must not be empty")
+			})
+
 			Convey("test_multiGoroutineTable_Throttle_less_than_0_exception", func() {
 				scriptDFSHASH := `
 				if(existsDatabase("` + DBdfsPath + `")){
@@ -438,6 +474,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				}
 				_, err := mtw.NewMultiGoroutineTable(opt)
 				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "the parameter Throttle must be greater than 1")
 			})
 			Convey("test_multiGoroutineTable_BatchSize_equal_0_exception", func() {
 				scriptDFSHASH := `
@@ -864,7 +901,7 @@ func TestMultiGoroutineTable_exception(t *testing.T) {
 				_tb = append(_tb, c3)
 				tb = append(tb, _tb)
 				err = mtt.InsertUnwrittenData(tb)
-				So(err.Error(), ShouldContainSubstring, "col 1 of type symbol expect string slice")
+				So(err.Error(), ShouldContainSubstring, "col 1 of type symbol: the type of input must be []string when datatype is DtString, DtCode, DtFunction, DtHandle or DtSymbol")
 				mtt.WaitForGoroutineCompletion()
 				So(mtt.GetStatus().IsExit, ShouldBeTrue)
 			})
@@ -2436,6 +2473,75 @@ func TestMultiGoroutineTable_insert_arrayVector_wrong_type(t *testing.T) {
 	})
 }
 
+func TestMultiGoroutineTable_insert_batch_prevalidation(t *testing.T) {
+	Convey("TestMultiGoroutineTable_insert_batch_prevalidation", t, func() {
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		defer ddb.Close()
+
+		script := "t = streamTable(1000:0, `id`sym, [INT, STRING]); share t as t1;"
+		_, err = ddb.RunScript(script)
+		So(err, ShouldBeNil)
+		defer ddb.Undef(new(api.UndefRequest).SetObj("t1").SetObjType("SHARED"))
+
+		opt := &mtw.Option{
+			GoroutineCount: 1,
+			BatchSize:      1,
+			Throttle:       1000,
+			PartitionCol:   "id",
+			Database:       "",
+			TableName:      "t1",
+			UserID:         setup.UserName,
+			Password:       setup.Password,
+			Address:        host12,
+		}
+		mtt, err := mtw.NewMultiGoroutineTable(opt)
+		So(err, ShouldBeNil)
+
+		Convey("test_multithreadTableWriterTest_insert_batch_type_mismatch", func() {
+			err = mtt.InsertUnwrittenData([][]interface{}{{[]string{"bad"}, []string{"ok"}}})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "col 0 of type int")
+		})
+
+		Convey("test_multithreadTableWriterTest_insert_batch_empty_batch", func() {
+			err = mtt.InsertUnwrittenData([][]interface{}{{[]int32{}, []string{}}})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "must not be empty")
+		})
+
+		Convey("test_multithreadTableWriterTest_insert_batch_length_mismatch", func() {
+			err = mtt.InsertUnwrittenData([][]interface{}{{[]int32{1, 2}, []string{"a"}}})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "column batch sizes don't match")
+		})
+
+		Convey("test_multithreadTableWriterTest_insert_batch_array_vector_wrong_type", func() {
+			_, err = ddb.RunScript("t2 = streamTable(1000:0, `id`arr, [INT, INT[]]); share t2 as t2share;")
+			So(err, ShouldBeNil)
+			defer ddb.Undef(new(api.UndefRequest).SetObj("t2share").SetObjType("SHARED"))
+
+			opt2 := &mtw.Option{
+				GoroutineCount: 1,
+				BatchSize:      1,
+				Throttle:       1000,
+				PartitionCol:   "id",
+				Database:       "",
+				TableName:      "t2share",
+				UserID:         setup.UserName,
+				Password:       setup.Password,
+				Address:        host12,
+			}
+			mtt2, err := mtw.NewMultiGoroutineTable(opt2)
+			So(err, ShouldBeNil)
+
+			err = mtt2.InsertUnwrittenData([][]interface{}{{[]int32{1}, []int32{1}}})
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "the type of input must be []model.DataType when datatype is array vector")
+		})
+	})
+}
+
 func TestMultiGoroutineTable_insert_uuid_int128_ipaddr(t *testing.T) {
 	Convey("TestMultiGoroutineTable_insert_uuid_int128_ipaddr", t, func() {
 		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host12, setup.UserName, setup.Password)
@@ -3885,8 +3991,9 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 			}
 			valueTrade1, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr1)
 			volume1, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr1)
-			tmp1 := model.NewTable([]string{"volume", "valueTrade"},
+			tmp1, err := model.NewTable([]string{"volume", "valueTrade"},
 				[]*model.Vector{model.NewVector(volume1), model.NewVector(valueTrade1)})
+			So(err, ShouldBeNil)
 			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp1})
 			AssertNil(err)
 			time.Sleep(3 * time.Second)
@@ -3898,8 +4005,9 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_sameTable
 			}
 			valueTrade2, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr2)
 			volume2, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr2)
-			tmp2 := model.NewTable([]string{"volume", "valueTrade"},
+			tmp2, err := model.NewTable([]string{"volume", "valueTrade"},
 				[]*model.Vector{model.NewVector(volume2), model.NewVector(valueTrade2)})
+			So(err, ShouldBeNil)
 			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp2})
 			AssertNil(err)
 		}
@@ -4023,8 +4131,9 @@ func TestMultiGoroutineTable_insert_dfs_multiple_mutithreadTableWriter_different
 			}
 			valueTrade, _ := model.NewDataTypeListFromRawData(model.DtDouble, floatarr1)
 			volume, _ := model.NewDataTypeListFromRawData(model.DtInt, intarr)
-			tmp := model.NewTable([]string{"volume", "valueTrade"},
+			tmp, err := model.NewTable([]string{"volume", "valueTrade"},
 				[]*model.Vector{model.NewVector(volume), model.NewVector(valueTrade)})
+			So(err, ShouldBeNil)
 			_, err = ddb.RunFunc("tableInsert{t1}", []model.DataForm{tmp})
 			AssertNil(err)
 		}

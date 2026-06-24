@@ -2,7 +2,6 @@ package streaming
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -68,7 +67,7 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 
 	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return err
 	}
 
@@ -80,15 +79,7 @@ func (t *GoroutineClient) subscribe(req *SubscribeRequest) error {
 }
 
 func (t *GoroutineClient) reviseSubscriber(req *SubscribeRequest) error {
-	var err error
-	t.subscriber.once.Do(func() {
-		err = t.subscriber.checkServerVersion(req)
-		if err == nil {
-			go listening(t)
-		}
-	})
-
-	return err
+	return t.subscriber.initListening(t, req)
 }
 
 func (t *GoroutineClient) initHandlerLooper(queue *UnboundedChan, req *SubscribeRequest) *handlerLopper {
@@ -125,7 +116,7 @@ func (t *GoroutineClient) UnSubscribe(req *SubscribeRequest) error {
 	t.handlerLoppers.Delete(topicStr)
 	err = t.unSubscribe(req)
 	if err != nil {
-		fmt.Printf("UnSubscribe Failed: %s\n", err.Error())
+		streamingLogErrorf("unsubscribe failed: %v", err)
 		return err
 	}
 	// close(looper.queue.In)
@@ -198,7 +189,7 @@ func (t *GoroutineClient) doReconnect(req *SubscribeRequest) bool {
 		return isSuccess
 	}
 
-	fmt.Printf("%s %s Successfully reconnected and subscribed.\n", time.Now().UTC().String(), topic)
+	streamingLogInfof("%s %s successfully reconnected and subscribed", time.Now().UTC().String(), topic)
 	return true
 }
 
@@ -206,7 +197,7 @@ func (t *GoroutineClient) reSubscribe(topic string, req *SubscribeRequest) bool 
 	req.Offset = req.Offset + 1
 	err := t.reSubscribeInternal(req)
 	if err != nil {
-		fmt.Printf("%s %s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String(), topic)
+		streamingLogWarnf("%s %s unable to subscribe to the table; try again after 1 second", time.Now().UTC().String(), topic)
 		return false
 	}
 
@@ -228,13 +219,13 @@ func (t *GoroutineClient) reSubscribe(topic string, req *SubscribeRequest) bool 
 func (t *GoroutineClient) stopHandlerLopper(req *SubscribeRequest) (string, *handlerLopper, error) {
 	topic, err := t.getTopicFromServer(req)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server during reconnection using doReconnect: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server during reconnection using doReconnect: %v", err)
 		return "", nil, err
 	}
 
 	raw, ok := t.handlerLoppers.Load(topic)
 	if !ok || raw == nil {
-		fmt.Println("Goroutine for subscription is not started")
+		streamingLogWarnf("goroutine for subscription is not started")
 		return "", nil, errors.New("Goroutine for subscription is not started")
 	}
 

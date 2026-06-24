@@ -3,12 +3,12 @@ package mtw
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/dolphindb/api-go/v3/dialer"
 	"github.com/dolphindb/api-go/v3/example/apis"
 	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/logging"
 	"github.com/dolphindb/api-go/v3/model"
 	mtw "github.com/dolphindb/api-go/v3/multigoroutinetable"
 )
@@ -93,7 +93,7 @@ func MultiGoroutineTable() {
 		util.AssertEqual(col1.String(), col2.String())
 	}
 
-	fmt.Println("Run MultiGoroutineTable successful")
+	logging.Info("example.mtw", "run multi goroutine table successful")
 }
 
 // MultiGoroutineDfsTable checks whether the MultiGoroutineTable is valid when inserts to dfs table.
@@ -180,5 +180,5 @@ func MultiGoroutineDfsTable() {
 		util.AssertEqual(col1.String(), col2.String())
 	}
 
-	fmt.Println("Run MultiGoroutineedDfsTable successful")
+	logging.Info("example.mtw", "run multi goroutine dfs table successful")
 }

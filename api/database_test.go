@@ -8,10 +8,7 @@ import (
 )
 
 func TestDatabase(t *testing.T) {
-	db, err := NewDolphinDBClient(context.TODO(), testAddress, nil)
-	assert.Nil(t, err)
-
-	err = db.Connect()
+	db, err := NewSimpleDolphinDBClient(context.TODO(), testAddress, "user", "password")
 	assert.Nil(t, err)
 
 	d := &Database{

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"os"
 	"strings"
@@ -17,8 +16,9 @@ import (
 var sleepBeforeRetry = time.Sleep
 
 type node struct {
-	address string
-	weight  float64
+	address  string
+	weight   float64
+	fallback string
 }
 
 type nodePool struct {
@@ -38,6 +38,12 @@ func newNode(address string, weight float64) *node {
 		address: address,
 		weight:  weight,
 	}
+}
+
+func newNodeWithFallback(address string, fallback string) *node {
+	n := newNode(address, 0)
+	n.fallback = fallback
+	return n
 }
 
 func (n *nodePool) add(no *node) {
@@ -72,123 +78,137 @@ func isNotInitialized(msg string) bool {
 	return false
 }
 
-func (n *nodePool) parseError(err error, no *node) ErrorType {
+func (n *nodePool) parseError(err error) (ErrorType, string) {
 	if err == nil {
-		return UNKNOWN
+		return UNKNOWN, ""
 	}
 
 	serverErr, ok := AsServerError(err)
 	if ok {
 		switch {
 		case isNotInitialized(serverErr.Detail):
-			return NO_INITIALIZED
+			return NO_INITIALIZED, ""
 		case serverErr.Is(ServerErrNotLeader):
 			if serverErr.Address == "" {
-				return UNEXPECT
+				return UNEXPECT, ""
 			}
-			no.address = serverErr.Address
-			return NEW_LEADER
+			return NEW_LEADER, serverErr.Address
 		case serverErr.Is(ServerErrUnknownLeader):
-			return UNKNOWN_LEADER
+			return UNKNOWN_LEADER, ""
 		case serverErr.Is(ServerErrDataNodeNotAvail):
-			if serverErr.Address == "" {
-				return UNEXPECT
-			}
-			no.address = serverErr.Address
-			return NODE_NOT_AVAIL
+			return NODE_NOT_AVAIL, ""
 		}
 	}
 
 	msg := err.Error()
 	switch {
 	case isNotInitialized(msg):
-		return NO_INITIALIZED
+		return NO_INITIALIZED, ""
 	case strings.Contains(msg, "<NotLeader>"):
-		return n.getNewLeader(msg, no)
+		return n.getNewLeader(msg)
 	case strings.Contains(msg, "<UnknownLeader>"):
-		return UNKNOWN_LEADER
+		return UNKNOWN_LEADER, ""
 	case strings.Contains(msg, "<DataNodeNotAvail>"):
-		return n.handleNotAvailError(msg, no)
+		return NODE_NOT_AVAIL, ""
 	case strings.Contains(msg, "Login is required for script execution with client authentication enabled"):
-		return LOGIN_REQUIRED
+		return LOGIN_REQUIRED, ""
 	default:
-		return UNKNOWN
+		return UNKNOWN, ""
 	}
 }
 
-func (n *nodePool) handleNotAvailError(msg string, no *node) ErrorType {
-	addr := extractTaggedAddr(msg, "<DataNodeNotAvail>")
-	if addr == "" {
-		return UNEXPECT
-	}
-
-	no.address = addr
-	return NODE_NOT_AVAIL
-}
-
-func (n *nodePool) getNewLeader(msg string, no *node) ErrorType {
+func (n *nodePool) getNewLeader(msg string) (ErrorType, string) {
 	addr := extractTaggedAddr(msg, "<NotLeader>")
 	if addr == "" {
-		return UNEXPECT
+		return UNEXPECT, ""
 	}
 
-	no.address = addr
-	return NEW_LEADER
+	return NEW_LEADER, addr
 }
 
-func (c *conn) getRetryTimes() int {
+func (c *conn) getRetryLimit() *int {
 	if c.behaviorOpt == nil || (!c.behaviorOpt.Reconnect && !c.behaviorOpt.EnableHighAvailability) {
-		return 0
+		return cloneIntPtr(new(int))
 	}
 
-	if c.behaviorOpt.TryReconnectNums == nil {
-		return math.MaxInt32 // HACK: mock for try forever
+	return cloneIntPtr(c.behaviorOpt.TryReconnectNums)
+}
+
+func (c *conn) switchDataNode(n *node) (string, error) {
+	retryLimit := c.getRetryLimit()
+	if retryLimit == nil {
+		return c.switchDataNodeWithoutLimit(n)
 	}
 
-	return *c.behaviorOpt.TryReconnectNums
+	return c.switchDataNodeWithAttempts(n, *retryLimit+1)
 }
 
-func (c *conn) switchDataNode(n *node) (err error) {
-	return c.switchDataNodeWithAttempts(n, c.getRetryTimes()+1)
-}
-
-func (c *conn) switchDataNodeWithAttempts(n *node, attempts int) (err error) {
+func (c *conn) switchDataNodeWithAttempts(n *node, attempts int) (string, error) {
 	if attempts <= 0 {
-		return fmt.Errorf("failed to connect to %s", c.addr)
+		return "", fmt.Errorf("failed to connect to %s", c.addr)
 	}
 
 	connected := false
+	connectedAddress := ""
+	var err error
 	for attempt := 0; attempt < attempts; attempt++ {
 		if n == nil {
-			dialerLogf("starting failover attempt %d/%d from %s", attempt+1, attempts, c.addr)
+			c.dialerLogInfof("starting failover attempt %d/%d from %s", attempt+1, attempts, c.addr)
 		}
 		if n != nil {
-			if connected, err = c.connectNode(n); connected {
-				return nil
+			if connected, connectedAddress, err = c.connectDirectedNode(n); connected {
+				return connectedAddress, nil
 			}
 			n = nil
 		} else {
-			if connected, err = c.rangeConnectNode(); connected {
-				return nil
+			if connected, connectedAddress, err = c.rangeConnectNode(); connected {
+				return connectedAddress, nil
 			}
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
 		if attempt == attempts-1 {
-			dialerLogf("failover attempt %d/%d did not connect; no retries left", attempt+1, attempts)
+			c.dialerLogWarnf("failover attempt %d/%d did not connect; no retries left", attempt+1, attempts)
 			break
 		}
 
-		dialerLogf("failover attempt %d/%d did not connect; retrying in 1s", attempt+1, attempts)
+		c.dialerLogWarnf("failover attempt %d/%d did not connect; retrying in 1s", attempt+1, attempts)
 		sleepBeforeRetry(time.Second)
 	}
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return fmt.Errorf("failed to connect to %s", c.addr)
+	return "", fmt.Errorf("failed to connect to %s", c.addr)
+}
+
+func (c *conn) switchDataNodeWithoutLimit(n *node) (string, error) {
+	connected := false
+	connectedAddress := ""
+	var err error
+	for attempt := 0; ; attempt++ {
+		if n == nil {
+			c.dialerLogInfof("starting failover attempt %d from %s", attempt+1, c.addr)
+		}
+		if n != nil {
+			if connected, connectedAddress, err = c.connectDirectedNode(n); connected {
+				return connectedAddress, nil
+			}
+			n = nil
+		} else {
+			if connected, connectedAddress, err = c.rangeConnectNode(); connected {
+				return connectedAddress, nil
+			}
+		}
+		if err != nil {
+			return "", err
+		}
+
+		c.dialerLogWarnf("failover attempt %d did not connect; retrying in 1s", attempt+1)
+		sleepBeforeRetry(time.Second)
+	}
 }
 
 func isRetryableConnectError(err error) bool {
@@ -217,38 +237,73 @@ func isRetryableConnectError(err error) bool {
 		errors.Is(err, syscall.ENETUNREACH)
 }
 
-func (c *conn) rangeConnectNode() (bool, error) {
+func (c *conn) rangeConnectNode() (bool, string, error) {
 	c.nodePool.lastInd = (c.nodePool.lastInd + 1) % c.nodePool.len
-	return c.connectNode(c.nodePool.nodes[c.nodePool.lastInd])
+	n := c.nodePool.nodes[c.nodePool.lastInd]
+	c.dialerLogDebugf("high-availability connect candidate %s", n.address)
+	connected, err := c.connectNode(n)
+	if connected {
+		return true, n.address, nil
+	}
+
+	return false, "", err
+}
+
+func (c *conn) connectDirectedNode(n *node) (bool, string, error) {
+	c.dialerLogDebugf("server-directed connect candidate %s (fallback=%s)", n.address, n.fallback)
+	connected, err := c.connectNode(n)
+	if connected || err != nil {
+		if connected {
+			return true, n.address, nil
+		}
+		return false, "", err
+	}
+
+	if n.fallback == "" || n.fallback == n.address {
+		c.dialerLogWarnf("server-directed connect to %s did not connect and no fallback is available", n.address)
+		return false, "", nil
+	}
+
+	c.dialerLogWarnf("server-directed connect to %s did not connect; trying fallback %s", n.address, n.fallback)
+	fallback := newNode(n.fallback, 0)
+	connected, err = c.connectNode(fallback)
+	if connected {
+		return true, fallback.address, nil
+	}
+	if err == nil {
+		c.dialerLogWarnf("fallback connect to %s did not connect", fallback.address)
+	}
+
+	return false, "", err
 }
 
 // return true, nil: success
 // return false, nil: not connected, need to retry
 // return false, err: failed
 func (c *conn) connectNode(n *node) (bool, error) {
-	dialerLogf(
+	c.dialerLogDebugf(
 		"connecting to %s (NetTimeout=%s)",
 		n.address,
 		c.connectTimeout(),
 	)
 	err := connectToAddress(c, n.address)
 	if err == nil {
-		dialerLogf("connection to %s is ready", n.address)
+		c.isPublicName = c.isPublicNameAddress(n.address)
+		c.dialerLogInfof("connection to %s is ready", n.address)
 		return true, nil
 	}
 	if isRetryableConnectError(err) {
-		dialerLogf("connect to %s failed with retryable error: %v", n.address, err)
+		c.dialerLogWarnf("connect to %s failed with retryable error: %v", n.address, err)
 		return false, nil
 	}
 
-	node := newNode("", 0)
-	et := c.nodePool.parseError(err, node)
+	et, _ := c.nodePool.parseError(err)
 	if et == UNEXPECT || et == UNKNOWN || et == LOGIN_REQUIRED {
-		dialerLogf("connect to %s failed: %v", n.address, err)
+		c.dialerLogErrorf("connect to %s failed: %v", n.address, err)
 		return false, err
 	}
 
-	dialerLogf("connect to %s failed with handled server state: %v", n.address, err)
+	c.dialerLogWarnf("connect to %s failed with handled server state: %v", n.address, err)
 	return false, nil
 }
 
@@ -276,174 +331,20 @@ func (c *conn) connected() bool {
 	})
 
 	if err != nil {
-		dialerLogf("connection health probe failed: %v", err)
+		c.dialerLogWarnf("connection health probe failed: %v", err)
 		return false
 	}
 
 	s, ok := di.(*model.Scalar)
 	if !ok {
-		dialerLogf("connection health probe returned unexpected response type %T", di)
+		c.dialerLogWarnf("connection health probe returned unexpected response type %T", di)
 		return false
 	}
 
 	healthy := s.Value().(int32) == 2
 	if !healthy {
-		dialerLogf("connection health probe returned unexpected value: %v", s.Value())
+		c.dialerLogWarnf("connection health probe returned unexpected value: %v", s.Value())
 	}
 
 	return healthy
 }
-
-// NOTE function for get lowest load node
-
-// func (c *conn) getConnectedNode() (*node, error) {
-// 	for !c.isConnected {
-// 		for _, v := range c.nodePool.nodes {
-// 			ok, err := c.connectNode(v)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			if ok {
-// 				return v, nil
-// 			}
-// 			time.Sleep(100 * time.Millisecond)
-// 		}
-// 	}
-
-// 	return nil, nil
-// }
-
-// func (c *conn) connectMinNode() error {
-// 	connectedNode, table, err := c.getClusterPerf()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if c.loadBalance {
-// 		err = c.connectLoadBalance(table, connectedNode)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// func (c *conn) connectLoadBalance(tb *model.Table, cn *node) error {
-// 	c.calculateNodeWeight(tb)
-// 	minNode := c.nodePool.nodes[0]
-// 	for _, v := range c.nodePool.nodes {
-// 		if v.weight < minNode.weight {
-// 			minNode = v
-// 		}
-// 	}
-
-// 	if minNode.address != cn.address {
-// 		fmt.Println("Connect to min load node: ", minNode.address)
-// 		c.Conn.Close()
-// 		err := c.switchDataNode(minNode)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// func (c *conn) calculateNodeWeight(tb *model.Table) {
-// 	colHost := tb.GetColumnByName("host")
-// 	colPort := tb.GetColumnByName("port")
-// 	colMode := tb.GetColumnByName("mode")
-// 	colMaxConnections := tb.GetColumnByName("maxConnections")
-// 	colConnectionNum := tb.GetColumnByName("connectionNum")
-// 	colWorkerNum := tb.GetColumnByName("workerNum")
-// 	colExecutorNum := tb.GetColumnByName("executorNum")
-// 	load := 0.0
-// 	for k, v := range colMode.Data.StringList() {
-// 		if v == "0" {
-// 			nodeHost := colHost.Data.ElementString(k)
-// 			nodePort := colPort.Data.ElementString(k)
-// 			var existNode *node
-// 			if c.highAvailabilitySites != nil {
-// 				for _, n := range c.nodePool.nodes {
-// 					if n.address == fmt.Sprintf("%s:%s", nodeHost, nodePort) {
-// 						existNode = n
-// 						break
-// 					}
-// 				}
-
-// 				if existNode == nil {
-// 					continue
-// 				}
-// 			}
-
-// 			if colExecutorNum.Data.ElementValue(k).(int32) < colMaxConnections.Data.ElementValue(k).(int32) {
-// 				load = float64(colConnectionNum.Data.ElementValue(k).(int32)+
-// 					colWorkerNum.Data.ElementValue(k).(int32)+colExecutorNum.Data.ElementValue(k).(int32)) / 3.0
-// 			} else {
-// 				load = math.MaxFloat64
-// 			}
-
-// 			if existNode != nil {
-// 				existNode.weight = load
-// 			} else {
-// 				c.nodePool.add(&node{address: fmt.Sprintf("%s:%s", nodeHost, nodePort), weight: load})
-// 			}
-// 		}
-// 	}
-// }
-
-// func (c *conn) getClusterPerf() (*node, *model.Table, error) {
-// 	var connectedNode *node
-// 	var table *model.Table
-// 	var err error
-// 	n := newNode("", 1)
-// 	for !c.isClosed {
-// 		connectedNode, err = c.getConnectedNode()
-// 		if err != nil {
-// 			return nil, nil, err
-// 		}
-
-// 		df, err := c.RunScript("rpc(getControllerAlias(), getClusterPerf)")
-// 		if err != nil {
-// 			err = c.handleGetClusterPerfError(n, err)
-// 			if err != nil {
-// 				return nil, nil, err
-// 			}
-
-// 			continue
-// 		}
-
-// 		table = df.(*model.Table)
-// 		break
-// 	}
-
-// 	if table == nil {
-// 		return nil, nil, errors.New("run getClusterPerf() failed")
-// 	}
-
-// 	return connectedNode, table, nil
-// }
-
-// func (c *conn) handleGetClusterPerfError(n *node, err error) error {
-// 	fmt.Println("ERROR getting other data nodes, error: ", err)
-// 	n1 := &node{}
-// 	if c.isConnected {
-// 		et := c.nodePool.parseError(err.Error(), n)
-// 		if et == IGNORE {
-// 			return nil
-// 		} else if et == NEW_LEADER || et == NODE_NOT_AVAIL {
-// 			err = c.switchDataNode(n1)
-// 			if err != nil {
-// 				return err
-// 			}
-// 		}
-// 	} else {
-// 		err = c.switchDataNode(n1)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }

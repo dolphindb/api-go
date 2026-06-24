@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,9 +18,12 @@ type Pair struct {
 
 // NewPair returns an object of pair with specified vector v.
 // You can instantiate it by NewVector.
-func NewPair(v *Vector) *Pair {
+func NewPair(v *Vector) (*Pair, error) {
+	if v == nil {
+		return nil, errors.New("pair vector must not be nil")
+	}
 	if v.Rows() != 2 {
-		fmt.Println("[ERROR] The Vector must be of length 2 when initializing a Pair.")
+		return nil, errors.New("the vector must be of length 2 when initializing a pair")
 	}
 
 	return &Pair{
@@ -28,7 +32,7 @@ func NewPair(v *Vector) *Pair {
 			DataType: v.GetDataType(),
 		},
 		Vector: v,
-	}
+	}, nil
 }
 
 // Rows returns the row num of the DataForm.

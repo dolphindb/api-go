@@ -87,6 +87,73 @@ func TestMultiGoroutineTable(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestNewMultiGoroutineTableValidatesTableName(t *testing.T) {
+	_, err := NewMultiGoroutineTable(nil)
+	assert.EqualError(t, err, "the parameter Option must not be nil")
+
+	_, err = NewMultiGoroutineTable(&Option{
+		GoroutineCount: 1,
+		BatchSize:      1,
+		Throttle:       1,
+	})
+	assert.EqualError(t, err, "the parameter TableName must not be empty")
+}
+
+func TestMockInterfaceRejectsInvalidBatchType(t *testing.T) {
+	mtt := &MultiGoroutineTable{
+		colTypes: []int{int(model.DtDouble)},
+	}
+
+	_, _, err := mtt.mockInterface([]interface{}{[]int{1, 2}})
+
+	assert.ErrorContains(t, err, "col 0 of type double")
+	assert.ErrorContains(t, err, "[]float64")
+}
+
+func TestMockInterfaceRejectsEmptyBatch(t *testing.T) {
+	mtt := &MultiGoroutineTable{
+		colTypes: []int{int(model.DtComplex)},
+	}
+
+	_, _, err := mtt.mockInterface([]interface{}{[][2]float64{}})
+
+	assert.ErrorContains(t, err, "must not be empty")
+}
+
+func TestMockInterfaceKeepsRawPartitionValueForBatchRouting(t *testing.T) {
+	mtt := &MultiGoroutineTable{
+		colTypes: []int{int(model.DtInt), int(model.DtDouble)},
+	}
+
+	mock, count, err := mtt.mockInterface([]interface{}{
+		[]int32{1, 2},
+		[]float64{12.9, 22.9},
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count)
+	assert.IsType(t, int32(0), mock[0])
+	assert.Equal(t, int32(1), mock[0])
+	assert.IsType(t, float64(0), mock[1])
+	assert.Equal(t, 12.9, mock[1])
+}
+
+func TestGenerateWriteTableFromInterfaceRejectsMismatchedBatchSizes(t *testing.T) {
+	w := &writerGoroutine{
+		tableWriter: &MultiGoroutineTable{
+			colNames: []string{"price", "sym"},
+			colTypes: []int{int(model.DtDouble), int(model.DtString)},
+		},
+	}
+
+	_, _, _, err := w.generateWriteTableFromInterface([]interface{}{
+		[]float64{1.5, 2.5},
+		[]string{"AAPL"},
+	})
+
+	assert.ErrorContains(t, err, "column batch sizes don't match")
+}
+
 func TestMain(m *testing.M) {
 	exit := make(chan bool)
 	ln, err := net.Listen("tcp", testAddr)
@@ -192,7 +259,11 @@ func buildPartitionedSchemaResponse() []byte {
 		colDefs,
 	})
 
-	return renderResponse(model.NewDictionary(keys, values))
+	dict, err := model.NewDictionary(keys, values)
+	if err != nil {
+		panic(err)
+	}
+	return renderResponse(dict)
 }
 
 func buildNonPartitionSchemaResponse() []byte {
@@ -211,7 +282,11 @@ func buildNonPartitionSchemaResponse() []byte {
 	keys := mustVector(model.DtString, []string{"colDefs"})
 	values := mustVector(model.DtAny, []model.DataForm{colDefs})
 
-	return renderResponse(model.NewDictionary(keys, values))
+	dict, err := model.NewDictionary(keys, values)
+	if err != nil {
+		panic(err)
+	}
+	return renderResponse(dict)
 }
 
 func mustScalar(dt model.DataTypeByte, value interface{}) *model.Scalar {

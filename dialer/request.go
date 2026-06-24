@@ -36,9 +36,9 @@ func writeRequest(wr *protocol.Writer, params *requestParams, opt *BehaviorOptio
 func writeFlag(opt *BehaviorOptions) []byte {
 	bs := bytes.Buffer{}
 
-	bs.WriteString(fmt.Sprintf(" / %d_1_%d_%d", generatorRequestFlag(opt), opt.GetPriority(), opt.GetParallelism()))
-	if opt.GetFetchSize() > 0 {
-		bs.WriteString(fmt.Sprintf("__%d", opt.GetFetchSize()))
+	bs.WriteString(fmt.Sprintf(" / %d_1_%d_%d", generatorRequestFlag(opt), *opt.Priority, *opt.Parallelism))
+	if *opt.FetchSize > 0 {
+		bs.WriteString(fmt.Sprintf("__%d", *opt.FetchSize))
 	}
 
 	return bs.Bytes()

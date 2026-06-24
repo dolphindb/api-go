@@ -40,7 +40,12 @@ func NewTableFromRawData(colNames []string, colTypes []DataTypeByte, colValues [
 		vcts[k] = NewVector(dtl)
 	}
 
-	return NewTable(colNames, vcts), nil
+	rowCount, err := validateTableColumns(colNames, vcts)
+	if err != nil {
+		return nil, err
+	}
+
+	return newTable(colNames, vcts, rowCount), nil
 }
 
 // NewTableFromStruct returns the table object according to the val which is a struct object with special tags.
@@ -85,11 +90,20 @@ func NewTableFromStruct(obj interface{}) (tb *Table, err error) {
 
 // NewTable returns an object of Table with colNames and colValues.
 // You can instantiate the vector object by NewVector.
-func NewTable(colNames []string, colValues []*Vector) *Table {
+func NewTable(colNames []string, colValues []*Vector) (*Table, error) {
 	if len(colNames) != len(colValues) {
-		return nil
+		return nil, errors.New("The length of colNames and colValues should be equal.")
 	}
 
+	rowCount, err := validateTableColumns(colNames, colValues)
+	if err != nil {
+		return nil, err
+	}
+
+	return newTable(colNames, colValues, rowCount), nil
+}
+
+func newTable(colNames []string, colValues []*Vector, rowCount int) *Table {
 	names := make([]DataType, len(colNames))
 
 	for k, v := range colNames {
@@ -98,10 +112,6 @@ func NewTable(colNames []string, colValues []*Vector) *Table {
 	}
 
 	tbName, _ := NewDataType(DtString, "")
-	rowCount := 0
-	if len(colValues) > 0 {
-		rowCount = colValues[0].Rows()
-	}
 
 	return &Table{
 		category: &Category{
@@ -115,6 +125,43 @@ func NewTable(colNames []string, colValues []*Vector) *Table {
 		tableName:    tbName,
 		rowCount:     uint32(rowCount),
 	}
+}
+
+func validateTableColumns(colNames []string, colValues []*Vector) (int, error) {
+	if len(colNames) != len(colValues) {
+		return 0, errors.New("The length of colNames and colValues should be equal.")
+	}
+
+	rowCount := -1
+	for ind, col := range colValues {
+		colName := tableColumnName(colNames, ind)
+		if col == nil {
+			return 0, fmt.Errorf("column %q must not be nil", colName)
+		}
+
+		if rowCount == -1 {
+			rowCount = col.Rows()
+			continue
+		}
+
+		if col.Rows() != rowCount {
+			return 0, fmt.Errorf("column %q has %d rows, expect %d", colName, col.Rows(), rowCount)
+		}
+	}
+
+	if rowCount < 0 {
+		rowCount = 0
+	}
+
+	return rowCount, nil
+}
+
+func tableColumnName(colNames []string, ind int) string {
+	if ind >= 0 && ind < len(colNames) && colNames[ind] != "" {
+		return colNames[ind]
+	}
+
+	return fmt.Sprintf("col[%d]", ind)
 }
 
 // Rows returns the row num of the DataForm.
@@ -165,7 +212,8 @@ func (t *Table) GetSubtable(indexes []int) *Table {
 		cols[i] = t.columnValues[i].GetSubvector(indexes)
 	}
 
-	return NewTable(t.ColNames, cols)
+	tb, _ := NewTable(t.ColNames, cols)
+	return tb
 }
 
 // GetDataType returns the byte type of the DataType.
@@ -210,7 +258,15 @@ func (t *Table) GetColumnNames() []string {
 
 // Render serializes the DataForm with bo and input it into w.
 func (t *Table) Render(w *protocol.Writer, bo protocol.ByteOrder) error {
-	err := t.category.render(w)
+	rowCount, err := validateTableColumns(t.ColNames, t.columnValues)
+	if err != nil {
+		return err
+	}
+
+	t.rowCount = uint32(rowCount)
+	t.columnCount = uint32(len(t.columnValues))
+
+	err = t.category.render(w)
 	if err != nil {
 		return err
 	}

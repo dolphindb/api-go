@@ -1,10 +1,9 @@
 package script
 
 import (
-	"fmt"
-
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/logging"
 	"github.com/dolphindb/api-go/v3/model"
 )
 
@@ -31,5 +30,5 @@ func CheckFunction(db api.DolphinDB) {
 	util.AssertNil(err)
 	util.AssertEqual(df.String(), "int(3)")
 
-	fmt.Println("CheckFunction Successful")
+	logging.Info("example.script", "check function successful")
 }

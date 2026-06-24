@@ -107,7 +107,6 @@ func parseServerErrorMessage(raw string) (*ServerError, bool) {
 		serverErr.Code = ServerErrUnknownLeader
 	case strings.Contains(detail, "<DataNodeNotAvail>"):
 		serverErr.Code = ServerErrDataNodeNotAvail
-		serverErr.Address = extractTaggedAddr(detail, "<DataNodeNotAvail>")
 	}
 
 	return serverErr, true

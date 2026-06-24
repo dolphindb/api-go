@@ -10,8 +10,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestNewTableAppenderValidatesTableName(t *testing.T) {
+	conn, err := dialer.NewConn(context.TODO(), "127.0.0.1:0", nil)
+	assert.Nil(t, err)
+
+	_, err = NewTableAppender(&TableAppenderOption{Conn: conn})
+	assert.EqualError(t, err, "table appender table name must not be empty")
+}
+
 func TestTableAppender(t *testing.T) {
-	conn, err := dialer.NewSimpleConn(context.TODO(), testAddress, "user", "password")
+	conn, err := dialer.Dial(testAddress, "user", "password", nil)
 	assert.Nil(t, err)
 
 	opt := &TableAppenderOption{
@@ -20,7 +28,7 @@ func TestTableAppender(t *testing.T) {
 		Conn:      conn,
 	}
 
-	ta := NewTableAppender(opt)
+	ta := mustNewTableAppender(t, opt)
 	assert.NotNil(t, ta)
 
 	col, err := model.NewDataTypeListFromRawData(model.DtTimestamp, []time.Time{time.Date(2022, time.Month(1), 1, 1, 1, 0, 0, time.UTC),
@@ -30,7 +38,7 @@ func TestTableAppender(t *testing.T) {
 	col1, err := model.NewDataTypeListFromRawData(model.DtString, []string{"col1", "col1", "col1"})
 	assert.Nil(t, err)
 
-	tb := model.NewTable([]string{"date", "sym"}, []*model.Vector{model.NewVector(col), model.NewVector(col1)})
+	tb := mustNewTable(t, []string{"date", "sym"}, []*model.Vector{model.NewVector(col), model.NewVector(col1)})
 	res, err := ta.Append(tb)
 	assert.Nil(t, err)
 	assert.Equal(t, res.String(), "int(1)")

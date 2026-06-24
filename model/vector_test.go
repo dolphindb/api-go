@@ -86,7 +86,7 @@ func TestVector(t *testing.T) {
 	by.Reset()
 
 	vc = NewVector(dtl)
-	vc = NewVectorWithArrayVector(NewArrayVector([]*Vector{vc}))
+	vc = mustNewVectorWithArrayVector(t, NewArrayVector([]*Vector{vc}))
 	err = vc.Render(w, protocol.LittleEndian)
 	w.Flush()
 	assert.Nil(t, err)

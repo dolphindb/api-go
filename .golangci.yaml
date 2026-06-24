@@ -1,57 +1,134 @@
-run:
-  skip-dirs:
-  - test
-  - performance
-  - example
-linters-settings:
-  stylecheck:
-    # Select the Go version to target.
-    # Default: 1.13
-    go: "1.15"
-    # https://staticcheck.io/docs/options#checks
-    checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
-    # https://staticcheck.io/docs/options#dot_import_whitelist
-    dot-import-whitelist:
-      - fmt
-    # https://staticcheck.io/docs/options#initialisms
-    initialisms: ["ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "QPS", "RAM", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "GID", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"]
-    # https://staticcheck.io/docs/options#http_status_code_whitelist
-    http-status-code-whitelist: ["200", "400", "404", "500"]
+version: "2"
+
 linters:
-  enable-all: true
+  default: all
   disable:
-    - wrapcheck
-    - ireturn
-    - dupl
-    - varnamelen
-    - gosec
-    - gocyclo
-    - stylecheck
-    - nlreturn
-    - gochecknoglobals
-    - goerr113
-    - gomnd
-    - maintidx
-    - gofumpt
-    - gci
-    - gocritic
-    - forcetypeassert
-    - exhaustivestruct
-    - exhaustruct
-    - exhaustive
-    - cyclop
+    - asasalint
     - containedctx
-    - wsl
-    - paralleltest
-    - testpackage
-    - maligned
-    - gocognit
+    - cyclop
+    - depguard
+    - dupl
+    - dupword
+    - embeddedstructfieldcheck
+    - err113
+    - errcheck
+    - errorlint
+    - exhaustive
+    - exhaustruct
     - forbidigo
-    - nestif
-    - lll
+    - forcetypeassert
+    - funcorder
     - funlen
+    - gochecknoinits
+    - gochecknoglobals
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godoclint
     - godox
-    - scopelint
-    - golint
-    - interfacer
-    - ifshort
+    - godot
+    - gosmopolitan
+    - gosec
+    - govet
+    - interfacebloat
+    - ineffassign
+    - ireturn
+    - lll
+    - maintidx
+    - mirror
+    - mnd
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - noinlineerr
+    - nlreturn
+    - nolintlint
+    - nonamedreturns
+    - paralleltest
+    - perfsprint
+    - predeclared
+    - recvcheck
+    - revive
+    - staticcheck
+    - testpackage
+    - testifylint
+    - unconvert
+    - unparam
+    - unqueryvet
+    - unused
+    - varnamelen
+    - wastedassign
+    - whitespace
+    - wrapcheck
+    - wsl
+    - wsl_v5
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+      dot-import-whitelist:
+        - fmt
+      initialisms:
+        - ACL
+        - API
+        - ASCII
+        - CPU
+        - CSS
+        - DNS
+        - EOF
+        - GUID
+        - HTML
+        - HTTP
+        - HTTPS
+        - ID
+        - IP
+        - JSON
+        - QPS
+        - RAM
+        - RPC
+        - SLA
+        - SMTP
+        - SQL
+        - SSH
+        - TCP
+        - TLS
+        - TTL
+        - UDP
+        - UI
+        - GID
+        - UID
+        - UUID
+        - URI
+        - URL
+        - UTF8
+        - VM
+        - XML
+        - XMPP
+        - XSRF
+        - XSS
+      http-status-code-whitelist:
+        - "200"
+        - "400"
+        - "404"
+        - "500"
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    # Keep SDK development test suites and examples out of default lint results.
+    paths:
+      - ^test($|/)
+      - ^performance($|/)
+      - ^example($|/)

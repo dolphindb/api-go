@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolphindb/api-go/v3/logging"
 	"github.com/dolphindb/api-go/v3/model"
 
 	"github.com/stretchr/testify/assert"
@@ -22,23 +24,38 @@ import (
 const testAddr = "127.0.0.1:3002"
 
 func TestDialer(t *testing.T) {
-	fOpt := new(BehaviorOptions)
-	assert.Equal(t, fOpt.GetParallelism(), 64)
-	assert.Equal(t, fOpt.GetPriority(), 4)
-	assert.Equal(t, fOpt.GetFetchSize(), 0)
+	fOpt, err := normalizeBehaviorOptions(&BehaviorOptions{})
+	require.NoError(t, err)
+	require.NotNil(t, fOpt.Priority)
+	require.NotNil(t, fOpt.Parallelism)
+	require.NotNil(t, fOpt.FetchSize)
+	assert.Equal(t, defaultParallelism, *fOpt.Parallelism)
+	assert.Equal(t, defaultPriority, *fOpt.Priority)
+	assert.Equal(t, defaultFetchSize, *fOpt.FetchSize)
 
-	fOpt.SetFetchSize(100).
-		SetPriority(2).
-		SetParallelism(4)
-	assert.Equal(t, fOpt.GetParallelism(), 4)
-	assert.Equal(t, fOpt.GetPriority(), 2)
-	assert.Equal(t, fOpt.GetFetchSize(), 100)
+	priority := 2
+	parallelism := 4
+	fetchSize := 100
+	fOpt, err = normalizeBehaviorOptions(&BehaviorOptions{
+		Priority:    &priority,
+		Parallelism: &parallelism,
+		FetchSize:   &fetchSize,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, parallelism, *fOpt.Parallelism)
+	assert.Equal(t, priority, *fOpt.Priority)
+	assert.Equal(t, fetchSize, *fOpt.FetchSize)
 
-	_, err := NewConn(context.TODO(), testAddr, nil)
+	_, err = NewConn(context.TODO(), testAddr, nil)
 	assert.Nil(t, err)
 
-	c, err := NewSimpleConn(context.TODO(), testAddr, "user", "password")
+	c, err := Dial(testAddr, "user", "password", nil)
 	assert.Nil(t, err)
+
+	connected, err := Dial(testAddr, "user", "password", nil)
+	assert.Nil(t, err)
+	assert.True(t, connected.IsConnected())
+	assert.Nil(t, connected.Close())
 
 	// c.AddInitScript("schema()")
 	// assert.Equal(t, c.GetInitScripts(), []string{"schema()"})
@@ -299,7 +316,7 @@ func TestConnectWithHighAvailabilityReconnectCountsDoNotDoubleCountPrimary(t *te
 	assert.Equal(t, []string{"primary:8848", "secondary:8848", "tertiary:8848", "quaternary:8848"}, attempted)
 }
 
-func TestConnectWithHighAvailabilityStillTriesEachNodeOnceWhenRetryCountIsZero(t *testing.T) {
+func TestConnectWithHighAvailabilityStillTriesEachNodeOnceWhenRetryCountIsSmallerThanFallbackCount(t *testing.T) {
 	originalConnect := connectToAddress
 	defer func() {
 		connectToAddress = originalConnect
@@ -321,7 +338,7 @@ func TestConnectWithHighAvailabilityStillTriesEachNodeOnceWhenRetryCountIsZero(t
 		return retryableNetError{}
 	}
 
-	retries := 0
+	retries := 1
 	c, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
 		EnableHighAvailability: true,
 		HighAvailabilitySites:  []string{"secondary:8848", "tertiary:8848"},
@@ -343,15 +360,12 @@ func TestSwitchDataNodeLogsFinalFailedAttempt(t *testing.T) {
 	defer func() {
 		sleepBeforeRetry = originalSleep
 	}()
-	originalLogWriter := dialerLogWriter
-	defer func() {
-		dialerLogWriter = originalLogWriter
-	}()
-
 	sleepBeforeRetry = func(time.Duration) {}
 
 	var logBuf bytes.Buffer
-	dialerLogWriter = &logBuf
+	originalLogger := logging.Logger()
+	defer logging.SetLogger(originalLogger)
+	logging.SetLogger(slog.New(slog.NewTextHandler(&logBuf, nil)))
 
 	connectToAddress = func(c *conn, addr string) error {
 		return retryableNetError{}
@@ -365,9 +379,64 @@ func TestSwitchDataNodeLogsFinalFailedAttempt(t *testing.T) {
 	internalConn := rawConn.(*conn)
 	internalConn.nodePool = newNodePool("primary:8848", nil)
 
-	err = internalConn.switchDataNodeWithAttempts(nil, 3)
+	_, err = internalConn.switchDataNodeWithAttempts(nil, 3)
 	require.EqualError(t, err, "failed to connect to primary:8848")
 	assert.Contains(t, logBuf.String(), "failover attempt 3/3 did not connect; no retries left")
+}
+
+func TestConnectWithReconnectRetriesIndefinitelyWhenRetryCountIsNil(t *testing.T) {
+	originalConnect := connectToAddress
+	defer func() {
+		connectToAddress = originalConnect
+	}()
+	originalSleep := sleepBeforeRetry
+	defer func() {
+		sleepBeforeRetry = originalSleep
+	}()
+	sleepBeforeRetry = func(time.Duration) {}
+
+	attempts := 0
+	connectToAddress = func(c *conn, addr string) error {
+		attempts++
+		if attempts < 2 {
+			return retryableNetError{}
+		}
+		return nil
+	}
+
+	rawConn, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		Reconnect: true,
+	})
+	require.NoError(t, err)
+
+	err = rawConn.Connect()
+	require.NoError(t, err)
+	assert.Equal(t, 2, attempts)
+}
+
+func TestReconnectConnectDoesNotStartFailoverWhenPrimaryConnects(t *testing.T) {
+	originalConnect := connectToAddress
+	defer func() {
+		connectToAddress = originalConnect
+	}()
+	connectToAddress = func(c *conn, addr string) error {
+		return nil
+	}
+
+	var logBuf bytes.Buffer
+	originalLogger := logging.Logger()
+	defer logging.SetLogger(originalLogger)
+	logging.SetLogger(slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	rawConn, err := NewConn(context.TODO(), "primary:8848", &BehaviorOptions{
+		Reconnect: true,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, rawConn.Connect())
+	logs := logBuf.String()
+	assert.NotContains(t, logs, "starting failover attempt")
+	assert.Contains(t, logs, "connection to primary:8848 is ready")
 }
 
 func TestNewConnShufflesHighAvailabilitySitesWithoutMutatingInput(t *testing.T) {
@@ -450,13 +519,10 @@ func TestConnectLogsSuccessfulLoginWithUserName(t *testing.T) {
 		loginWithCredentials = originalLogin
 	}()
 
-	originalLogWriter := dialerLogWriter
-	defer func() {
-		dialerLogWriter = originalLogWriter
-	}()
-
 	var logBuf bytes.Buffer
-	dialerLogWriter = &logBuf
+	originalLogger := logging.Logger()
+	defer logging.SetLogger(originalLogger)
+	logging.SetLogger(slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 
 	var loginCalls int
 	loginWithCredentials = func(conn Conn, userID, password string) error {
@@ -475,7 +541,33 @@ func TestConnectLogsSuccessfulLoginWithUserName(t *testing.T) {
 	defer rawConn.Close()
 
 	assert.Equal(t, 1, loginCalls)
-	assert.Contains(t, logBuf.String(), `login to `+addr+` succeeded for user "alice"`)
+	assert.Contains(t, logBuf.String(), "login to "+addr+" succeeded for user")
+	assert.Contains(t, logBuf.String(), "alice")
+}
+
+func TestConnectSilencesOptionalScramUnavailableBeforePasswordLogin(t *testing.T) {
+	addr, stop := startDialerTestServer(t)
+	defer stop()
+
+	var logBuf bytes.Buffer
+	originalLogger := logging.Logger()
+	defer logging.SetLogger(originalLogger)
+	logging.SetLogger(slog.New(slog.NewTextHandler(&logBuf, nil)))
+
+	rawConn, err := NewConn(context.TODO(), addr, nil)
+	require.NoError(t, err)
+	rawConn.SetUserID("alice")
+	rawConn.SetPassword("secret")
+
+	require.NoError(t, rawConn.Connect())
+	defer rawConn.Close()
+
+	logs := logBuf.String()
+	assert.NotContains(t, logs, "level=WARN")
+	assert.NotContains(t, logs, "level=ERROR")
+	assert.NotContains(t, logs, "scramClientFirst")
+	assert.NotContains(t, logs, "SCRAM login is unavailable")
+	assert.Contains(t, logs, "login to "+addr+" succeeded for user")
 }
 
 func TestSwitchDataNodeReconnectsWithLogin(t *testing.T) {
@@ -506,7 +598,8 @@ func TestSwitchDataNodeReconnectsWithLogin(t *testing.T) {
 
 	internalConn := rawConn.(*conn)
 	require.NoError(t, internalConn.Close())
-	require.NoError(t, internalConn.switchDataNode(nil))
+	_, err = internalConn.switchDataNode(nil)
+	require.NoError(t, err)
 	defer internalConn.Close()
 
 	assert.Equal(t, []string{addr, addr}, loginTargets)
@@ -543,7 +636,8 @@ func TestSwitchDataNodeHighAvailabilityRelogsOnNewNode(t *testing.T) {
 
 	internalConn := rawConn.(*conn)
 	require.NoError(t, internalConn.Close())
-	require.NoError(t, internalConn.switchDataNode(&node{address: secondaryAddr}))
+	_, err = internalConn.switchDataNode(&node{address: secondaryAddr})
+	require.NoError(t, err)
 	defer internalConn.Close()
 
 	assert.Equal(t, []string{primaryAddr, secondaryAddr}, loginTargets)
@@ -584,6 +678,61 @@ func TestCloseWithoutUnderlyingConn(t *testing.T) {
 	assert.Nil(t, c.Close())
 	assert.True(t, c.IsClosed())
 	assert.False(t, c.IsConnected())
+}
+
+func TestNormalizeBehaviorOptionsUsesNilAsInternalDefaults(t *testing.T) {
+	opt, err := normalizeBehaviorOptions(&BehaviorOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, defaultPriority, *opt.Priority)
+	assert.Equal(t, defaultParallelism, *opt.Parallelism)
+	assert.Equal(t, defaultFetchSize, *opt.FetchSize)
+
+	positive := 4
+	opt, err = normalizeBehaviorOptions(&BehaviorOptions{TryReconnectNums: &positive})
+	require.NoError(t, err)
+	require.NotNil(t, opt.TryReconnectNums)
+	assert.Equal(t, 4, *opt.TryReconnectNums)
+}
+
+func TestBehaviorOptionsValidateRejectsNonPositiveTryReconnectNums(t *testing.T) {
+	zero := 0
+	negative := -1
+
+	require.EqualError(t, (&BehaviorOptions{TryReconnectNums: &zero}).Validate(), "TryReconnectNums must be nil or greater than 0")
+	require.EqualError(t, (&BehaviorOptions{TryReconnectNums: &negative}).Validate(), "TryReconnectNums must be nil or greater than 0")
+	require.NoError(t, (&BehaviorOptions{}).Validate())
+
+	positive := 2
+	require.NoError(t, (&BehaviorOptions{TryReconnectNums: &positive}).Validate())
+}
+
+func TestGetRetryLimitUsesNilAsUnlimitedReconnects(t *testing.T) {
+	positive := 2
+
+	assert.Nil(t, (&conn{behaviorOpt: &BehaviorOptions{Reconnect: true}}).getRetryLimit())
+	require.NotNil(t, (&conn{behaviorOpt: &BehaviorOptions{Reconnect: true, TryReconnectNums: &positive}}).getRetryLimit())
+	assert.Equal(t, 2, *(&conn{behaviorOpt: &BehaviorOptions{Reconnect: true, TryReconnectNums: &positive}}).getRetryLimit())
+
+	limit := (&conn{}).getRetryLimit()
+	require.NotNil(t, limit)
+	assert.Equal(t, 0, *limit)
+}
+
+func TestNewConnRejectsNonPositiveTryReconnectNums(t *testing.T) {
+	zero := 0
+	negative := -1
+
+	_, err := NewConn(context.TODO(), testAddr, &BehaviorOptions{
+		Reconnect:        true,
+		TryReconnectNums: &zero,
+	})
+	require.EqualError(t, err, "TryReconnectNums must be nil or greater than 0")
+
+	_, err = NewConn(context.TODO(), testAddr, &BehaviorOptions{
+		Reconnect:        true,
+		TryReconnectNums: &negative,
+	})
+	require.EqualError(t, err, "TryReconnectNums must be nil or greater than 0")
 }
 
 func TestMain(m *testing.M) {
@@ -674,7 +823,7 @@ func handleData(conn net.Conn) {
 
 			res = make([]byte, 0)
 		} else if len(res) == 25 || len(res) == 27 || len(res) == 29 || len(res) == 30 || len(res) == 48 ||
-			len(res) == 48 || len(res) == 54 || len(res) == 49 {
+			len(res) == 54 || len(res) == 49 {
 			_, err = conn.Write([]byte(successResponse))
 			if err != nil {
 				return

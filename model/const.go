@@ -129,7 +129,10 @@ const (
 	DtInt128
 	// DtBlob is the byte type of Blob.
 	DtBlob
-	dt33
+	// dtInvalidDecimal is a reserved historical type slot.
+	// C++ SDK keeps the same wire value as DT_INVALID7 with comment "DT_DECIMAL".
+	// The actual supported decimal types are DtDecimal32, DtDecimal64, and DtDecimal128.
+	dtInvalidDecimal
 	// DtComplex is the byte type of Complex.
 	DtComplex
 	// DtPoint is the byte type of Point.

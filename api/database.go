@@ -19,6 +19,8 @@ func (c *Database) GetSession() string {
 }
 
 // CreateTable creates an in-memory table in the database and returns the table instance.
+//
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *Database) CreateTable(t *CreateTableRequest) (*Table, error) {
 	handle := generateTableName()
 
@@ -40,6 +42,8 @@ func (c *Database) CreateTable(t *CreateTableRequest) (*Table, error) {
 }
 
 // CreatePartitionedTable creates a partitioned table in the database and returns the table instance.
+//
+// Deprecated: use RunScript with explicit DolphinDB scripts instead.
 func (c *Database) CreatePartitionedTable(p *CreatePartitionedTableRequest) (*Table, error) {
 	handle := generateTableName()
 

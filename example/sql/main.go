@@ -2,43 +2,46 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/dolphindb/api-go/v3/api"
 	"github.com/dolphindb/api-go/v3/dialer"
 	"github.com/dolphindb/api-go/v3/example/apis"
+	"github.com/dolphindb/api-go/v3/example/util"
+	"github.com/dolphindb/api-go/v3/logging"
 )
 
 func main() {
+	util.InitExampleLogger()
+
 	addr := apis.TestAddr
 	user := apis.User
 	password := apis.Password
-	fmt.Printf("Connecting to DolphinDB at %s\n", addr)
+	logging.Info("example.sql", "connecting to dolphindb", "address", addr)
 
 	sql := "sysdate()"
-	fmt.Printf("Comparing SQL standards with SQL: %s\n\n", sql)
+	logging.Info("example.sql", "comparing sql standards", "sql", sql)
 
 	runSQL(addr, user, password, dialer.SqlStdDolphinDB, sql)
 	runSQL(addr, user, password, dialer.SqlStdOracle, sql)
 	runSQL(addr, user, password, dialer.SqlStdMySQL, sql)
 
-	fmt.Println("\nSQL standard comparison completed")
+	logging.Info("example.sql", "sql standard comparison completed")
 }
 
 func runSQL(addr, user, password string, standard dialer.SqlStdEnum, sql string) {
-	behavior := (&dialer.BehaviorOptions{}).SetSqlStd(standard)
-	fmt.Printf("[%s]\n", standard.String())
+	behavior := &dialer.BehaviorOptions{SqlStd: standard}
+	logging.Info("example.sql", "running sql standard comparison", "standard", standard.String())
 	expectedToFail := standard == dialer.SqlStdDolphinDB
 
 	db, err := api.NewDolphinDBClient(context.TODO(), addr, behavior)
 	if err != nil {
-		fmt.Printf("create client failed: %v\n\n", err)
+		logging.Error("example.sql", "create client failed", "standard", standard.String(), "err", err)
 		return
 	}
 
 	err = db.Connect()
 	if err != nil {
-		fmt.Printf("connect failed: %v\n\n", err)
+		logging.Error("example.sql", "connect failed", "standard", standard.String(), "err", err)
 		return
 	}
 	defer func() {
@@ -47,19 +50,19 @@ func runSQL(addr, user, password string, standard dialer.SqlStdEnum, sql string)
 
 	err = db.Login(new(api.LoginRequest).SetUserID(user).SetPassword(password))
 	if err != nil {
-		fmt.Printf("login failed: %v\n\n", err)
+		logging.Error("example.sql", "login failed", "standard", standard.String(), "err", err)
 		return
 	}
 
 	df, err := db.RunScript(sql)
 	if err != nil {
 		if expectedToFail {
-			fmt.Printf("run failed as expected for %s: %v\n\n", standard.String(), err)
+			logging.Info("example.sql", "run failed as expected", "standard", standard.String(), "err", err)
 		} else {
-			fmt.Printf("run failed: %v\n\n", err)
+			logging.Error("example.sql", "run failed", "standard", standard.String(), "err", err)
 		}
 		return
 	}
 
-	fmt.Printf("run succeeded: %s\n\n", df.String())
+	logging.Info("example.sql", "run succeeded", "standard", standard.String(), "result", df.String())
 }

@@ -23,6 +23,9 @@ func newRawSliceHeader(sh *reflect.SliceHeader, b []byte, stride int) *reflect.S
 }
 
 func newSliceHeaderFromBytes(b []byte, stride int) unsafe.Pointer {
+	if len(b) == 0 {
+		return unsafe.Pointer(&reflect.SliceHeader{})
+	}
 	//nolint
 	sh := &reflect.SliceHeader{}
 	return unsafe.Pointer(newRawSliceHeader(sh, b, stride))
@@ -175,6 +178,9 @@ func ByteSliceFromString(s string) []byte {
 
 // StringFromByteSlice casts b to string.
 func StringFromByteSlice(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
 	//nolint
 	h := &reflect.StringHeader{
 		//nolint

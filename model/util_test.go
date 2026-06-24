@@ -20,6 +20,14 @@ func TestUtil(t *testing.T) {
 	dts = GetDataTypeString(145)
 	assert.Equal(t, dts, "symbolExtend")
 
+	dts = GetDataTypeString(dtInvalidDecimal)
+	assert.Equal(t, dts, "")
+
+	_, ok := dataTypeByteMap["invalidDecimal"]
+	assert.False(t, ok)
+	_, ok = dataTypeByteMap["Dt33"]
+	assert.False(t, ok)
+
 	by := bytes.NewBuffer([]byte{1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 2, 0})
 	r := protocol.NewReader(by)
 

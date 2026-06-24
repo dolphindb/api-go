@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -104,7 +103,7 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*UnboundedChan, e
 	}
 
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		streamingLogErrorf("failed to connect to server: %v", err)
 		return nil, err
 	}
 
@@ -116,7 +115,7 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*UnboundedChan, e
 
 	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return nil, err
 	}
 
@@ -130,7 +129,7 @@ func (s *subscriber) subscribeInternal(req *SubscribeRequest) (*UnboundedChan, e
 	if err != nil {
 		if action, ok := getStreamFailoverAction(err, req.Address); ok {
 			if action.friendlyMessage != "" {
-				fmt.Println(action.friendlyMessage)
+				streamingLogWarnf("%s", action.friendlyMessage)
 			}
 			if action.address != "" {
 				req.Address = action.address
@@ -157,7 +156,7 @@ func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
 	}
 
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		streamingLogErrorf("failed to connect to server: %v", err)
 		return err
 	}
 
@@ -169,7 +168,7 @@ func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
 
 	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return err
 	}
 
@@ -181,7 +180,7 @@ func (s *subscriber) reSubscribeInternal(req *SubscribeRequest) error {
 	if err != nil {
 		if action, ok := getStreamFailoverAction(err, req.Address); ok {
 			if action.friendlyMessage != "" {
-				fmt.Println(action.friendlyMessage)
+				streamingLogWarnf("%s", action.friendlyMessage)
 			}
 			if action.address != "" {
 				req.Address = action.address
@@ -263,7 +262,7 @@ func (s *subscriber) checkServerVersion(req *SubscribeRequest) error {
 	s.version = df.(*model.Scalar).DataType.String()
 	if s.isReverseStreaming() {
 		if s.listeningPort != 0 {
-			fmt.Println("Warn: The server only supports subscription through reverse connection (connection initiated by the subscriber). The specified port will not take effect.")
+			streamingLogWarnf("the server only supports subscription through reverse connection; the specified port will not take effect")
 		}
 		s.listeningPort = 0
 	} else if s.listeningPort <= 0 {
@@ -271,6 +270,20 @@ func (s *subscriber) checkServerVersion(req *SubscribeRequest) error {
 	}
 
 	return nil
+}
+
+func (s *subscriber) initListening(c AbstractClient, req *SubscribeRequest) error {
+	var err error
+	s.once.Do(func() {
+		err = s.checkServerVersion(req)
+		if err != nil {
+			return
+		}
+
+		err = startListening(c)
+	})
+
+	return err
 }
 
 func isLater(ori, raw string) bool {
@@ -306,19 +319,19 @@ func (s *subscriber) publishTable(topic string, req *SubscribeRequest, conn dial
 
 	pubReq, err := generatePublishTableParams(req, s.listeningHost, s.listeningPort)
 	if err != nil {
-		fmt.Printf("Failed to generate the params of PublishTable: %s\n", err.Error())
+		streamingLogErrorf("failed to generate the params of PublishTable: %v", err)
 		return err
 	}
 	df, err := conn.RunFunc("publishTable", pubReq)
 	if err != nil {
-		fmt.Printf("Failed to publish table: %s\n", err.Error())
+		streamingLogErrorf("failed to publish table: %v", err)
 		return err
 	}
 
 	if df.GetDataForm() == model.DfVector && df.GetDataType() == model.DtAny {
 		err = s.handleAnyVector(topic, df, req)
 		if err != nil {
-			fmt.Printf("Failed to handle vector: %s\n", err.Error())
+			streamingLogErrorf("failed to handle vector: %v", err)
 			return err
 		}
 	} else {
@@ -349,7 +362,7 @@ func (s *subscriber) packRequest(topic string, req *SubscribeRequest) {
 func (s *subscriber) getTopicFromServer(req *SubscribeRequest) (string, error) {
 	conn, err := newConnectedConn(req)
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		streamingLogErrorf("failed to connect to server: %v", err)
 		return "", err
 	}
 
@@ -361,13 +374,13 @@ func (s *subscriber) getTopicFromServer(req *SubscribeRequest) (string, error) {
 func getTopicFromServer(tableName, actionName string, conn dialer.Conn) (string, error) {
 	params, err := generatorGetSubscriptionTopicParams(tableName, actionName)
 	if err != nil {
-		fmt.Printf("Failed to generate the params of GetSubscriptionTopic: %s\n", err.Error())
+		streamingLogErrorf("failed to generate the params of GetSubscriptionTopic: %v", err)
 		return "", err
 	}
 
 	df, err := conn.RunFunc("getSubscriptionTopic", params)
 	if err != nil {
-		fmt.Printf("Failed to call getSubscriptionTopic: %s\n", err.Error())
+		streamingLogErrorf("failed to call getSubscriptionTopic: %v", err)
 		return "", err
 	}
 
@@ -382,18 +395,14 @@ func (s *subscriber) handleAnyVector(topic string, df model.DataForm, req *Subsc
 	HASiteStrings := v.Data.StringList()
 	requests := make([]*SubscribeRequest, len(HASiteStrings))
 	for k, v := range HASiteStrings {
-		str := strings.Split(v, ":")
-		host := str[0]
-		port, err := strconv.Atoi(str[1])
+		address, alias, err := parseHASite(v)
 		if err != nil {
-			fmt.Printf("Failed to parse server port: %s\n", err.Error())
+			streamingLogErrorf("failed to parse high availability site: %v", err)
 			return err
 		}
 
-		alias := str[2]
-
 		requests[k] = &SubscribeRequest{
-			Address:     fmt.Sprintf("%s:%d", host, port),
+			Address:     address,
 			UserID:      req.UserID,
 			Password:    req.Password,
 			TableName:   req.TableName,
@@ -405,7 +414,7 @@ func (s *subscriber) handleAnyVector(topic string, df model.DataForm, req *Subsc
 			AllowExists: req.AllowExists,
 		}
 
-		haTopicToTrueTopic.Store(fmt.Sprintf("%s:%d:%s/%s/%s", host, port, alias, req.TableName, req.ActionName), topic)
+		haTopicToTrueTopic.Store(fmt.Sprintf("%s:%s/%s/%s", address, alias, req.TableName, req.ActionName), topic)
 	}
 
 	trueTopicToRequests.Store(topic, requests)
@@ -413,10 +422,24 @@ func (s *subscriber) handleAnyVector(topic string, df model.DataForm, req *Subsc
 	return nil
 }
 
+func parseHASite(raw string) (address, alias string, err error) {
+	lastColon := strings.LastIndex(raw, ":")
+	if lastColon < 0 {
+		return "", "", fmt.Errorf("invalid high availability site: %s", raw)
+	}
+
+	host, port, err := net.SplitHostPort(raw[:lastColon])
+	if err != nil {
+		return "", "", fmt.Errorf("invalid high availability site: %s", raw)
+	}
+
+	return net.JoinHostPort(host, port), raw[lastColon+1:], nil
+}
+
 func (s *subscriber) activeCloseConnection(req *SubscribeRequest) error {
 	conn, err := newConnectedConn(req)
 	if err != nil {
-		fmt.Printf("Failed to new a connected connection: %s\n", err.Error())
+		streamingLogErrorf("failed to create a connected connection: %v", err)
 		return err
 	}
 
@@ -424,7 +447,7 @@ func (s *subscriber) activeCloseConnection(req *SubscribeRequest) error {
 
 	err = s.activeClosePublishConnection(conn, req.ActionName, req.TableName)
 	if err != nil {
-		fmt.Printf("Failed to call activeClosePublishConnection: %s\n", err.Error())
+		streamingLogErrorf("failed to call activeClosePublishConnection: %v", err)
 		return err
 	}
 
@@ -439,13 +462,13 @@ func (s *subscriber) activeClosePublishConnection(conn dialer.Conn, actionName, 
 
 	params, err := s.packActiveClosePublishConnectionParams(actionName, tableName)
 	if err != nil {
-		fmt.Printf("Failed to pack params: %s\n", err.Error())
+		streamingLogErrorf("failed to pack params: %v", err)
 		return err
 	}
 
 	_, err = conn.RunFunc("activeClosePublishConnection", params)
 	if err != nil {
-		fmt.Printf("Failed to call activeClosePublishConnection: %s\n", err.Error())
+		streamingLogErrorf("failed to call activeClosePublishConnection: %v", err)
 		return err
 	}
 
@@ -458,7 +481,7 @@ func (s *subscriber) packActiveClosePublishConnectionParams(actionName, tableNam
 
 		actionNameArgs, err := model.NewDataType(model.DtString, actionName)
 		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with listeningHost: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate DataType with listeningHost: %v", err)
 			return nil, err
 		}
 
@@ -466,7 +489,7 @@ func (s *subscriber) packActiveClosePublishConnectionParams(actionName, tableNam
 
 		tableNameArgs, err := model.NewDataType(model.DtString, tableName)
 		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with listeningPort: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate DataType with listeningPort: %v", err)
 			return nil, err
 		}
 
@@ -477,7 +500,7 @@ func (s *subscriber) packActiveClosePublishConnectionParams(actionName, tableNam
 
 		localIP, err := model.NewDataType(model.DtString, s.listeningHost)
 		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with listeningHost: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate DataType with listeningHost: %v", err)
 			return nil, err
 		}
 
@@ -485,14 +508,14 @@ func (s *subscriber) packActiveClosePublishConnectionParams(actionName, tableNam
 
 		port, err := model.NewDataType(model.DtInt, s.listeningPort)
 		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with listeningPort: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate DataType with listeningPort: %v", err)
 			return nil, err
 		}
 
 		params[1] = model.NewScalar(port)
 		tmp, err := model.NewDataType(model.DtBool, byte(1))
 		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with bool value: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate DataType with bool value: %v", err)
 			return nil, err
 		}
 
@@ -504,7 +527,7 @@ func (s *subscriber) packActiveClosePublishConnectionParams(actionName, tableNam
 func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 	conn, err := newConnectedConn(req)
 	if err != nil {
-		fmt.Printf("Failed to new connected conn: %s\n", err.Error())
+		streamingLogErrorf("failed to create a connected conn: %v", err)
 		return err
 	}
 
@@ -512,11 +535,11 @@ func (s *subscriber) unSubscribe(req *SubscribeRequest) error {
 
 	topic, err := getTopicFromServer(req.TableName, req.ActionName, conn)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return nil
 	}
 
-	fmt.Println("Successfully unsubscribe from the table ", topic)
+	streamingLogInfof("successfully unsubscribed from the table %s", topic)
 
 	s.cleanTopic(topic)
 	err = s.stopPublishTable(req, conn)
@@ -549,13 +572,13 @@ func (s *subscriber) stopPublishTable(req *SubscribeRequest, conn dialer.Conn) e
 
 	stopReq, err := generateStopPublishTableParams(req, s.listeningHost, s.listeningPort)
 	if err != nil {
-		fmt.Printf("Failed to generate the params of stopPublishTable: %s\n", err.Error())
+		streamingLogErrorf("failed to generate the params of stopPublishTable: %v", err)
 		return err
 	}
 
 	_, err = conn.RunFunc("stopPublishTable", stopReq)
 	if err != nil {
-		fmt.Printf("Failed to call stopPublishTable: %s\n", err.Error())
+		streamingLogErrorf("failed to call stopPublishTable: %v", err)
 		return err
 	}
 

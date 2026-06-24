@@ -10,7 +10,7 @@
 - [3. DolphinDB 基本用法](#3-dolphindb-基本用法)
   - [3.1. 初始化 DolphinDB](#31-初始化-dolphindb)
     - [3.1.1. NewDolphinDBClient 初始化 DolphinDB](#311-newdolphindbclient-初始化-dolphindb)
-    - [3.1.2. NewSimpleDolphinDBClient 初始化 DolphinDB](#312-newsimpledolphindbclient-初始化-dolphindb)
+    - [3.1.2. Dial 初始化 DolphinDB](#312-dial-初始化-dolphindb)
   - [3.2. 通过 API 建库建表](#32-通过-api-建库建表)
   - [3.3. 基础函数使用](#33-基础函数使用)
     - [3.3.1. 构造数据类型](#331-构造数据类型)
@@ -20,6 +20,7 @@
     - [3.3.2. 完整示例](#332-完整示例)
   - [3.4. 初始化 DBConnectionPool](#34-初始化-dbconnectionpool)
   - [3.5. 集群连接策略：负载均衡与高可用](#35-集群连接策略负载均衡与高可用)
+  - [3.6. 获取执行过程信息](#36-获取执行过程信息)
 - [4. 读写 DolphinDB 数据表](#4-读写-dolphindb-数据表)
   - [4.1. 保存数据到 DolphinDB 数据表](#41-保存数据到-dolphindb-数据表)
     - [4.1.1. 同步追加数据](#411-同步追加数据)
@@ -119,7 +120,7 @@ Go API 定义了 DataForm 接口，表示服务器端返回的[数据形式](htt
 
 该接口还提供了 `GetDataTypeString` 方法获取数据类型的字符串表示。
 
-Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过该接口在 `DolphinDB` 服务器上执行脚本和函数，并在两者之间双向传递数据。使用 `NewDolphinDBClient` 或者 `NewSimpleDolphinDBClient` 可以初始化 `DolphinDB` 实例对象。该对象提供以下主要方法：
+Go API 提供的最核心的接口是 `DolphinDB`。Go API 通过该接口在 `DolphinDB` 服务器上执行脚本和函数，并在两者之间双向传递数据。历史上可以通过 `api.NewDolphinDBClient` 或者 `api.NewSimpleDolphinDBClient` 初始化 `DolphinDB` 实例对象；从 `3.1.0` 开始，推荐优先使用 `dolphindb.NewClient` / `dolphindb.Dial`。
 
 | 方法名                    | 详情                                            |
 | ------------------------- | ----------------------------------------------- |
@@ -176,11 +177,29 @@ Go API 需要运行在 Go 1.15 或以上版本的环境。注意，Go API 只支
 go get -u github.com/dolphindb/api-go/v3
 ```
 
+## 示例索引
+
+README 主要保留接口说明和行为语义。可运行示例统一放在 [`example/`](./example/) 目录，建议直接从这些文件开始：
+
+| 场景 | 示例 |
+| --- | --- |
+| Quick start，推荐默认入口 `dolphindb.Dial` | [`example/example.go`](./example/example.go) |
+| 分阶段初始化 `dolphindb.NewClient -> Connect -> Login` | [`example/client/main.go`](./example/client/main.go) |
+| 建库建表、账号、连接池等 API 示例 | [`example/apis/`](./example/apis/) |
+| 脚本执行与函数调用 | [`example/script/`](./example/script/) |
+| SQL 使用示例 | [`example/sql/main.go`](./example/sql/main.go) |
+| 连接池与日志入口 | [`example/logging/main.go`](./example/logging/main.go) |
+| 批量并发写入 | [`example/mtw/mtw.go`](./example/mtw/mtw.go) |
+| 流订阅 | [`example/streaming_test/streaming.go`](./example/streaming_test/streaming.go) |
+| 异构流表反序列化 | [`example/streaming_deserializer/main.go`](./example/streaming_deserializer/main.go) |
+
 ## 3. DolphinDB 基本用法
 
 ### 3.1. 初始化 DolphinDB
 
-Go API 支持通过 `NewDolphinDBClient` 和 `NewSimpleDolphinDBClient` 两种方式来初始化 `DolphinDB` 实例。
+Go API 支持通过 `NewDolphinDBClient` 初始化未连接客户端，也支持通过 `Dial` 直接连接并登录服务端。旧的 `NewSimpleDolphinDBClient` 仍保留兼容。
+
+从 `3.1.0` 开始，推荐优先使用 `github.com/dolphindb/api-go/v3/dolphindb` 作为高层入口包。它提供了更贴近 Go 习惯的命名，例如 `dolphindb.NewClient`、`dolphindb.Dial`、`(*Client).CreateDatabase`、`(*Client).NewTable`、`dolphindb.NewConnPool`；对应的开发期新增入口不再继续留在 `api` 包里扩张。
 
 #### 3.1.1. NewDolphinDBClient 初始化 DolphinDB
 
@@ -191,49 +210,7 @@ NewDolphinDBClient 仅初始化客户端，需要通过 Connect 和 Login 去连
 3. 初始化登录请求
 4. 登录服务端
 
-```go
-package main
-
-import (
-    "context"
-
-    "github.com/dolphindb/api-go/v3/api"
-)
-
-func main() {
-    host := "<ServerIP:Port>"
-    // step 1: init client
-    opt := &dialer.BehaviorOptions{
-        IsClearSessionMemory : true,
-    }
-
-    db, err := api.NewDolphinDBClient(context.TODO(), host, opt)
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-
-    // step 2: connect to server
-    err = db.Connect()
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-
-    // step 3: init login request
-    loginReq := &api.LoginRequest{
-        UserID:   "userID",
-        Password: "password",
-    }
-
-    // step 4: login dolphindb
-    err = db.Login(loginReq)
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-}
-```
+可运行示例见 [`example/client/main.go`](./example/client/main.go)。
 
 通过配置 BehaviorOptions 可以配置行为标识。可配置行为标识如下：
 
@@ -244,33 +221,16 @@ func main() {
 - EnableHighAvailability: 指定是否开启高可用。
 - HighAvailabilitySites: 指定高可用节点地址，仅在 `EnableHighAvailability=true` 时可配置；否则会返回错误。
 - Reconnect: 指定是否开启断线重连。
+- TryReconnectNums: 指定断线重连次数。`nil` 表示无限重试；正整数表示有限重试次数；小于等于 `0` 的值会返回参数错误。
+- EnableScram: 指定是否强制使用 SCRAM 登录。`false` 时客户端仍会优先尝试 SCRAM；如果服务端或用户不支持 SCRAM，会静默回退到普通 `login`，以兼顾默认安全性和旧版本兼容性。
 - IsReverseStreaming: 指定是否开启反向流订阅。
 - IsClearSessionMemory: 指定此任务完成后是否清理 Session 缓存。
 
-#### 3.1.2. NewSimpleDolphinDBClient 初始化 DolphinDB
+#### 3.1.2. Dial 初始化 DolphinDB
 
-NewSimpleDolphinDBClient 初始化客户端，并连接和登录服务端。该方法不支持配置行为标识。
+`Dial` 初始化客户端，并连接和登录服务端。该方法支持传入行为标识。旧的 `NewSimpleDolphinDBClient` 是它的兼容别名。当前 `Dial` 在内部使用 `context.Background()`；如果后续要支持真正的取消语义，再单独引入 `DialContext` 风格入口。
 
-```go
-package main
-
-import (
-    "context"
-
-    "github.com/dolphindb/api-go/v3/api"
-)
-
-func main() {
-    host := "<ServerIP:Port>"
-
-    // new a client which has logged in the server
-    db,err := api.NewSimpleDolphinDBClient(context.TODO(), host, "userID", "passWord")
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-}
-```
+可运行 quick start 示例见 [`example/example.go`](./example/example.go)。
 
 ### 3.2. 通过 API 建库建表
 
@@ -282,54 +242,7 @@ func main() {
 4. 初始化创建分区表请求
 5. 创建分区表
 
-```go
-package main
-
-import (
-    "context"
-
-    "github.com/dolphindb/api-go/v3/api"
-)
-
-func main() {
-    // step 1: init Dolphindb client
-    host := "<ServerIP:Port>"
-    db, err := api.NewSimpleDolphinDBClient(context.TODO(), host, "userID", "passWord")
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-
-    // step 2: init create database request
-    dbReq := &api.DatabaseRequest{
-        Directory:       "dfs://db1",
-        PartitionType:   "VALUE",
-        PartitionScheme: "1..10",
-        DBHandle:        "example",
-    }
-
-    // step 3: create database
-    dt, err := db.Database(dbReq)
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-
-    // step 4: init create partitioned table request
-    createReq := &api.CreatePartitionedTableRequest{
-        SrcTable:             "sourceTable",
-        PartitionedTableName: "tableName",
-        PartitionColumns:     []string{"id"},
-    }
-
-    // step 5: create partitioned table with database handler
-    _, err = dt.CreatePartitionedTable(createReq)
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-}
-```
+建库建表示例见 [`example/apis/database.go`](./example/apis/database.go) 和 [`example/apis/table.go`](./example/apis/table.go)。
 
 ### 3.3. 基础函数使用
 
@@ -395,7 +308,11 @@ func main() {
    fmt.Println(vct)
 
    // new a pair object
-   p := model.NewPair(vct)
+   p, err := model.NewPair(vct)
+   if err != nil {
+        fmt.Println(err)
+        return
+   }
 
    fmt.Println(p)
 
@@ -418,12 +335,20 @@ func main() {
         return
    }
 
-   m := model.NewMatrix(model.NewVector(data), model.NewVector(rowlabel), model.NewVector(colLabel))
+   m, err := model.NewMatrix(model.NewVector(data), model.NewVector(rowlabel), model.NewVector(colLabel))
+   if err != nil {
+        fmt.Println(err)
+        return
+   }
 
    fmt.Println(m)
 
    // new a set object
-   set := model.NewSet(vct)
+   set, err := model.NewSet(vct)
+   if err != nil {
+        fmt.Println(err)
+        return
+   }
 
    fmt.Println(set)
 
@@ -440,12 +365,20 @@ func main() {
         return
    }
 
-   dict := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
+   dict, err := model.NewDictionary(model.NewVector(keys), model.NewVector(values))
+   if err != nil {
+        fmt.Println(err)
+        return
+   }
 
    fmt.Println(dict)
 
    // new a table object
-   tb := model.NewTable([]string{"key"}, []*model.Vector{vct})
+   tb, err := model.NewTable([]string{"key"}, []*model.Vector{vct})
+   if err != nil {
+        fmt.Println(err)
+        return
+   }
 
    fmt.Println(tb)
 }
@@ -546,58 +479,18 @@ if err != nil {
 
 #### 3.3.2. 完整示例
 
-```go
-package main
+完整可运行示例见：
 
-import (
-    "context"
-    "fmt"
-
-    "github.com/dolphindb/api-go/v3/api"
-    "github.com/dolphindb/api-go/v3/model"
-)
-
-func main() {
-    host := "<ServerIP:Port>"
-    db, err := api.NewSimpleDolphinDBClient(context.TODO(), host, "userID", "passWord")
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-
-    // run script on dolphindb server
-    raw, err := db.RunScript("schema(tablename)")
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-
-    // print the real dataform
-    fmt.Println(raw.GetDataForm())
-
-    // get the variable with real type
-    dict := raw.(*model.Dictionary)
-    fmt.Println(dict)
-
-    // declare the specified variable ont the server
-    _, err = db.Upload(map[string]model.DataForm{"dict": dict})
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-
-    // run function on dolphindb server
-    _, err = db.RunFunc("typestr", []model.DataForm{dict})
-    if err != nil {
-        // Handle err
-        panic(err)
-    }
-}
-```
+- [`example/example.go`](./example/example.go)
+- [`example/script/script.go`](./example/script/script.go)
+- [`example/script/function.go`](./example/script/function.go)
+- [`example/sql/main.go`](./example/sql/main.go)
 
 ### 3.4. 初始化 DBConnectionPool
 
-`DBConnectionPool` 可以复用多个 Connection。可以直接使用 `DBConnectionPool` 的 `ExecuteTask` 方法执行单个任务，或使用 `Execute` 方法执行批量任务，然后使用 `Task` 的 `GetResult` 方法获取对应任务的执行结果。
+`DBConnectionPool` 是 task-oriented 的任务执行器。它内部复用多个连接，可以直接使用 `ExecuteTask` 方法执行单个任务，或使用 `Execute` 方法执行批量任务，然后使用 `Task` 的 `GetResult` 方法获取对应任务的执行结果。
+
+如果你需要显式借还连接、在同一个 session 上连续执行多个操作，推荐使用 `dolphindb.ConnPool`。`ConnPool` 和 `DBConnectionPool` 分开实现：前者保留每条连接自己的 session 状态，后者按任务队列语义管理内部连接。
 
 | 方法名                               | 详情               |
 | :----------------------------------- | :----------------- |
@@ -609,6 +502,21 @@ func main() {
 | IsClosed()                           | 检查连接池是否关闭 |
 | RefreshTimeout(t time.Duration)      | 重置超时时间       |
 
+`ConnPool` 提供更贴近 Go 习惯的连接借还接口：
+
+| 方法名                        | 详情                            |
+| :---------------------------- | :------------------------------ |
+| NewConnPool(opt *PoolOptions)  | 初始化显式借还连接池           |
+| Acquire()                     | 借出一个连接 lease              |
+| (*ConnLease).Conn()           | 获取 lease 持有的连接           |
+| (*ConnLease).Close()          | 归还 lease 持有的连接           |
+| Release(conn dialer.Conn)     | 低级接口：归还一个裸连接        |
+| WithConn(func(conn) error)    | 借出、执行回调并自动归还连接    |
+| Size()                        | 获取当前空闲连接数              |
+| Close()                       | 关闭连接池                      |
+| IsClosed()                    | 检查连接池是否关闭              |
+| RefreshTimeout(t time.Duration) | 重置后续借出连接的超时时间    |
+
 PoolOption 参数说明：
 
 - Address：字符串，表示所连接的服务器的地址。
@@ -618,7 +526,8 @@ PoolOption 参数说明：
 - LoadBalanceAddresses: 字符串数组，用于显式指定负载均衡节点。指定后会和 `Address`、`HighAvailabilitySites` 一起去重，再将连接平均分配到这些地址上。
 - EnableHighAvailability: 指定是否开启高可用。
 - HighAvailabilitySites: 指定高可用节点地址。开启负载均衡时，这些地址也会并入连接池候选节点集合；如果同时开启高可用，内部连接也会在这组去重后的节点中切换。若 `LoadBalance=false` 且 `EnableHighAvailability=false`，配置该参数会返回错误。
-- Timeout: 指定每个任务执行的超时时间。
+- Timeout: 指定连接默认超时时间；对 `DBConnectionPool` 和 `ConnPool` 借出的连接都会生效。
+- TryReconnectNums: 指定重连次数。`nil` 表示无限重试；正整数表示有限重试次数；小于等于 `0` 的值会返回参数错误。
 
 `Task` 封装了查看任务执行结果的相关方法。
 
@@ -628,99 +537,8 @@ PoolOption 参数说明：
 | GetResult() | 获取脚本运行结果         |
 | GetError()  | 获取任务运行时发生的错误 |
 
-建立一个 `DBConnectionPool` 连接数为10的连接池。
-
-```go
-poolOpt := &api.PoolOption{
-    Address:  "ServerIP:Port",
-    UserID:   "UserID",
-    Password: "Password",
-    PoolSize: 10,
-    // 显式指定时，会在 Address 和这些地址之间平均分配连接。
-    // LoadBalance: true,
-    // LoadBalanceAddresses: []string{"DataNode1:Port", "DataNode2:Port"},
-}
-
-pool, err := api.NewDBConnectionPool(poolOpt)
-if err != nil {
-    fmt.Println(err)
-    return
-}
-```
-
-创建一个任务。
-
-```go
-task := &api.Task{Script: "1..10"}
-err = pool.ExecuteTask(task)
-if err != nil {
-    fmt.Println(err)
-    return
-}
-```
-
-检查任务是否执行成功。如果执行成功，获取相应结果；如果失败，获取错误。
-
-```go
-var data *model.Vector
-if task.IsSuccess() {
-    data = task.GetResult().(*model.Vector)
-    fmt.Println(data)
-} else {
-    fmt.Println(task.GetError())
-}
-```
-
-输出：
-
-```txt
-vector<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-```
-
-创建多个任务，在 `DBConnectionPool` 上并行调用。
-
-```go
-tasks := make([]*api.Task, 10)
-for i := 0; i < 10; i++ {
-    tasks[i] = &api.Task{
-        Script: "log",
-        Args:   []model.DataForm{model.NewScalar(data.Get(i))},
-    }
-}
-
-err = pool.Execute(tasks)
-if err != nil {
-    fmt.Println(err)
-    return
-}
-```
-
-检查任务是否都执行成功。如果执行成功，获取相应结果；如果失败，获取错误。
-
-```go
-for _, v := range tasks {
-    if v.IsSuccess() {
-        fmt.Println(v.GetResult().String())
-    } else {
-        fmt.Println(v.GetError())
-    }
-}
-```
-
-输出：
-
-```txt
-double(0)
-double(0.6931471805599453)
-double(1.0986122886681096)
-double(1.3862943611198906)
-double(1.6094379124341003)
-double(1.791759469228055)
-double(1.9459101490553132)
-double(2.0794415416798357)
-double(2.1972245773362196)
-double(2.302585092994046)
-```
+连接池与任务执行示例见 [`example/apis/pool.go`](./example/apis/pool.go)。
+推荐默认使用 `dolphindb.NewConnPool`；如果你需要 task-oriented 的批量执行器，再使用 `NewDBConnectionPool` / `dolphindb.NewTaskPool`。
 
 ### 3.5. 集群连接策略：负载均衡与高可用
 
@@ -736,11 +554,15 @@ double(2.302585092994046)
 - `LoadBalance=true` 且配置了 `HighAvailabilitySites` 但未配置 `LoadBalanceAddresses` 时，连接池会直接使用 `Address` 与 `HighAvailabilitySites` 的去重结果，不再额外从服务端发现节点。
 - `LoadBalance=true` 且 `LoadBalanceAddresses`、`HighAvailabilitySites` 都未配置时，连接池会先从集群获取可用数据节点，然后把连接平均分配到这组地址。
 - `EnableHighAvailability=true` 时，单条连接会先尝试自己的目标地址；只有该地址连接失败后，才会在候选节点列表中继续尝试其他地址。
+- `DBConnectionPool` 执行任务时会读取连接返回的执行过程信息。如果某条内部连接遇到服务端返回的 `NotLeader` 并获得新的 leader 地址，任务池会提前把内部连接整体重建到该 leader；旧连接执行完归还时会被关闭，不会混回新连接集合。
+- 如果触发 `NotLeader` 的任务已经执行成功，leader 切换只是维护任务池状态；即使切换失败，该任务仍返回成功，后续任务可再次触发切换。
+- 如果任务因 `NotLeader` 失败，但任务池成功切换到新 leader，会在新连接上重试该任务一次；如果切换失败，则保留原任务错误。
 
 可以将上述行为理解为：
 
 - `LoadBalance` 决定“连接池初始化时如何分布连接”。
 - `EnableHighAvailability` 决定“单条连接失败后是否继续切换节点”。
+- `NotLeader` 处理决定“任务池观察到 raft leader 变化后，是否提前把内部连接整体切到服务端指定的新 leader”。
 - 在连接池场景下，`HighAvailabilitySites` 不仅参与故障切换，也会并入候选节点集合，因此通常建议与 `LoadBalanceAddresses` 保持一致，或者直接都填写完整的数据节点列表。
 - 如果 `LoadBalance=false` 且 `EnableHighAvailability=false`，`HighAvailabilitySites` 没有语义，会直接返回参数错误。
 
@@ -764,6 +586,31 @@ poolOpt := &api.PoolOption{
     HighAvailabilitySites:  []string{"DataNode1:Port", "DataNode2:Port", "DataNode3:Port", "DataNode4:Port"},
 }
 ```
+
+### 3.6. 获取执行过程信息
+
+普通执行方法只返回执行结果和错误：
+
+```go
+df, err := conn.RunScript("1 + 1")
+```
+
+如果需要观察请求执行过程中发生的高可用切换，可以使用 `RunScriptWithTrace` 或 `RunFuncWithTrace`：
+
+```go
+df, trace, err := conn.RunScriptWithTrace("1 + 1")
+if err != nil {
+    return err
+}
+
+for _, failover := range trace.Failovers {
+    fmt.Printf("failover reason=%s from=%s to=%s\n", failover.Reason, failover.From, failover.To)
+}
+
+_ = df
+```
+
+`ExecutionTrace` 描述的是“本次请求执行过程中发生了什么”，不会作为连接上的长期状态保存。`DBConnectionPool` 也基于这份执行过程信息识别 raft `NotLeader` 并维护任务池内部连接。
 
 ## 4. 读写 DolphinDB 数据表
 
@@ -964,7 +811,13 @@ if err != nil {
 col1 := model.NewVector(sym)
 col2 := model.NewVector(date)
 
-m, err := appender.Append(model.NewTable(colNames, []*model.Vector{col1, col2}))
+tb, err := model.NewTable(colNames, []*model.Vector{col1, col2})
+if err != nil {
+    fmt.Println(err)
+    return
+}
+
+m, err := appender.Append(tb)
 if err != nil {
     fmt.Println(err)
     return
@@ -1482,24 +1335,7 @@ Go API 可以通过 API 订阅流数据。用户有三种创建订阅客户端�
 
 该方法推荐用于需要通过客户机上的应用程序定期去流数据表查询是否有新增数据的场景。使用示例如下：
 
-```go
-client := streaming.NewPollingClient("localhost", 8101)
-req := &streaming.SubscribeRequest{
-    Address:    "ServerIP:Port",
-    TableName:  "pub1",
-    ActionName: "action1",
-    Offset:     0,
-    Reconnect:  true,
-}
-
-poller, err := client.Subscribe(req)
-if err != nil {
-    return
-}
-
-msgs := poller.Poll(1000, 1000)
-fmt.Println(msgs)
-```
+可运行示例见 [`example/streaming_test/streaming.go`](./example/streaming_test/streaming.go)。
 
 poller 探测到流数据表有新增数据后，会拉取到新数据。无新数据发布时，程序会阻塞在 `poller.Poll` 方法, 直到超时。
 
@@ -1507,34 +1343,13 @@ poller 探测到流数据表有新增数据后，会拉取到新数据。无新�
 
 使用单协程回调（GoroutineClient）、多协程回调（GoroutinePooledClient）的方式首先需要调用者定义数据处理器 Handler。Handler 需要实现 `streaming.MessageHandler` 接口。
 
-```go
-type sampleHandler struct {}
-
-func (s *sampleHandler) DoEvent(msg streaming.IMessage) {
- // do something
-}
-```
+Handler 定义和订阅流程可参考 [`example/streaming_test/streaming.go`](./example/streaming_test/streaming.go)。
 
 在启动订阅时，把 Handler 实例作为参数传入订阅函数。包括单协程回调和多协程回调两种方式。
 
 GoroutineClient 在接收到多条订阅信息时，会调用 Handler 的 DoEvent 方法，顺序处理订阅信息。
 
-```go
-client := streaming.NewGoroutineClient("localhost", 8100)
-req := &streaming.SubscribeRequest{
-    Address:    "ServerIP:Port",
-    TableName:  "pub",
-    ActionName: "action1",
-    Handler:    new(sampleHandler),
-    Offset:     0,
-    Reconnect:  true,
-}
-
-err := client.Subscribe(req)
-if err != nil {
-    return
-}
-```
+示例见 [`example/streaming_test/streaming.go`](./example/streaming_test/streaming.go)。
 
 当流数据表有新增数据时， Go API 会自动调用 sampleHandler 的 DoEvent 方法。
 
@@ -1542,22 +1357,7 @@ if err != nil {
 
 GoroutinePooledClient 在接收到多条订阅信息时，并发调用 Handler 的 DoEvent 方法，构造方式同单协程回调。需额外加锁保证 DoEvent 的并发安全。
 
-```go
-client := streaming.NewGoroutinePooledClient("localhost", 8100)
-req := &streaming.SubscribeRequest{
-    Address:    "ServerIP:Port",
-    TableName:  "pub",
-    ActionName: "action1",
-    Handler:    new(sampleHandler),
-    Offset:     0,
-    Reconnect:  true,
-}
-
-err := client.Subscribe(req)
-if err != nil {
-    return
-}
-```
+示例见 [`example/streaming_test/streaming.go`](./example/streaming_test/streaming.go)。
 
 *注* 使用 GoroutinePooledClient 订阅流数据，无法保证订阅消息的处理顺序。
 
@@ -1581,39 +1381,14 @@ if err != nil {
 
 以下例子将一个包含元素 1 和 2 的整数类型向量作为 `Subscribe` 的 Filter 参数：
 
-```go
-dtl, err := model.NewDataTypeListFromRawData(model.DtInt, []int32{1, 2})
-if err != nil {
-    return
-}
-
-client := streaming.NewPollingClient("localhost", 8101)
-req := &streaming.SubscribeRequest{
-    Address:    "ServerIP:Port",
-    TableName:  "pub1",
-    ActionName: "action1",
-    Offset:     0,
-    Reconnect:  true,
-    Filter:     model.NewVector(dtl),
-}
-
-_, err = client.Subscribe(req)
-if err != nil {
-    return
-}
-```
+可参考 [`example/streaming_test/streaming.go`](./example/streaming_test/streaming.go) 中的订阅请求构造方式。
 
 ### 5.4. 取消订阅
 
 每一个订阅都有一个订阅主题 `topic` 作为唯一标识。如果订阅时 `topic` 已经存在，那么会订阅失败。这时需要通过 `UnSubscribe` 函数取消订阅才能再次订阅。
 在使用中注意取消订阅后，通过回调获取数据的流订阅可能还会执行一会儿回调函数，然后才会结束订阅过程。
 
-```go
-err = client.UnSubscribe(req)
-if err != nil {
-    return
-}
-```
+取消订阅的完整调用流程同样可参考 [`example/streaming_test/streaming.go`](./example/streaming_test/streaming.go)。
 
 ### 5.5. 异构流表数据的处理
 
@@ -1630,22 +1405,7 @@ Go API 通过 `streamDeserializer` 类来构造异构流表反序列化器，接
 - TableNames：字典对象，字典的 key 为 string 类型，字典的 value 为长度为 2 的 string 切片类型。其中 string 切片的第一个元素为数据库的名称，是内存表则填""，第二个元素为表的名称，其结构与 replay 回放到异构流表的输入表结构保持一致。其结构与 replay 回放到异构流表的输入表结构保持一致。streamDeserializer 将根据 TableNames 指定的结构对注入的数据进行反序列化，必须指定。
 - Conn：已连接 DolphinDB 的 DolphinDB 对象，需要通过该连接获取回放到异构流表的输入表结构，必须指定。
 
-下例构造一个简单的异构流表反序列化器：
-
-``` go
-host := "localhost:8848";
-db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-util.AssertNil(err)
-sdMap := make(map[string][2]string)
-sdMap["msg1"] = [2]string{"dfs://test_StreamDeserializer_pair", "pt1"}
-sdMap["msg2"] = [2]string{"dfs://test_StreamDeserializer_pair", "pt2"}
-opt := streaming.StreamDeserializerOption {
-    TableNames: sdMap,
-    Conn:        db,
-}
-sd, err := streaming.NewStreamDeserializer(&opt)
-util.AssertNil(err)
-```
+完整示例见 [`example/streaming_deserializer/main.go`](./example/streaming_deserializer/main.go)。
 
 其中，TableNames 的键为不同输入表的标记，用于区分不同输入表的数据；TableNames 的值为表名，或由分区数据库地址和表名组成的列表（或元组）。订阅时，会通过构造时传入的 Conn 调用 schema 方法获得 TableNames 键值对应的表的结构，因此并不一定需要填输入表名，只需要和输入表结构一致即可。
 
@@ -1660,211 +1420,13 @@ util.AssertNil(err)
 
 下例中，首先在 DolphinDB 中定义由两个分区表组合而成的异构流表。然后在 go 客户端定义异构流表反序列化器，放入回调类中使用。在回调中，反序列化器会根据指定表的结构反序列化数据，最后输出来自 msg1 和 msg2 的各 6 条数据。
 
-构造异构流表
-首先在 DolphinDB 中定义输出表，即要订阅的异构流表。
-
-```dolphindb
-try{dropStreamTable(`outTables)}catch(ex){}
-share streamTable(100:0, `timestampv`sym`blob`price1,[TIMESTAMP,SYMBOL,BLOB,DOUBLE]) as outTables
-然后定义两张输入表，均为分布式分区表。
-
-n = 6;
-dbName = 'dfs://test_StreamDeserializer_pair'
-if(existsDatabase(dbName)){
-    dropDB(dbName)}
-db = database(dbName,RANGE,2012.01.01 2013.01.01 2014.01.01 2015.01.01 2016.01.01 2017.01.01 2018.01.01 2019.01.01)
-table1 = table(100:0, `datetimev`timestampv`sym`price1`price2, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE, DOUBLE])
-table2 = table(100:0, `datetimev`timestampv`sym`price1, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE])
-tableInsert(table1, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n), rand(100,n)+rand(1.0, n))
-tableInsert(table2, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n))
-pt1 = db.createPartitionedTable(table1,'pt1',`datetimev).append!(table1)
-pt2 = db.createPartitionedTable(table2,'pt2',`datetimev).append!(table2)
-```
-
-将分区表转为数据源后进行回放。
-
-```dolphindb
-re1 = replayDS(sqlObj=<select * from pt1>, dateColumn=`datetimev, timeColumn=`timestampv)
-re2 = replayDS(sqlObj=<select * from pt2>, dateColumn=`datetimev, timeColumn=`timestampv)
-d = dict(['msg1', 'msg2'], [re1, re2])
-replay(inputTables=d, outputTables=`outTables, dateColumn=`timestampv, timeColumn=`timestampv)
-```
-
-**订阅异构流表**
-
-定义异构流表反序列化器
-
-```go
-type sampleHandler struct {
-	sd streaming.StreamDeserializer
-}
-
-func (s *sampleHandler) DoEvent(msg streaming.IMessage) {
-	ret, err := s.sd.Parse(msg)
-	util.AssertNil(err)
-	fmt.Print(ret.GetSym(), ": ")
-	for i := 0; i < ret.Size(); i++ {
-		fmt.Print(ret.GetValue(i).String(), " ")
-	}
-	fmt.Println()
-}
-```
-
-构造反序列化器，建立订阅。
-
-```go
-host := "localhost:8848";
-db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-util.AssertNil(err)
-loginReq := &api.LoginRequest{
-    UserID:   "admin",
-    Password: "123456",
-}
-
-err = db.Connect()
-util.AssertNil(err)
-
-// 由于需要从分区表中获取 schema，连接需要有读取分区表的权限，因此需要 login
-err = db.Login(loginReq)
-util.AssertNil(err)
-
-sdMap := make(map[string][2]string)
-sdMap["msg1"] = [2]string{"dfs://test_StreamDeserializer_pair", "pt1"}
-sdMap["msg2"] = [2]string{"dfs://test_StreamDeserializer_pair", "pt2"}
-
-opt := streaming.StreamDeserializerOption {
-    TableNames: sdMap,
-    Conn:       db,
-}
-sd, err := streaming.NewStreamDeserializer(&opt)
-util.AssertNil(err)
-sh := sampleHandler{*sd}
-
-client := streaming.NewGoroutineClient("localhost", 8848)
-req := &streaming.SubscribeRequest{
-    Address:    "localhost:8848",
-    TableName:  "outTables",
-    ActionName: "action1",
-    Handler:    &sh,
-    Offset:     0,
-    Reconnect:  true,
-}
-
-err = client.Subscribe(req)
-util.AssertNil(err)
-```
-
-输出结果如下所示：
-
-```
-msg2: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(83.35676231770776)
-msg1: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(75.4657824053429) double(97.13305225968361)
-msg2: datetime(2012.01.01T01:21:25) timestamp(2018.12.01T01:21:23.002) symbol(b) double(35.515043841674924)
-msg1: datetime(2012.01.01T01:21:25) timestamp(2018.12.01T01:21:23.002) symbol(b) double(23.185342324199155) double(77.459053135477)
-msg2: datetime(2012.01.01T01:21:26) timestamp(2018.12.01T01:21:23.003) symbol(c) double(52.076686951797456)
-msg1: datetime(2012.01.01T01:21:26) timestamp(2018.12.01T01:21:23.003) symbol(c) double(37.12188130011782) double(85.8492015786469)
-msg2: datetime(2012.01.01T01:21:27) timestamp(2018.12.01T01:21:23.004) symbol(a) double(95.41011125780642)
-msg1: datetime(2012.01.01T01:21:27) timestamp(2018.12.01T01:21:23.004) symbol(a) double(8.328913665842265) double(46.2917776289396)
-msg2: datetime(2012.01.01T01:21:28) timestamp(2018.12.01T01:21:23.005) symbol(b) double(61.37680379510857)
-msg1: datetime(2012.01.01T01:21:28) timestamp(2018.12.01T01:21:23.005) symbol(b) double(58.61304935347289) double(36.23725011525676)
-msg2: datetime(2012.01.01T01:21:29) timestamp(2018.12.01T01:21:23.006) symbol(c) double(41.78578492207453)
-msg1: datetime(2012.01.01T01:21:29) timestamp(2018.12.01T01:21:23.006) symbol(c) double(92.92788873449899) double(20.860777587164193)
-```
+分区表输入源的完整脚本、反序列化器构造和订阅示例见 [`example/streaming_deserializer/main.go`](./example/streaming_deserializer/main.go)。
 
 #### 5.5.3. 订阅示例 2 （内存表作为输入表）
 
 下例中，在 DolphinDB 中定义了一个由两个内存表构成的异构流表，并在 Go API 端使用共享内存表的表名构造反序列化器放入回调类中使用。进行订阅后，在回调中反序列化器会根据指定内存表的结构反序列化数据，输出来自 msg1 和 msg2 的各 6 条数据。
 
-**构造异构流表**
-
-``` dolphindb
-try{dropStreamTable(`outTables)}catch(ex){}
-// 构造输出流表
-share streamTable(100:0, `timestampv`sym`blob`price1,[TIMESTAMP,SYMBOL,BLOB,DOUBLE]) as outTables
-
-n = 6;
-table1 = table(100:0, `datetimev`timestampv`sym`price1`price2, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE, DOUBLE])
-table2 = table(100:0, `datetimev`timestampv`sym`price1, [DATETIME, TIMESTAMP, SYMBOL, DOUBLE])
-tableInsert(table1, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n), rand(100,n)+rand(1.0, n))
-tableInsert(table2, 2012.01.01T01:21:23 + 1..n, 2018.12.01T01:21:23.000 + 1..n, take(`a`b`c,n), rand(100,n)+rand(1.0, n))
-share table1 as pt1
-share table2 as pt2
-
-d = dict(['msg1', 'msg2'], [pt1, pt2])
-replay(inputTables=d, outputTables=`outTables, dateColumn=`timestampv, timeColumn=`timestampv)
-```
-
-**订阅异构流表**
-
-定义异构流表反序列化器
-
-```go
-type sampleHandler struct {
-	sd streaming.StreamDeserializer
-}
-
-func (s *sampleHandler) DoEvent(msg streaming.IMessage) {
-	ret, err := s.sd.Parse(msg)
-	util.AssertNil(err)
-	fmt.Print(ret.GetSym(), ": ")
-	for i := 0; i < ret.Size(); i++ {
-		fmt.Print(ret.GetValue(i).String(), " ")
-	}
-	fmt.Println()
-}
-```
-
-构造异构流表反序列化器，建立订阅
-```go
-host := "localhost:8848";
-db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-util.AssertNil(err)
-err = db.Connect()
-util.AssertNil(err)
-
-sdMap := make(map[string][2]string)
-sdMap["msg1"] = [2]string{"", "pt1"}
-sdMap["msg2"] = [2]string{"", "pt2"}
-
-opt := streaming.StreamDeserializerOption {
-    TableNames: sdMap,
-    Conn:       db,
-}
-sd, err := streaming.NewStreamDeserializer(&opt)
-util.AssertNil(err)
-sh := sampleHandler{*sd}
-
-client := streaming.NewGoroutineClient("localhost", 8848)
-req := &streaming.SubscribeRequest{
-    Address:    "localhost:8848",
-    TableName:  "outTables",
-    ActionName: "action1",
-    Handler:    &sh,
-    Offset:     0,
-    Reconnect:  true,
-}
-
-err = client.Subscribe(req)
-util.AssertNil(err)
-```
-
-输出结果如下所示：
-
-```
-msg2: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(62.26562583283521)
-msg1: datetime(2012.01.01T01:21:24) timestamp(2018.12.01T01:21:23.001) symbol(a) double(86.60560709564015) double(71.74879301246256)
-msg2: datetime(2012.01.01T01:21:25) timestamp(2018.12.01T01:21:23.002) symbol(b) double(71.32683479157276)
-msg1: datetime(2012.01.01T01:21:25) timestamp(2018.12.01T01:21:23.002) symbol(b) double(33.54905600566417) double(42.505714672384784)
-msg2: datetime(2012.01.01T01:21:26) timestamp(2018.12.01T01:21:23.003) symbol(c) double(67.46220325306058)
-msg1: datetime(2012.01.01T01:21:26) timestamp(2018.12.01T01:21:23.003) symbol(c) double(8.642998456256464) double(1.5548617043532431)
-msg2: datetime(2012.01.01T01:21:27) timestamp(2018.12.01T01:21:23.004) symbol(a) double(89.0488296393305)
-msg1: datetime(2012.01.01T01:21:27) timestamp(2018.12.01T01:21:23.004) symbol(a) double(11.882882460951805) double(37.95611710567027)
-msg2: datetime(2012.01.01T01:21:28) timestamp(2018.12.01T01:21:23.005) symbol(b) double(54.69719312619418)
-msg1: datetime(2012.01.01T01:21:28) timestamp(2018.12.01T01:21:23.005) symbol(b) double(79.26385991205461) double(74.8184056377504)
-msg2: datetime(2012.01.01T01:21:29) timestamp(2018.12.01T01:21:23.006) symbol(c) double(36.771339072613046)
-msg1: datetime(2012.01.01T01:21:29) timestamp(2018.12.01T01:21:23.006) symbol(c) double(25.953028398565948) double(60.92494275630452)
-```
+内存表输入源的完整脚本、反序列化器构造和订阅示例见 [`example/streaming_deserializer/main.go`](./example/streaming_deserializer/main.go)。
 
 ## 6. 工具方法
 

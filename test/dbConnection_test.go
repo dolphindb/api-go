@@ -830,7 +830,7 @@ func TestNewDolphinDBClient_SqlStd(t *testing.T) {
 		for _, tc := range cases {
 			tc := tc
 			Convey(tc.name, func() {
-				opt := (&dialer.BehaviorOptions{}).SetSqlStd(tc.SqlStd)
+				opt := &dialer.BehaviorOptions{SqlStd: tc.SqlStd}
 				conn, err := api.NewDolphinDBClient(context.TODO(), host3, opt)
 				So(err, ShouldBeNil)
 

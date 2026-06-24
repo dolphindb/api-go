@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/logging"
 )
 
 // ExistsTable checks whether the ExistsTable api is valid.
@@ -12,7 +13,7 @@ func ExistsTable(db api.DolphinDB) error {
 		SetDBPath(dbPath).
 		SetTableName(tableName)
 	b, err := db.ExistsTable(l)
-	fmt.Println("ExistsTable: ", b)
+	logging.Info("example.apis", "exists table", "exists", b)
 	return err
 }
 
@@ -22,7 +23,7 @@ func SaveTable(db api.DolphinDB) error {
 		SetDBHandle(dbName).
 		SetTable(tableName)
 	err := db.SaveTable(l)
-	fmt.Println("SaveTable")
+	logging.Info("example.apis", "save table")
 	return err
 }
 
@@ -33,7 +34,7 @@ func TableWithCapacity(db api.DolphinDB) (*api.Table, error) {
 		SetColNames([]string{"name", "id", "value"}).
 		SetColTypes([]string{"string", "INT", "DOUBLE"})
 	t, err := db.TableWithCapacity(l)
-	fmt.Println("TableWithCapacity", t.String())
+	logging.Info("example.apis", "table with capacity", "table", t.String())
 	return t, err
 }
 
@@ -44,7 +45,7 @@ func Table(db api.DolphinDB) (*api.Table, error) {
 		AddTableParam("id", "`XOM`GS`AAPL").
 		AddTableParam("x", "102.1 33.4 73.6")
 	t, err := db.Table(l)
-	fmt.Println("Table: ", t)
+	logging.Info("example.apis", "table", "table", t.String())
 	return t, err
 }
 
@@ -54,7 +55,7 @@ func DropTable(db api.DolphinDB) error {
 		SetTableName(tableName).
 		SetDBHandle(dbName)
 	err := db.DropTable(t)
-	fmt.Println("DropTable")
+	logging.Info("example.apis", "drop table")
 	return err
 }
 
@@ -64,7 +65,7 @@ func DropSegmentTable(db api.DolphinDB) error {
 		SetTableName(segmentTableName).
 		SetDBHandle(dbName)
 	err := db.DropTable(t)
-	fmt.Println("DropSegmentTable")
+	logging.Info("example.apis", "drop segment table")
 	return err
 }
 
@@ -74,7 +75,7 @@ func DropPartitionTable(db api.DolphinDB) error {
 		SetTableName(partitionedTableName).
 		SetDBHandle(dbName)
 	err := db.DropTable(t)
-	fmt.Println("DropPartitionTable")
+	logging.Info("example.apis", "drop partition table")
 	return err
 }
 
@@ -84,7 +85,7 @@ func LoadTable(db api.DolphinDB) error {
 		SetTableName(tableName).
 		SetDatabase(dbPath)
 	df, err := db.LoadTable(t)
-	fmt.Println("LoadTable: ", df)
+	logging.Info("example.apis", "load table", "table", df.String())
 	return err
 }
 
@@ -95,7 +96,7 @@ func LoadTableBySQL(db api.DolphinDB, na string) error {
 		SetDBPath(segmentDBPath).
 		SetTableName(partitionedTableName)
 	df, err := db.LoadTableBySQL(t)
-	fmt.Println("LoadTableBySQL: ", df)
+	logging.Info("example.apis", "load table by sql", "table", df.String())
 	return err
 }
 
@@ -104,7 +105,7 @@ func LoadText(db api.DolphinDB) error {
 	t := new(api.LoadTextRequest).
 		SetFileName(remoteFilePath)
 	di, err := db.LoadText(t)
-	fmt.Println("LoadText: ", di)
+	logging.Info("example.apis", "load text", "table", di.String())
 	return err
 }
 
@@ -113,7 +114,7 @@ func PloadText(db api.DolphinDB) error {
 	t := new(api.PloadTextRequest).
 		SetFileName(remoteFilePath)
 	di, err := db.PloadText(t)
-	fmt.Println("PloadText: ", di)
+	logging.Info("example.apis", "pload text", "table", di.String())
 	return err
 }
 
@@ -123,7 +124,7 @@ func SaveText(db api.DolphinDB) error {
 		SetFileName(remoteFilePath).
 		SetObj(tableName)
 	err := db.SaveText(t)
-	fmt.Println("SaveText")
+	logging.Info("example.apis", "save text")
 	return err
 }
 
@@ -133,7 +134,7 @@ func CreateTable(db *api.Database) (*api.Table, error) {
 		SetSrcTable(tableName).
 		SetDimensionTableName(segmentTableName)
 	t, err := db.CreateTable(c)
-	fmt.Println("CreateTable: ", t)
+	logging.Info("example.apis", "create table", "table", t.String())
 
 	return t, err
 }
@@ -145,7 +146,7 @@ func CreatePartitionedTable(db *api.Database) (*api.Table, error) {
 		SetPartitionedTableName(partitionedTableName).
 		SetPartitionColumns([]string{"id"})
 	t, err := db.CreatePartitionedTable(c)
-	fmt.Println("CreatePartitionedTable: ", t)
+	logging.Info("example.apis", "create partitioned table", "table", t.String())
 
 	return t, err
 }
@@ -157,7 +158,7 @@ func DropPartition(db api.DolphinDB) error {
 		SetTableName(partitionedTableName).
 		SetDBHandle(dbName)
 	err := db.DropPartition(t)
-	fmt.Println("DropPartition")
+	logging.Info("example.apis", "drop partition")
 	return err
 }
 
@@ -167,6 +168,6 @@ func LoadPartitionedTable(db api.DolphinDB) error {
 		SetTableName(partitionedTableName).
 		SetDatabase(segmentDBPath)
 	df, err := db.LoadTable(t)
-	fmt.Println("LoadPartitionedTable: ", df)
+	logging.Info("example.apis", "load partitioned table", "table", df.String())
 	return err
 }

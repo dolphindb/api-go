@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -22,7 +23,11 @@ type Matrix struct {
 // NewMatrix returns an object of matrix according to data, rowLabels and columnLabels.
 // RowLabels and columnLabels are optional.
 // You can instantiate the Vector object by using NewVector.
-func NewMatrix(data, rowLabels, columnLabels *Vector) *Matrix {
+func NewMatrix(data, rowLabels, columnLabels *Vector) (*Matrix, error) {
+	if data == nil {
+		return nil, errors.New("matrix data vector must not be nil")
+	}
+
 	return &Matrix{
 		category: &Category{
 			DataForm: DfMatrix,
@@ -31,7 +36,7 @@ func NewMatrix(data, rowLabels, columnLabels *Vector) *Matrix {
 		Data:         data,
 		RowLabels:    rowLabels,
 		ColumnLabels: columnLabels,
-	}
+	}, nil
 }
 
 // GetDataForm returns the byte type of the DataForm.

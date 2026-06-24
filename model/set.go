@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,14 +18,18 @@ type Set struct {
 
 // NewSet returns an object of Set based on vector v.
 // You can instantiate v by NewVector.
-func NewSet(v *Vector) *Set {
+func NewSet(v *Vector) (*Set, error) {
+	if v == nil {
+		return nil, errors.New("set vector must not be nil")
+	}
+
 	return &Set{
 		category: &Category{
 			DataForm: DfSet,
 			DataType: v.GetDataType(),
 		},
 		Vector: v,
-	}
+	}, nil
 }
 
 // Rows returns the row num of the DataForm.

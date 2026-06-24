@@ -14,7 +14,7 @@ func TestTable(t *testing.T) {
 	col, err := NewDataTypeListFromRawData(DtString, []string{"col1", "col2", "col3"})
 	assert.Nil(t, err)
 
-	tb := NewTable([]string{"col"}, []*Vector{NewVector(col)})
+	tb := mustNewTable(t, []string{"col"}, []*Vector{NewVector(col)})
 	assert.Equal(t, tb.GetDataForm(), DfTable)
 	assert.Equal(t, tb.Rows(), 3)
 	assert.Equal(t, tb.GetDataType(), DtVoid)
@@ -53,4 +53,34 @@ func TestTable(t *testing.T) {
 	tb, err = NewTableFromStruct(sam)
 	assert.Nil(t, err)
 	assert.Equal(t, tb.String(), "table[3r][2c]([\n\t  int[3]('id', [1, 2, 3])\n\t  string[3]('name', [Job, Bob, Tom])\n\t])")
+}
+
+func TestNewTableFromRawDataRejectsMismatchedRows(t *testing.T) {
+	_, err := NewTableFromRawData(
+		[]string{"id", "name"},
+		[]DataTypeByte{DtInt, DtString},
+		[]interface{}{
+			[]int32{1, 2},
+			[]string{"alice"},
+		},
+	)
+
+	assert.EqualError(t, err, `column "name" has 1 rows, expect 2`)
+}
+
+func TestTableRenderRejectsMismatchedRows(t *testing.T) {
+	ids, err := NewDataTypeListFromRawData(DtInt, []int32{1, 2})
+	assert.Nil(t, err)
+
+	names, err := NewDataTypeListFromRawData(DtString, []string{"alice"})
+	assert.Nil(t, err)
+
+	tb := mustNewTable(t, []string{"id", "name"}, []*Vector{NewVector(ids), NewVector(names)})
+	assert.NotNil(t, tb)
+
+	by := bytes.NewBufferString("")
+	w := protocol.NewWriter(by)
+	err = tb.Render(w, protocol.LittleEndian)
+
+	assert.EqualError(t, err, `column "name" has 1 rows, expect 2`)
 }

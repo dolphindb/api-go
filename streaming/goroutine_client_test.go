@@ -1,14 +1,13 @@
 package streaming
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/dolphindb"
 	"github.com/dolphindb/api-go/v3/example/util"
 	"github.com/dolphindb/api-go/v3/model"
 	"github.com/stretchr/testify/assert"
@@ -78,18 +77,7 @@ func TestGoroutineClientCloseIsIdempotent(t *testing.T) {
 
 func TestBasicGoroutineClient(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts)
@@ -126,18 +114,7 @@ func TestBasicGoroutineClient(t *testing.T) {
 
 func TestMsgAsTableGoroutineClient(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts)
@@ -174,18 +151,7 @@ func TestMsgAsTableGoroutineClient(t *testing.T) {
 
 func TestBatchGoroutineClient(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts)
@@ -341,18 +307,7 @@ func (s *unsubscribeHandler) DoEvent(msg IMessage) {
 func TestUnsubscribeInDoEvent(t *testing.T) {
 	ch = make(chan bool)
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(scripts)
@@ -396,18 +351,7 @@ func (s *arrayHandle) DoEvent(msg IMessage) {
 
 func TestArrayVectorStream(t *testing.T) {
 	host := testStreamingAddress
-	db, err := api.NewDolphinDBClient(context.TODO(), host, nil)
-
-	util.AssertNil(err)
-	loginReq := &api.LoginRequest{
-		UserID:   "admin",
-		Password: "123456",
-	}
-
-	err = db.Connect()
-	util.AssertNil(err)
-
-	err = db.Login(loginReq)
+	db, err := dolphindb.Dial(host, "admin", "123456", nil)
 	util.AssertNil(err)
 
 	_, err = db.RunScript(arrayVectorStreamScript) //script defined in goroutine_client_test.go

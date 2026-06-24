@@ -45,21 +45,25 @@ type PartitionedTableAppenderOption struct {
 
 // NewPartitionedTableAppender instantiates a new PartitionedTableAppender according to the option.
 func NewPartitionedTableAppender(opt *PartitionedTableAppenderOption) (*PartitionedTableAppender, error) {
+	if err := validatePartitionedTableAppenderOption(opt); err != nil {
+		return nil, err
+	}
+
 	res, task := initPartitionedTableAppender(opt)
 	err := res.pool.ExecuteTask(task)
 	if err != nil {
-		fmt.Printf("Failed to execute task: %s\n", err.Error())
+		apiLogErrorf("failed to execute task: %v", err)
 		return nil, err
 	}
 
 	if !task.IsSuccess() {
-		fmt.Printf("Task is not success: %s\n", task.err.Error())
+		apiLogErrorf("task is not success: %v", task.err)
 		return nil, task.err
 	}
 
 	err = res.packAppenderWithPartitionColumnName(task, opt)
 	if err != nil {
-		fmt.Printf("Failed to handle PartitionColumnName: %s\n", err.Error())
+		apiLogErrorf("failed to handle PartitionColumnName: %v", err)
 		return nil, err
 	}
 
@@ -72,10 +76,27 @@ func NewPartitionedTableAppender(opt *PartitionedTableAppenderOption) (*Partitio
 	return res, err
 }
 
+func validatePartitionedTableAppenderOption(opt *PartitionedTableAppenderOption) error {
+	if opt == nil {
+		return fmt.Errorf("partitioned table appender option must not be nil")
+	}
+	if opt.Pool == nil {
+		return fmt.Errorf("partitioned table appender connection pool must not be nil")
+	}
+	if strings.TrimSpace(opt.TableName) == "" {
+		return fmt.Errorf("partitioned table appender table name must not be empty")
+	}
+	if strings.TrimSpace(opt.PartitionCol) == "" {
+		return fmt.Errorf("partitioned table appender partition column must not be empty")
+	}
+
+	return nil
+}
+
 func packAppenderWithColDefs(pta *PartitionedTableAppender) error {
 	dt, err := pta.tableInfo.Get("colDefs")
 	if err != nil {
-		fmt.Printf("Failed to get colDefs from table: %s\n", err.Error())
+		apiLogErrorf("failed to get colDefs from table: %v", err)
 		return err
 	}
 
@@ -115,7 +136,7 @@ func (p *PartitionedTableAppender) Append(tb *model.Table) (int, error) {
 
 	keys, err := p.domain.GetPartitionKeys(tb.GetColumnByIndex(int(p.partitionColumnIdx)))
 	if err != nil {
-		fmt.Printf("Failed to call GetPartitionKeys: %s\n", err.Error())
+		apiLogErrorf("failed to call GetPartitionKeys: %v", err)
 		return 0, err
 	}
 
@@ -128,7 +149,7 @@ func (p *PartitionedTableAppender) Append(tb *model.Table) (int, error) {
 	tasks := p.packTasks(tb)
 	err = p.pool.Execute(tasks)
 	if err != nil {
-		fmt.Printf("Failed to execute tasks: %s\n", err.Error())
+		apiLogErrorf("failed to execute tasks: %v", err)
 		return 0, err
 	}
 
@@ -145,7 +166,7 @@ func (p *PartitionedTableAppender) checkTable(tb *model.Table) error {
 		colDateType := curCol.GetDataType()
 		err := p.checkColumnType(i, model.GetCategory(colDateType), colDateType)
 		if err != nil {
-			fmt.Printf("Failed to check column type: %s\n", err.Error())
+			apiLogErrorf("failed to check column type: %v", err)
 			return err
 		}
 	}
@@ -227,7 +248,7 @@ func (p *PartitionedTableAppender) packAppenderWithPartitionColumnName(task *Tas
 	p.tableInfo = task.GetResult().(*model.Dictionary)
 	dt, err := p.tableInfo.Get("partitionColumnName")
 	if err != nil {
-		fmt.Printf("Failed to get partitionColumnName: %s\n", err.Error())
+		apiLogErrorf("failed to get partitionColumnName: %v", err)
 		return err
 	}
 
@@ -255,7 +276,7 @@ func (p *PartitionedTableAppender) packAppenderWithScalarPartitionColumnName(par
 
 	p.partitionColumnIdx, err = getInt32ValueFromDictionary(p.tableInfo, "partitionColumnIndex")
 	if err != nil {
-		fmt.Printf("Failed to get partitionColumnIndex from dictionary: %s\n", err.Error())
+		apiLogErrorf("failed to get partitionColumnIndex from dictionary: %v", err)
 		return err
 	}
 
@@ -268,13 +289,13 @@ func (p *PartitionedTableAppender) packAppenderWithScalarPartitionColumnName(par
 
 	p.partitionType, err = getInt32ValueFromDictionary(p.tableInfo, "partitionType")
 	if err != nil {
-		fmt.Printf("Failed to get partitionType from dictionary: %s\n", err.Error())
+		apiLogErrorf("failed to get partitionType from dictionary: %v", err)
 		return err
 	}
 
 	val, err := getInt32ValueFromDictionary(p.tableInfo, "partitionColumnType")
 	if err != nil {
-		fmt.Printf("Failed to get partitionColumnType from dictionary: %s\n", err.Error())
+		apiLogErrorf("failed to get partitionColumnType from dictionary: %v", err)
 		return err
 	}
 
@@ -301,13 +322,13 @@ func (p *PartitionedTableAppender) packAppenderWithVectorPartitionColumnName(par
 
 	p.partitionColumnIdx, err = getInt32ValueFromTableWithInd(p.tableInfo, "partitionColumnIndex", ind)
 	if err != nil {
-		fmt.Printf("Failed to get partitionColumnIndex from dictionary with ind %d: %s\n", ind, err.Error())
+		apiLogErrorf("failed to get partitionColumnIndex from dictionary with ind %d: %v", ind, err)
 		return err
 	}
 
 	dt, err := p.tableInfo.Get("partitionSchema")
 	if err != nil {
-		fmt.Printf("Failed to get partitionSchema: %s\n", err.Error())
+		apiLogErrorf("failed to get partitionSchema: %v", err)
 		return err
 	}
 
@@ -316,13 +337,13 @@ func (p *PartitionedTableAppender) packAppenderWithVectorPartitionColumnName(par
 
 	p.partitionType, err = getInt32ValueFromTableWithInd(p.tableInfo, "partitionType", ind)
 	if err != nil {
-		fmt.Printf("Failed to get partitionType from dictionary with ind %d: %s\n", ind, err.Error())
+		apiLogErrorf("failed to get partitionType from dictionary with ind %d: %v", ind, err)
 		return err
 	}
 
 	val, err := getInt32ValueFromTableWithInd(p.tableInfo, "partitionColumnType", ind)
 	if err != nil {
-		fmt.Printf("Failed to get partitionColumnType from dictionary with ind %d: %s\n", ind, err.Error())
+		apiLogErrorf("failed to get partitionColumnType from dictionary with ind %d: %v", ind, err)
 		return err
 	}
 
@@ -346,7 +367,7 @@ func (p *PartitionedTableAppender) checkColumnType(col int, cat model.CategorySt
 func getInt32ValueFromTableWithInd(dict *model.Dictionary, colName string, ind int) (int32, error) {
 	dt, err := dict.Get(colName)
 	if err != nil {
-		fmt.Printf("Failed to get %s from dictionary: %s\n", colName, err.Error())
+		apiLogErrorf("failed to get %s from dictionary: %v", colName, err)
 		return 0, err
 	}
 
@@ -358,7 +379,7 @@ func getInt32ValueFromTableWithInd(dict *model.Dictionary, colName string, ind i
 func getInt32ValueFromDictionary(dict *model.Dictionary, colName string) (int32, error) {
 	dt, err := dict.Get(colName)
 	if err != nil {
-		fmt.Printf("Failed to get %s from dictionary: %s\n", colName, err.Error())
+		apiLogErrorf("failed to get %s from dictionary: %v", colName, err)
 		return 0, err
 	}
 

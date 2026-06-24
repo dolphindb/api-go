@@ -2,7 +2,6 @@ package streaming
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -38,16 +37,16 @@ func (t *PollingClient) Subscribe(req *SubscribeRequest) (*TopicPoller, error) {
 	}
 	err := t.subscribe(req)
 	if err != nil {
-		fmt.Printf("Failed to subscribe topic: %s\n", err.Error())
+		streamingLogErrorf("failed to subscribe topic: %v", err)
 		return nil, err
 	}
 
 	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return nil, err
 	}
-	fmt.Println("subscribe topic: ", topicStr)
+	streamingLogInfof("subscribe topic: %s", topicStr)
 	retPoller, ok := t.topicPollerMap.Load(topicStr)
 	if !ok {
 		return nil, errors.New("Failed to load new poller by topic: " + topicStr)
@@ -69,7 +68,7 @@ func (t *PollingClient) subscribe(req *SubscribeRequest) error {
 
 	topicStr, err := t.getTopicFromServer(req)
 	if err != nil {
-		fmt.Printf("Failed to get topic from server: %s\n", err.Error())
+		streamingLogErrorf("failed to get topic from server: %v", err)
 		return err
 	}
 
@@ -83,15 +82,7 @@ func (t *PollingClient) subscribe(req *SubscribeRequest) error {
 }
 
 func (t *PollingClient) reviseSubscriber(req *SubscribeRequest) error {
-	var err error
-	t.subscriber.once.Do(func() {
-		err = t.subscriber.checkServerVersion(req)
-		if err == nil {
-			go listening(t)
-		}
-	})
-
-	return err
+	return t.subscriber.initListening(t, req)
 }
 
 // UnSubscribe helps you to unsubscribe the specific action of the table according to the req.
@@ -161,7 +152,7 @@ func (t *PollingClient) doReconnect(req *SubscribeRequest) bool {
 	req.Offset = req.Offset + 1
 	err = t.reSubscribeInternal(req)
 	if err != nil {
-		fmt.Printf("%s Unable to subscribe to the table. Try again after 1 second.\n", time.Now().UTC().String())
+		streamingLogWarnf("%s unable to subscribe to the table; try again after 1 second", time.Now().UTC().String())
 		return false
 	}
 
@@ -177,6 +168,6 @@ func (t *PollingClient) doReconnect(req *SubscribeRequest) bool {
 	// }
 	// retPoller.(*TopicPoller).queue = queue
 
-	fmt.Printf("%s Successfully reconnected and subscribed.\n", time.Now().UTC().String())
+	streamingLogInfof("%s successfully reconnected and subscribed", time.Now().UTC().String())
 	return true
 }

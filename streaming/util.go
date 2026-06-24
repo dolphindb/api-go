@@ -11,6 +11,15 @@ import (
 	"github.com/dolphindb/api-go/v3/model"
 )
 
+func topicSite(topic string) (string, bool) {
+	ind := strings.Index(topic, "/")
+	if ind <= 0 {
+		return "", false
+	}
+
+	return topic[:ind], true
+}
+
 func getReconnectTimestamp(site string) int64 {
 	raw, ok := reconnectTable.Load(site)
 	if ok && raw != nil {
@@ -142,7 +151,12 @@ func getAllTopicBySite(site string) []string {
 	trueTopicToRequests.Range(func(k, v interface{}) bool {
 		key := k.(string)
 
-		s := key[0:strings.Index(key, "/")]
+		s, ok := topicSite(key)
+		if !ok {
+			streamingLogWarnf("ignore malformed topic while listing reconnect sites: %q", key)
+			return true
+		}
+
 		if s == site {
 			res = append(res, key)
 		}
@@ -169,7 +183,7 @@ func newConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
 	}
 	conn, err := dialer.NewConn(context.TODO(), req.Address, opt)
 	if err != nil {
-		fmt.Printf("Failed to new a conn: %s\n", err.Error())
+		streamingLogErrorf("failed to create a conn: %v", err)
 		return nil, err
 	}
 
@@ -177,7 +191,7 @@ func newConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
 	conn.SetPassword(req.Password)
 	err = conn.Connect()
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		streamingLogErrorf("failed to connect to server: %v", err)
 		return nil, err
 	}
 
@@ -192,7 +206,7 @@ func newReverseStreamConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
 
 	conn, err := dialer.NewConn(context.TODO(), req.Address, opt)
 	if err != nil {
-		fmt.Printf("Failed to new a conn: %s\n", err.Error())
+		streamingLogErrorf("failed to create a conn: %v", err)
 		return nil, err
 	}
 
@@ -200,7 +214,7 @@ func newReverseStreamConnectedConn(req *SubscribeRequest) (dialer.Conn, error) {
 	conn.SetPassword(req.Password)
 	err = conn.Connect()
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", err.Error())
+		streamingLogErrorf("failed to connect to server: %v", err)
 		return nil, err
 	}
 
@@ -216,13 +230,13 @@ func getActiveReq(sites []*SubscribeRequest) *SubscribeRequest {
 
 		conn, err := newConnectedConn(si)
 		if err != nil {
-			fmt.Printf("Failed to instantiate a connected conn: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate a connected conn: %v", err)
 			continue
 		}
 
 		_, err = conn.RunScript("1")
 		if err != nil {
-			fmt.Printf("Failed to call 1: %s\n", err.Error())
+			streamingLogErrorf("failed to call 1: %v", err)
 			continue
 		}
 
@@ -247,7 +261,12 @@ func setReconnectItem(topic string, v int) {
 		return
 	}
 
-	site := topic[0:strings.Index(topic, "/")]
+	site, ok := topicSite(topic)
+	if !ok {
+		streamingLogWarnf("ignore malformed topic while updating reconnect state: %q", topic)
+		return
+	}
+
 	if raw, ok := reconnectTable.Load(site); ok {
 		item := raw.(*reconnectItem)
 		item.setState(v).setTimeStamp(time.Now().UnixNano() / 1000000)
@@ -304,7 +323,7 @@ func IsClosed(topic string) bool {
 func generatorGetSubscriptionTopicParams(tableName, actionName string) ([]model.DataForm, error) {
 	l, err := model.NewDataTypeListFromRawData(model.DtString, []string{tableName, actionName})
 	if err != nil {
-		fmt.Printf("Failed to instantiate DataTypeList: %s\n", err.Error())
+		streamingLogErrorf("failed to instantiate DataTypeList: %v", err)
 		return nil, err
 	}
 
@@ -325,14 +344,14 @@ func generatePublishTableParams(s *SubscribeRequest, listenHost string, listenPo
 	pubReq = append(pubReq, r...)
 	dfl, err := generatorGetSubscriptionTopicParams(s.TableName, s.ActionName)
 	if err != nil {
-		fmt.Printf("Failed to generate the params of GetSubscriptionTopic:%s\n", err.Error())
+		streamingLogErrorf("failed to generate the params of GetSubscriptionTopic: %v", err)
 		return nil, err
 	}
 
 	pubReq = append(pubReq, dfl...)
 	offset, err := model.NewDataType(model.DtLong, s.Offset)
 	if err != nil {
-		fmt.Printf("Failed to instantiate DataType with offset: %s\n", err.Error())
+		streamingLogErrorf("failed to instantiate DataType with offset: %v", err)
 		return nil, err
 	}
 
@@ -342,7 +361,7 @@ func generatePublishTableParams(s *SubscribeRequest, listenHost string, listenPo
 	} else {
 		void, err := model.NewDataType(model.DtVoid, "")
 		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with void: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate DataType with void: %v", err)
 			return nil, err
 		}
 
@@ -352,11 +371,11 @@ func generatePublishTableParams(s *SubscribeRequest, listenHost string, listenPo
 	if s.AllowExists {
 		al, err := model.NewDataType(model.DtBool, true)
 		if err != nil {
-			fmt.Printf("Failed to instantiate DataType with AllowExists: %s\n", err.Error())
+			streamingLogErrorf("failed to instantiate DataType with AllowExists: %v", err)
 			return nil, err
 		}
 		pubReq = append(pubReq, model.NewScalar(al))
-		fmt.Println(pubReq[6].String())
+		streamingLogDebugf("publishTable allowExists parameter: %s", pubReq[6].String())
 	}
 
 	return pubReq, nil
@@ -365,13 +384,13 @@ func generatePublishTableParams(s *SubscribeRequest, listenHost string, listenPo
 func packListeningHostAndPort(listeningHost string, listeningPort int32) ([]model.DataForm, error) {
 	localIP, err := model.NewDataType(model.DtString, listeningHost)
 	if err != nil {
-		fmt.Printf("Failed to instantiate DataType with listeningHost: %s\n", err.Error())
+		streamingLogErrorf("failed to instantiate DataType with listeningHost: %v", err)
 		return nil, err
 	}
 
 	port, err := model.NewDataType(model.DtInt, listeningPort)
 	if err != nil {
-		fmt.Printf("Failed to instantiate DataType with listeningPort: %s\n", err.Error())
+		streamingLogErrorf("failed to instantiate DataType with listeningPort: %v", err)
 		return nil, err
 	}
 
@@ -383,7 +402,7 @@ func generateStopPublishTableParams(s *SubscribeRequest, listenHost string, list
 
 	localIP, err := model.NewDataType(model.DtString, listenHost)
 	if err != nil {
-		fmt.Printf("Failed to instantiate DataType with listeningHost: %s\n", err.Error())
+		streamingLogErrorf("failed to instantiate DataType with listeningHost: %v", err)
 		return nil, err
 	}
 
@@ -391,7 +410,7 @@ func generateStopPublishTableParams(s *SubscribeRequest, listenHost string, list
 
 	port, err := model.NewDataType(model.DtInt, listenPort)
 	if err != nil {
-		fmt.Printf("Failed to instantiate DataType with listeningPort: %s\n", err.Error())
+		streamingLogErrorf("failed to instantiate DataType with listeningPort: %v", err)
 		return nil, err
 	}
 
@@ -399,7 +418,7 @@ func generateStopPublishTableParams(s *SubscribeRequest, listenHost string, list
 
 	dfl, err := generatorGetSubscriptionTopicParams(s.TableName, s.ActionName)
 	if err != nil {
-		fmt.Printf("Failed to generate the params of GetSubscriptionTopic: %s\n", err.Error())
+		streamingLogErrorf("failed to generate the params of GetSubscriptionTopic: %v", err)
 		return nil, err
 	}
 

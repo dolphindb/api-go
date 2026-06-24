@@ -2,7 +2,7 @@ package dialer
 
 import (
 	"bytes"
-	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -94,19 +94,12 @@ func readFile(path string) (string, error) {
 		}
 	}
 
-	fl, err := os.Open(path)
+	byt, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
 
-	defer fl.Close()
-
-	byt, err := ioutil.ReadAll(fl)
-	if err != nil {
-		return "", err
-	}
-
-	return string(byt), err
+	return string(byt), nil
 }
 
 func parseAddr(raw string) string {
@@ -115,13 +108,22 @@ func parseAddr(raw string) string {
 		return ""
 	}
 
-	raw = strings.Fields(raw)[0]
-	strs := strings.Split(raw, ":")
-	if len(strs) < 2 {
+	token := strings.Fields(raw)[0]
+	if host, port, err := net.SplitHostPort(token); err == nil {
+		return net.JoinHostPort(host, port)
+	}
+
+	lastColon := strings.LastIndex(token, ":")
+	if lastColon < 0 {
 		return ""
 	}
 
-	return strings.Join(strs[:2], ":")
+	host, port, err := net.SplitHostPort(token[:lastColon])
+	if err != nil {
+		return ""
+	}
+
+	return net.JoinHostPort(host, port)
 }
 
 func extractTaggedAddr(msg, tag string) string {

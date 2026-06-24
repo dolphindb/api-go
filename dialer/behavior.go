@@ -1,6 +1,10 @@
 package dialer
 
-import "time"
+import (
+	"errors"
+	"slices"
+	"time"
+)
 
 // SqlStandard specifies which SQL standard should be used for the session.
 // The numeric values must stay compatible with the existing DolphinDB protocol:
@@ -34,11 +38,14 @@ func (s SqlStdEnum) String() string {
 // BehaviorOptions helps you configure behavior identity.
 // Refer to https://github.com/dolphindb/Tutorials_CN/blob/master/api_protocol.md#254-%E8%A1%8C%E4%B8%BA%E6%A0%87%E8%AF%86 for more details.
 type BehaviorOptions struct {
-	// Priority specifies the priority of the task
+	// Priority specifies the priority of the task.
+	// Nil uses the SDK default value.
 	Priority *int
-	// Parallelism specifies the parallelism of the task
+	// Parallelism specifies the parallelism of the task.
+	// Nil uses the SDK default value.
 	Parallelism *int
-	// FetchSize specifies the fetchSize of the task
+	// FetchSize specifies the fetchSize of the task.
+	// Nil uses the SDK default value.
 	FetchSize *int
 	// Timeout specifies how long a request waits for the server response.
 	Timeout time.Duration
@@ -66,7 +73,8 @@ type BehaviorOptions struct {
 	// IsClearSessionMemory specifies whether to clear session memory after the job
 	IsClearSessionMemory bool
 
-	// tryReconnectNums specifies the number of times to try reconnecting
+	// TryReconnectNums specifies the number of reconnection attempts.
+	// Nil means reconnect indefinitely; any non-positive value is invalid.
 	TryReconnectNums *int
 
 	// UsePython specifies whether the session uses a Python parser
@@ -75,69 +83,79 @@ type BehaviorOptions struct {
 	// SqlStd specifies which SQL standard should be used for the session.
 	SqlStd SqlStdEnum
 
-	// if enable SCRAM login verify
+	// EnableScram specifies whether SCRAM login is required.
+	// When false, login still tries SCRAM first and falls back to password login
+	// if the server or user does not support SCRAM.
 	EnableScram bool
 }
 
-// SetPriority sets the priority of the task.
-func (f *BehaviorOptions) SetPriority(p int) *BehaviorOptions {
-	f.Priority = &p
-	return f
-}
+var errInvalidTryReconnectNums = errors.New("TryReconnectNums must be nil or greater than 0")
 
-// SetParallelism sets the parallelism of the task.
-func (f *BehaviorOptions) SetParallelism(p int) *BehaviorOptions {
-	f.Parallelism = &p
-	return f
-}
+const (
+	defaultPriority    = 4
+	defaultParallelism = 64
+	defaultFetchSize   = 0
+)
 
-// SetFetchSize sets the fetchSize of the task.
-func (f *BehaviorOptions) SetFetchSize(fs int) *BehaviorOptions {
-	f.FetchSize = &fs
-	return f
-}
-
-func (f *BehaviorOptions) SetTryReconnectNums(n int) *BehaviorOptions {
-	f.TryReconnectNums = &n
-	return f
-}
-
-// SetSqlStd sets the SQL standard of the session.
-func (f *BehaviorOptions) SetSqlStd(sqlStd SqlStdEnum) *BehaviorOptions {
-	f.SqlStd = sqlStd
-	return f
-}
-
-// GetPriority gets the priority of the task.
-func (f *BehaviorOptions) GetPriority() int {
-	if f.Priority == nil {
-		return 4
+// Validate checks whether the behavior options are internally consistent.
+func (f *BehaviorOptions) Validate() error {
+	if f == nil {
+		return nil
 	}
-	return *f.Priority
+
+	return validateTryReconnectNums(f.TryReconnectNums)
 }
 
-// GetParallelism gets the parallelism of the task.
-func (f *BehaviorOptions) GetParallelism() int {
-	if f.Parallelism == nil {
-		return 64
+func normalizeBehaviorOptions(opt *BehaviorOptions) (*BehaviorOptions, error) {
+	if err := validateBehaviorOptions(opt); err != nil {
+		return nil, err
 	}
-	return *f.Parallelism
+
+	if opt == nil {
+		opt = &BehaviorOptions{}
+	}
+
+	normalized := *opt
+	normalized.Priority = cloneIntPtrOrDefault(opt.Priority, defaultPriority)
+	normalized.Parallelism = cloneIntPtrOrDefault(opt.Parallelism, defaultParallelism)
+	normalized.FetchSize = cloneIntPtrOrDefault(opt.FetchSize, defaultFetchSize)
+	normalized.TryReconnectNums = cloneIntPtr(opt.TryReconnectNums)
+	if opt.HighAvailabilitySites != nil {
+		normalized.HighAvailabilitySites = slices.Clone(opt.HighAvailabilitySites)
+	}
+
+	return &normalized, nil
 }
 
-// GetFetchSize gets the fetchSize of the task.
-func (f *BehaviorOptions) GetFetchSize() int {
-	if f.FetchSize == nil {
-		return 0
+func validateBehaviorOptions(opt *BehaviorOptions) error {
+	if opt == nil {
+		return nil
 	}
-	return *f.FetchSize
+
+	return validateTryReconnectNums(opt.TryReconnectNums)
 }
 
-func (f *BehaviorOptions) GetTryReconnectNums() int {
-	if f.TryReconnectNums == nil {
-		return 0
+func validateTryReconnectNums(n *int) error {
+	if n != nil && *n <= 0 {
+		return errInvalidTryReconnectNums
 	}
-	if *f.TryReconnectNums < 0 {
-		return 0
+
+	return nil
+}
+
+func cloneIntPtrOrDefault(value *int, fallback int) *int {
+	if value == nil {
+		value = &fallback
 	}
-	return *f.TryReconnectNums
+
+	return cloneIntPtr(value)
+}
+
+func cloneIntPtr(value *int) *int {
+	if value == nil {
+		return nil
+	}
+
+	copied := *value
+	return &copied
 }

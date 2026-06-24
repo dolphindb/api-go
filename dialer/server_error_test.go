@@ -31,6 +31,17 @@ func TestAsServerErrorNormalizesLegacyStringError(t *testing.T) {
 	assert.True(t, serverErr.SuggestsFailover())
 }
 
+func TestAsServerErrorDoesNotExtractDataNodeNotAvailAddress(t *testing.T) {
+	serverErr, ok := AsServerError(errors.New("client error response. <DataNodeNotAvail>node is unavailable"))
+
+	require.True(t, ok)
+	assert.Equal(t, ServerErrDataNodeNotAvail, serverErr.Code)
+	assert.Equal(t, "", serverErr.Address)
+	_, hasTarget := serverErr.TargetAddress()
+	assert.False(t, hasTarget)
+	assert.True(t, serverErr.SuggestsFailover())
+}
+
 func TestAsServerErrorRejectsNonServerErrors(t *testing.T) {
 	serverErr, ok := AsServerError(errors.New("dial tcp 127.0.0.1:8848: connect: connection refused"))
 

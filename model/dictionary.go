@@ -19,7 +19,17 @@ type Dictionary struct {
 
 // NewDictionary returns an object of Dictionary according to keys and values.
 // You can instantiate the Vector object by NewVector.
-func NewDictionary(keys, val *Vector) *Dictionary {
+func NewDictionary(keys, val *Vector) (*Dictionary, error) {
+	if keys == nil {
+		return nil, errors.New("dictionary keys must not be nil")
+	}
+	if val == nil {
+		return nil, errors.New("dictionary values must not be nil")
+	}
+	if keys.Rows() != val.Rows() {
+		return nil, fmt.Errorf("dictionary keys has %d rows, values has %d rows", keys.Rows(), val.Rows())
+	}
+
 	return &Dictionary{
 		category: &Category{
 			DataForm: DfDictionary,
@@ -27,7 +37,7 @@ func NewDictionary(keys, val *Vector) *Dictionary {
 		},
 		Keys:   keys,
 		Values: val,
-	}
+	}, nil
 }
 
 // Rows returns the row num of the DataForm.
