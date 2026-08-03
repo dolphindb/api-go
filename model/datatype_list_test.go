@@ -723,3 +723,36 @@ func TestNewDataTypeListWithRawWithNullValue(t *testing.T) {
 	assert.True(t, dt.IsNull(1))
 	assert.Equal(t, dt.ElementString(1), "")
 }
+
+func TestByteBackedNullValueContract(t *testing.T) {
+	assert.Equal(t, uint8(128), NullBool)
+	assert.Equal(t, uint8(128), NullChar)
+	assert.Equal(t, uint8(128), NullCompress)
+	assert.Equal(t, int8(NullBool), NullBoolValue)
+	assert.Equal(t, int8(NullChar), NullCharValue)
+	assert.Equal(t, int8(NullCompress), NullCompressValue)
+
+	charList, err := NewDataTypeListFromRawData(DtChar, []byte{3, NullChar, 0})
+	assert.NoError(t, err)
+	charVector := NewVector(charList)
+	assert.Equal(t, []interface{}{int8(3), NullCharValue, int8(0)}, charVector.GetRawValue())
+	assert.False(t, charVector.IsNull(0))
+	assert.True(t, charVector.IsNull(1))
+	assert.False(t, charVector.IsNull(2))
+
+	boolList, err := NewDataTypeListFromRawData(DtBool, []byte{1, NullBool, 0})
+	assert.NoError(t, err)
+	boolVector := NewVector(boolList)
+	assert.Equal(t, []interface{}{true, NullBoolValue, false}, boolVector.GetRawValue())
+	assert.False(t, boolVector.IsNull(0))
+	assert.True(t, boolVector.IsNull(1))
+	assert.False(t, boolVector.IsNull(2))
+
+	compressList, err := NewDataTypeListFromRawData(DtCompress, []byte{3, NullCompress, 0})
+	assert.NoError(t, err)
+	compressVector := NewVector(compressList)
+	assert.Equal(t, []interface{}{int8(3), NullCompressValue, int8(0)}, compressVector.GetRawValue())
+	assert.False(t, compressVector.IsNull(0))
+	assert.True(t, compressVector.IsNull(1))
+	assert.False(t, compressVector.IsNull(2))
+}

@@ -291,6 +291,9 @@ func normalizePoolOptions(opts *PoolOptions) (*PoolOptions, time.Duration, error
 	if opts.TryReconnectNums != nil && *opts.TryReconnectNums <= 0 {
 		return nil, 0, errors.New("TryReconnectNums must be nil or greater than 0")
 	}
+	if opts.LeaderConvergenceTimeout < 0 {
+		return nil, 0, errors.New("LeaderConvergenceTimeout must be equal or greater than 0")
+	}
 
 	normalized := *opts
 	normalized.HighAvailabilitySites = slices.Clone(opts.HighAvailabilitySites)
@@ -392,14 +395,15 @@ func newPoolConn(addr string, opts *PoolOptions) (dialer.Conn, error) {
 
 func connPoolBehaviorOptions(opts *PoolOptions) *dialer.BehaviorOptions {
 	return &dialer.BehaviorOptions{
-		Timeout:                opts.Timeout,
-		NetTimeout:             opts.NetTimeout,
-		EnableHighAvailability: opts.EnableHighAvailability,
-		HighAvailabilitySites:  opts.HighAvailabilitySites,
-		Reconnect:              opts.Reconnect,
-		TryReconnectNums:       opts.TryReconnectNums,
-		EnableScram:            opts.EnableScram,
-		SqlStd:                 opts.SqlStd,
+		Timeout:                  opts.Timeout,
+		NetTimeout:               opts.NetTimeout,
+		EnableHighAvailability:   opts.EnableHighAvailability,
+		HighAvailabilitySites:    opts.HighAvailabilitySites,
+		Reconnect:                opts.Reconnect,
+		TryReconnectNums:         opts.TryReconnectNums,
+		LeaderConvergenceTimeout: opts.LeaderConvergenceTimeout,
+		EnableScram:              opts.EnableScram,
+		SqlStd:                   opts.SqlStd,
 	}
 }
 

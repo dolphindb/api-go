@@ -3745,3 +3745,93 @@ func TestDBConnectionPool_tableInsert_haStreamTable_follower(t *testing.T) {
 		So(checkTask1.GetResult().(*model.Scalar).Value().(int32), ShouldEqual, 200)
 	})
 }
+
+func TestDBConnectionPool_tableInsert_haStreamTable_leader_switch(t *testing.T) {
+	Convey("TestDBConnectionPool_tableInsert_haStreamTable_leader_switch", t, func() {
+		conn, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+		defer conn.Close()
+
+		// 获取 leader 节点的端口和别名
+		leaderRes, err := conn.RunScript("exec port from rpc(getControllerAlias(), getClusterPerf) where name=getStreamingLeader(11);\n")
+		So(err, ShouldBeNil)
+		leaderPort := int(leaderRes.(*model.Vector).Get(0).Value().(int32))
+
+		leaderAliasRes, err := conn.RunScript("getStreamingLeader(11)")
+		So(err, ShouldBeNil)
+		leaderAlias := leaderAliasRes.(*model.Scalar).Value().(string)
+
+		// 连接到 controller，用于后续停止/启动节点
+		connCtl, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.CtlAdress, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		So(connCtl, ShouldNotBeNil)
+		defer connCtl.Close()
+
+		// 创建指向 leader 的高可用连接池
+		pool, err := api.NewDBConnectionPool(&api.PoolOption{
+			Address:                setup.IP + ":" + strconv.Itoa(leaderPort),
+			UserID:                 setup.UserName,
+			Password:               setup.Password,
+			PoolSize:               3,
+			EnableHighAvailability: true,
+			HighAvailabilitySites:  setup.HA_sites,
+			Reconnect:              true,
+		})
+		So(err, ShouldBeNil)
+		So(pool, ShouldNotBeNil)
+		defer pool.Close()
+
+		// 创建 haStreamTable
+		createTask := &api.Task{Script: "try{dropStreamTable(\"haStreamTable1\")}catch(ex){};\n go;\n haStreamTable(11, table(array(INT) as intv,array(SYMBOL) as symbolv),\"haStreamTable1\",100000)"}
+		err = pool.ExecuteTask(createTask)
+		So(err, ShouldBeNil)
+		time.Sleep(3 * time.Second)
+
+		// 循环写入10次，每次10000条数据
+		batchSize := 10000
+		totalBatches := 10
+		for i := 0; i < totalBatches; i++ {
+			// 第5次写入时停止 leader 节点（索引从0开始，i==4 是第5次）
+			if i == 4 {
+				fmt.Println("--------------------------stopping leader node:", leaderAlias, "------------------------------")
+				_, err = connCtl.RunScript("stopDataNode(`" + leaderAlias + ")")
+				So(err, ShouldBeNil)
+				time.Sleep(10 * time.Second)
+				fmt.Println("--------------------------leader node stopped, continue writing------------------------------")
+			}
+
+			// 构造每次写入的测试数据
+			base := i * batchSize
+			dataScript := fmt.Sprintf("table(%d..%d as intv, take(`qq`ee`rr, %d) as symbolv)", base+1, base+batchSize, batchSize)
+			tmp, err := conn.RunScript(dataScript)
+			So(err, ShouldBeNil)
+			So(tmp, ShouldNotBeNil)
+
+			values := []model.DataForm{tmp}
+			insertTask := &api.Task{Script: "tableInsert{haStreamTable1}", Args: values}
+			err = pool.ExecuteTask(insertTask)
+			fmt.Println("--------------------------batch", i+1, "insert completed------------------------------")
+		}
+
+		time.Sleep(15 * time.Second)
+
+		// 断言：总写入数据量应为 100000
+		checkTask := &api.Task{Script: "exec count(*) from haStreamTable1"}
+		err = pool.ExecuteTask(checkTask)
+		So(err, ShouldBeNil)
+		So(checkTask.GetResult().(*model.Scalar).Value().(int32), ShouldEqual, int32(batchSize*totalBatches))
+		fmt.Println("--------------------------total count check passed:", batchSize*totalBatches, "------------------------------")
+
+		// 恢复被停止的节点
+		fmt.Println("--------------------------restarting stopped node------------------------------")
+		_, err = connCtl.RunScript("startDataNode(exec name from getClusterPerf() where state!=1 and mode !=1);sleep(2000)")
+		So(err, ShouldBeNil)
+		time.Sleep(10 * time.Second)
+
+		// 清理
+		_, err = conn.RunScript("try{dropStreamTable(\"haStreamTable1\")}catch(ex){}")
+		So(err, ShouldBeNil)
+	})
+
+}

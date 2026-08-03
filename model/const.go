@@ -10,6 +10,18 @@ import (
 const (
 	// MinInt8 is the minimum int8 of type uint8.
 	MinInt8 uint8 = 128
+	// NullBoolValue is the null value returned by Value, ElementValue, and
+	// Vector.GetRawValue for DtBool. Use NullBool when constructing or
+	// uploading DtBool data from byte values.
+	NullBoolValue int8 = -128
+	// NullCharValue is the null value returned by Value, ElementValue, and
+	// Vector.GetRawValue for DtChar. Use NullChar when constructing or
+	// uploading DtChar data from byte values.
+	NullCharValue int8 = -128
+	// NullCompressValue is the null value returned by Value, ElementValue, and
+	// Vector.GetRawValue for DtCompress. Use NullCompress when constructing or
+	// uploading DtCompress data from byte values.
+	NullCompressValue int8 = -128
 	// MinInt32 is minimum int32 of type uint32.
 	MinInt32 uint32 = 2147483648
 )

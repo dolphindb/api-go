@@ -180,3 +180,40 @@ func TestPrint(t *testing.T) {
 	})
 
 }
+
+// TODO: RunFunc cases
+// AG-183: RunFunc failed from I/O timeout or EOF due to missed "Lengths" in empty vector
+func TestRunFunc(t *testing.T) {
+	t.Parallel()
+	Convey("test_RuncFunc_array_vector_serialization_with_empty_element", t, func(){
+		ddb, err := api.NewSimpleDolphinDBClient(context.TODO(), host16, setup.UserName, setup.Password)
+		So(err, ShouldBeNil)
+		// 构造包含空数组的 ArrayVector
+		data := [][]float64{
+			{1.0, 2.0},
+			{}, // 空数组
+			{3.0, 4.0, 5.0},
+		}
+		vecs := make([]*model.Vector, len(data))
+		for i, d := range data {
+			v, err := model.NewDataTypeListFromRawData(model.DtDouble, d)
+			So(err, ShouldBeNil)
+			vecs[i] = model.NewVector(v)
+		}
+		arrayVec, err := model.NewVectorWithArrayVector(model.NewArrayVector(vecs))
+		So(err, ShouldBeNil)
+
+		// 创建包含该列的表
+		table, err := model.NewTable([]string{"col"}, []*model.Vector{arrayVec})
+		So(err, ShouldBeNil)
+		result, err := ddb.RunFunc("typestr", []model.DataForm{table})
+		
+		So(err, ShouldBeNil) // 无超时/EOF
+		So(result, ShouldNotBeNil)
+
+		// 验证返回值
+		df := result.String()
+		So(df, ShouldEqual, "string(IN-MEMORY TABLE)")
+		So(ddb.Close(), ShouldBeNil)
+	})
+}

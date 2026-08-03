@@ -75,7 +75,13 @@ func TestTableRenderRejectsMismatchedRows(t *testing.T) {
 	names, err := NewDataTypeListFromRawData(DtString, []string{"alice"})
 	assert.Nil(t, err)
 
-	tb := mustNewTable(t, []string{"id", "name"}, []*Vector{NewVector(ids), NewVector(names)})
+	// NewTable already rejects this shape. Construct an invalid internal value
+	// directly to retain coverage for Render's defensive revalidation.
+	tb := newTable(
+		[]string{"id", "name"},
+		[]*Vector{NewVector(ids), NewVector(names)},
+		2,
+	)
 	assert.NotNil(t, tb)
 
 	by := bytes.NewBufferString("")

@@ -85,3 +85,21 @@ func TestConnPoolWithConnReturnsConnectionWhenCallbackFails(t *testing.T) {
 	assert.Equal(t, 1, pool.Size())
 	assert.False(t, conn.closed)
 }
+
+func TestNormalizePoolOptionsPropagatesLeaderConvergenceTimeout(t *testing.T) {
+	opts, _, err := normalizePoolOptions(&PoolOptions{
+		Address:                  "127.0.0.1:8848",
+		PoolSize:                 1,
+		LeaderConvergenceTimeout: 11 * time.Second,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 11*time.Second, opts.LeaderConvergenceTimeout)
+	assert.Equal(t, 11*time.Second, connPoolBehaviorOptions(opts).LeaderConvergenceTimeout)
+
+	_, _, err = normalizePoolOptions(&PoolOptions{
+		Address:                  "127.0.0.1:8848",
+		PoolSize:                 1,
+		LeaderConvergenceTimeout: -time.Second,
+	})
+	require.EqualError(t, err, "LeaderConvergenceTimeout must be equal or greater than 0")
+}

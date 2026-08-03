@@ -108,6 +108,11 @@ type PoolOption struct {
 	// Nil means reconnect indefinitely; any non-positive value is invalid.
 	TryReconnectNums *int
 
+	// LeaderConvergenceTimeout limits how long one request waits for repeated
+	// structured NotLeader responses after the first NotLeader is received.
+	// It is not a total request deadline. Zero uses the SDK default of 60 seconds.
+	LeaderConvergenceTimeout time.Duration
+
 	// EnableScram specifies whether SCRAM login is required.
 	// When false, login still tries SCRAM first and falls back to password login
 	// if the server or user does not support SCRAM.
@@ -134,10 +139,16 @@ func NewDBConnectionPool(opt *PoolOption) (*DBConnectionPool, error) {
 		generation:           1,
 		logName:              nextPoolLogName(),
 	}
+	if !opt.LoadBalance {
+		p.currentLeader = opt.Address
+	}
 	p.opt.Timeout = timeout
 
 	if opt.PoolSize < 1 {
 		return nil, errors.New("PoolSize must be greater than 0")
+	}
+	if opt.LeaderConvergenceTimeout < 0 {
+		return nil, errors.New("LeaderConvergenceTimeout must be equal or greater than 0")
 	}
 	if !opt.LoadBalance && !opt.EnableHighAvailability && len(opt.HighAvailabilitySites) > 0 {
 		return nil, errors.New("HighAvailabilitySites requires LoadBalance or EnableHighAvailability to be true")
@@ -212,14 +223,15 @@ func setConnLogName(conn dialer.Conn, name string) {
 
 func buildPoolBehaviorOptions(opt *PoolOption) *dialer.BehaviorOptions {
 	return &dialer.BehaviorOptions{
-		Timeout:                opt.Timeout,
-		NetTimeout:             opt.NetTimeout,
-		EnableHighAvailability: opt.EnableHighAvailability,
-		HighAvailabilitySites:  opt.HighAvailabilitySites,
-		Reconnect:              opt.Reconnect,
-		TryReconnectNums:       opt.TryReconnectNums,
-		EnableScram:            opt.EnableScram,
-		SqlStd:                 opt.SqlStd,
+		Timeout:                  opt.Timeout,
+		NetTimeout:               opt.NetTimeout,
+		EnableHighAvailability:   opt.EnableHighAvailability,
+		HighAvailabilitySites:    opt.HighAvailabilitySites,
+		Reconnect:                opt.Reconnect,
+		TryReconnectNums:         opt.TryReconnectNums,
+		LeaderConvergenceTimeout: opt.LeaderConvergenceTimeout,
+		EnableScram:              opt.EnableScram,
+		SqlStd:                   opt.SqlStd,
 	}
 }
 

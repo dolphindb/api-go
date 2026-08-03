@@ -6,6 +6,8 @@
 - 修改某个模块前，先看对应章节，重点关注“反常点”和“写代码建议”。
 - 这里优先记录会影响实现判断的历史包袱、非直觉设计、与 Go 生态冲突的做法。
 - 如果代码与文档不一致，以代码为准；修完后把文档补齐。
+- 若读者几乎没有 Go 基础、需要「为什么这么怪」的逐条详解（含指针/`error`/New 等语法），请先读
+  [`../docs/analysis/api-go设计疑惑详解-面向Go新手.md`](../docs/analysis/api-go设计疑惑详解-面向Go新手.md)。
 
 ## `api`
 
@@ -41,8 +43,21 @@
   可能继续使用旧节点 session 并反复触发 failover。收到服务端响应头后也要刷新
   当前连接 session，即使后续响应体是服务端错误。
 - 服务端可能在客户端已经切到 `NotLeader` 指定节点后继续返回同一个
-  `NotLeader` target；请求级 failover 必须识别同一请求内重复 target，避免在
-  `TryReconnectNums == nil` 时无限重连同一节点。
+  `NotLeader` target。不能把“重复 target”直接等同于“无可用路径”：当前实现按
+  规范化节点计数，用默认 90 次和 60 秒双预算等待 leader 收敛；同址时原地重放，
+  避免丢 session 和重复建连。
+- `LeaderConvergenceTimeout` 从当前请求第一次收到结构化 `NotLeader` 时起算，
+  不是单次 API 调用的总超时。之前的无 target HA 轮询不计入，且
+  `TryReconnectNums=nil` 时该既有路径仍可能无界等待。
+- failover trace 一次迭代只记录一个动作：跨节点定向使用 `NotLeader`，同址等待
+  使用 `LeaderConvergenceWait`。连接池不得把 `LeaderConvergenceWait(A→A)`
+  解释为 leader 已切换并重建整池。
+- `ServerError.Is` 的参数是 `ServerErrorCode`，不是标准库 `errors.Is` 所需的
+  `Is(error) bool`。调用方必须先用 `dialer.AsServerError(err)`，再调用
+  `serverErr.Is(dialer.ServerErrNotLeader)`；`errors.Is(err, ...)` 不会替代这条路径。
+- `conn.connect` 会在新 TCP 拨号和 socket option 配置成功后接管连接。改动连接
+  生命周期时必须保证旧 socket 被关闭、新握手失败时新 socket 被回收，并维护
+  `connectedAddress` 这个逻辑地址；不要只覆盖 `c.Conn` / `c.reader`。
 
 写代码建议：
 - 涉及连接、重连、HA 的改动，默认视为高风险改动，先核对 Python/C++ 语义再下手。
@@ -58,11 +73,20 @@
 - Decimal 相关设计尤其反常：`Decimal32s` / `Decimal64s` 对用户暴露的是浮点包装，但序列化阶段写的是 raw integer。
 - `Vector.Append` 只接受 `DataType`，对用户不够自然，也让很多调用点不得不先做一次中间转换。
 - 这里的很多类型更像“协议中间层”，而不是最终用户最应该直接接触的模型层。
+- BOOL、CHAR、COMPRESS null 在线协议和内部存储中都是字节 `0x80`。
+  构造/上传侧使用 `NullBool`、`NullChar`、`NullCompress`
+  （`uint8(128)`），而 `Value`、`ElementValue` 和 `Vector.GetRawValue`
+  的读取侧 null 是对应的 `Null*Value`（`int8(-128)`）。BOOL 的非 null
+  读取值仍为 `bool`，CHAR/COMPRESS 则为 `int8`。已有 `Vector` 时优先使用
+  `IsNull` 判空；不要直接拿读取结果与构造侧 `Null*` 比较。
+- ArrayVector 写协议时 `lengths` 字节数由 `rowCount*unit` 决定，与 `data.Len()` 无关；空数组元素仍要写 length=0。历史上曾用 `data.Len()>0` 决定是否写 lengths，会导致对端一直等数据、本端 `RunFunc`/`Upload` 表现为 `i/o timeout`（AG-183）。读路径 `readArrayVector` 始终按 `rc*unit` 读 lengths，两侧必须对称。
+- `GetVectorValue` 对 length=0 的元素会走到 `NewVector(nil)` 并 panic；取空元素前需自行处理，不要假设它与普通 Vector 一样安全。
 
 写代码建议：
 - 如果不是在修协议实现，尽量不要把这些底层抽象继续向上层 API 暴露。
 - 优先考虑增加高层 helper / constructor，而不是让更多调用方直接拼 `DataType` / `DataTypeList`。
 - 涉及 Decimal 的改动，先分清“用户输入值”和“线协议 raw 值”，不要把两层语义混在一起。
+- 改 ArrayVector 序列化时对照 `parse_dataform.readArrayVector` / `readDecimalArrayVector`，保证空元素与非空元素都写出完整 chunk。
 
 ## `streaming`
 

@@ -4855,7 +4855,7 @@ func Test_GetRawValue_Vector_Download_Datatype_long(t *testing.T) {
 
 func Test_GetRawValue_Vector_Download_Datatype_short(t *testing.T) {
 	t.Parallel()
-	Convey("Test_vector_long:", t, func() {
+	Convey("Test_vector_short:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		vec1, err := db.RunScript("short(123 -21 0 1024 12)")
@@ -4926,7 +4926,7 @@ func Test_GetRawValue_Vector_Download_Datatype_short(t *testing.T) {
 
 func Test_GetRawValue_Vector_Download_Datatype_char(t *testing.T) {
 	t.Parallel()
-	Convey("Test_vector_long:", t, func() {
+	Convey("Test_vector_char:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		vec1, err := db.RunScript("char(12 1 0 24 2)")
@@ -4941,27 +4941,35 @@ func Test_GetRawValue_Vector_Download_Datatype_char(t *testing.T) {
 		So(result1.GetDataTypeString(), ShouldEqual, "char")
 		So(result2.GetDataTypeString(), ShouldEqual, "char")
 		So(result3.GetDataTypeString(), ShouldEqual, "char")
+		// FIX: AG-52 对于Vector的断言Null值，尽可能使用IsNull(); GetRawValue()的Null值与model.NullCharValue比较
 		res1 := result1.GetRawValue()
-		// res2 := result2.GetRawValue()
-		// res3 := result3.GetRawValue()
 		ex1 := []byte{12, 1, 0, 24, 2}
-		// ex2 := []byte{3, model.NullChar, 0, model.NullChar, 2}
-		for i := 0; i < 5; i++ {
+		for i:=range 5{
 			So(res1[i], ShouldEqual, ex1[i])
 		}
-		// for i := 0; i < 5; i++ {
-		// 	So(res2[i], ShouldEqual, ex2[i])
-		// }
-		// for i := 0; i < 5; i++ {
-		// 	So(res3[i], ShouldEqual, -128)
-		// }
+		res2 := result2.GetRawValue()
+		ex2 := []byte{3, model.NullChar, 0, model.NullChar, 2}
+		for i:=range 5{
+			if(ex2[i] == model.NullChar){
+				So(result2.IsNull(i), ShouldBeTrue)
+				So(res2[i], ShouldEqual, model.NullCharValue)
+			} else {
+				So(res2[i], ShouldEqual, ex2[i])
+			}
+		}
+		res3 := result3.GetRawValue()
+		So(len(res3), ShouldEqual, 10)
+		for i:=range 10{
+			So(result3.IsNull(i), ShouldBeTrue)
+			So(res3[i], ShouldEqual, model.NullCharValue)
+		}
 		So(db.Close(), ShouldBeNil)
 	})
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_bool(t *testing.T) {
 	t.Parallel()
-	Convey("Test_vector_long:", t, func() {
+	Convey("Test_vector_bool:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		vec1, err := db.RunScript("true false")
@@ -4978,23 +4986,25 @@ func Test_GetRawValue_Vector_Download_Datatype_bool(t *testing.T) {
 		So(result3.GetDataTypeString(), ShouldEqual, "bool")
 		res1 := result1.GetRawValue()
 		res2 := result2.GetRawValue()
-		// res3 := result3.GetRawValue()
+		res3 := result3.GetRawValue()
 		So(res1[0], ShouldBeTrue)
 		So(res1[1], ShouldBeFalse)
 		So(res2[0], ShouldBeTrue)
 		So(res2[1], ShouldBeFalse)
 		So(res2[2], ShouldBeTrue)
-		// So(res2[3], ShouldEqual, model.NullBool)
-		// for i := 0; i < 5; i++ {
-		// 	So(res3[i], ShouldEqual, -128)
-		// }
+		So(result2.IsNull(3), ShouldBeTrue)
+		So(res2[3], ShouldEqual, model.NullBoolValue)
+		for i := range 5 {
+			So(result3.IsNull(i), ShouldBeTrue)
+			So(res3[i], ShouldEqual, model.NullBoolValue)
+		}
 		So(db.Close(), ShouldBeNil)
 	})
 }
 
 func Test_GetRawValue_Vector_Download_Datatype_double(t *testing.T) {
 	t.Parallel()
-	Convey("Test_vector_long:", t, func() {
+	Convey("Test_vector_double:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		vec1, err := db.RunScript("double(1.2345823 -2.125451 0.154646 1.2365024 1.23562)")
@@ -5065,7 +5075,7 @@ func Test_GetRawValue_Vector_Download_Datatype_double(t *testing.T) {
 
 func Test_GetRawValue_Vector_Download_Datatype_float(t *testing.T) {
 	t.Parallel()
-	Convey("Test_vector_long:", t, func() {
+	Convey("Test_vector_float:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		vec1, err := db.RunScript("float(1.2345823 -2.125451 0.154646 1.2365024 1.23562)")
@@ -5136,7 +5146,7 @@ func Test_GetRawValue_Vector_Download_Datatype_float(t *testing.T) {
 
 func Test_GetRawValue_Vector_Download_Datatype_Date(t *testing.T) {
 	t.Parallel()
-	Convey("Test_vector_long:", t, func() {
+	Convey("Test_vector_date:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		vec1, err := db.RunScript("1970.01.01 1969.12.31 1972.12.31")
@@ -5207,7 +5217,7 @@ func Test_GetRawValue_Vector_Download_Datatype_Date(t *testing.T) {
 
 func Test_GetRawValue_Vector_Download_Datatype_DateTime(t *testing.T) {
 	t.Parallel()
-	Convey("Test_vector_long:", t, func() {
+	Convey("Test_vector_datetime:", t, func() {
 		db, err := api.NewSimpleDolphinDBClient(context.TODO(), setup.Address, setup.UserName, setup.Password)
 		So(err, ShouldBeNil)
 		vec1, err := db.RunScript("datetime(1970.01.01T12:12:12 1969.12.31T12:59:12 1972.12.31T23:12:45)")
@@ -5512,7 +5522,8 @@ func Test_GetRawValue_UpLoad_array_vector_char(t *testing.T) {
 		So(err, ShouldBeNil)
 		re := model.NewVector(vec1)
 		So(re.GetRawValue()[0], ShouldEqual, 2)
-		// So(re.GetRawValue()[1], ShouldEqual, model.NullChar)
+		So(re.IsNull(1), ShouldBeTrue)
+		So(re.GetRawValue()[1], ShouldEqual, model.NullCharValue)
 		So(re.GetRawValue()[2], ShouldEqual, 5)
 		_, err = db.Upload(map[string]model.DataForm{"s": s})
 		So(err, ShouldBeNil)
@@ -5532,10 +5543,11 @@ func Test_GetRawValue_UpLoad_array_vector_char(t *testing.T) {
 		for i := 0; i < vec2.Len(); i++ {
 			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
 		}
-		// result3 := re.GetVectorValue(2)
-		// So(result3.GetRawValue()[0], ShouldEqual, model.NullChar)
-		// So(result3.GetRawValue()[1], ShouldEqual, model.NullChar)
-		// So(result3.GetRawValue()[2], ShouldEqual, model.NullChar)
+		result3 := re.GetVectorValue(2)
+		for i:=range 4{
+			So(result3.IsNull(i), ShouldBeTrue)
+			So(result3.GetRawValue()[i], ShouldEqual, model.NullCharValue)
+		}
 		So(db.Close(), ShouldBeNil)
 	})
 }
@@ -5576,10 +5588,11 @@ func Test_GetRawValue_UpLoad_array_vector_bool(t *testing.T) {
 		for i := 0; i < vec2.Len(); i++ {
 			So(result2.GetRawValue()[i], ShouldEqual, vec2.Value()[i])
 		}
-		// result3 := re.GetVectorValue(2)
-		// So(result3.GetRawValue()[0], ShouldEqual, model.nullBool)
-		// So(result3.GetRawValue()[1], ShouldEqual, model.nullBool)
-		// So(result3.GetRawValue()[2], ShouldEqual, model.nullBool)
+		result3 := re.GetVectorValue(2)
+		for i:=range 4{
+			So(result3.IsNull(i), ShouldBeTrue)
+			So(result3.GetRawValue()[i], ShouldEqual, model.NullBoolValue)
+		}
 		So(db.Close(), ShouldBeNil)
 	})
 }

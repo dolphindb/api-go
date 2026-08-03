@@ -7,6 +7,7 @@ import (
 	"github.com/dolphindb/api-go/v3/dialer/protocol"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVector(t *testing.T) {
@@ -116,4 +117,68 @@ func TestVector(t *testing.T) {
 	err = vct.Set(0, str)
 	assert.Nil(t, err)
 	assert.Equal(t, vct.Get(0).String(), "")
+}
+
+func TestRenderEmptyArrayVectorIncludesLengths(t *testing.T) {
+	// AG-183: common and decimal empty ArrayVector elements must still serialize
+	// their zero length byte even though they have no payload.
+	tests := []struct {
+		name  string
+		dt    DataTypeByte
+		raw   interface{}
+		scale *int32
+	}{
+		{name: "double", dt: DtDouble, raw: []float64{}},
+		{name: "decimal32", dt: DtDecimal32, raw: &Decimal32s{Scale: 2, Value: []float64{}}, scale: pointerTo(int32(2))},
+		{name: "decimal64", dt: DtDecimal64, raw: &Decimal64s{Scale: 2, Value: []float64{}}, scale: pointerTo(int32(2))},
+		{name: "decimal128", dt: DtDecimal128, raw: &Decimal128s{Scale: 2, Value: []string{}}, scale: pointerTo(int32(2))},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			empty, err := NewDataTypeListFromRawData(tc.dt, tc.raw)
+			require.NoError(t, err)
+
+			av := mustNewVectorWithArrayVector(t, NewArrayVector([]*Vector{NewVector(empty)}))
+			require.Equal(t, 1, av.Rows())
+			require.Equal(t, 0, av.ArrayVector[0].data.Len())
+			require.Equal(t, []byte{0x00}, av.ArrayVector[0].lengths)
+
+			by := bytes.NewBuffer(nil)
+			w := protocol.NewWriter(by)
+			require.NoError(t, av.Render(w, protocol.LittleEndian))
+			require.NoError(t, w.Flush())
+
+			expected := []byte{
+				byte(tc.dt + 64), byte(DfVector),
+				0x01, 0x00, 0x00, 0x00, // RowCount
+				0x01, 0x00, 0x00, 0x00, // ColumnCount
+			}
+			if tc.scale != nil {
+				expected = append(expected, byte(*tc.scale), 0x00, 0x00, 0x00)
+			}
+			expected = append(expected,
+				0x01, 0x00, // array chunk rowCount
+				0x01, 0x00, // unit
+				0x00, // length of the single empty array element
+			)
+			require.Equal(t, expected, by.Bytes())
+
+			parsed, err := ParseDataForm(
+				protocol.NewReader(bytes.NewReader(by.Bytes())),
+				protocol.LittleEndian,
+			)
+			require.NoError(t, err)
+			got, ok := parsed.(*Vector)
+			require.True(t, ok)
+			require.Equal(t, tc.dt+64, got.GetDataType())
+			require.Equal(t, 1, got.Rows())
+			require.Equal(t, 0, got.ArrayVector[0].data.Len())
+			require.Equal(t, []byte{0x00}, got.ArrayVector[0].lengths)
+		})
+	}
+}
+
+func pointerTo[T any](v T) *T {
+	return &v
 }

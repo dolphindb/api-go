@@ -85,8 +85,28 @@ func TestNewDBConnectionPoolAssignsPoolLogNameToConnections(t *testing.T) {
 	require.Len(t, created, 2)
 	assert.Equal(t, pool.logName, created[0].logName)
 	assert.Equal(t, pool.logName, created[1].logName)
+	assert.Equal(t, "127.0.0.1:8848", pool.currentLeader)
 	assert.True(t, created[0].connected)
 	assert.True(t, created[1].connected)
+}
+
+func TestNewLoadBalancedPoolDoesNotClaimSingleInitialLeader(t *testing.T) {
+	originalDialerNewConn := dialerNewConn
+	defer func() { dialerNewConn = originalDialerNewConn }()
+
+	dialerNewConn = func(_ context.Context, addr string, _ *dialer.BehaviorOptions) (dialer.Conn, error) {
+		return &fakePoolTaskConn{addr: addr}, nil
+	}
+	pool, err := NewDBConnectionPool(&PoolOption{
+		Address:              "node-a:8848",
+		PoolSize:             2,
+		LoadBalance:          true,
+		LoadBalanceAddresses: []string{"node-b:8848"},
+	})
+	require.NoError(t, err)
+	defer pool.Close()
+
+	assert.Empty(t, pool.currentLeader)
 }
 
 func TestExecuteTaskRunsScriptAndReturnsConnectionToPool(t *testing.T) {
@@ -225,6 +245,88 @@ func TestExecuteTaskKeepsPoolAfterSuccessfulHAFailoverWithoutNotLeader(t *testin
 	assert.NoError(t, task.GetError())
 	assert.Equal(t, uint64(1), pool.generation)
 	assert.Empty(t, pool.currentLeader)
+	assert.False(t, old1.closed)
+	assert.False(t, old2.closed)
+	assert.Equal(t, 2, len(pool.connections))
+}
+
+func TestExecuteTaskKeepsPoolAfterSameNodeConvergenceWait(t *testing.T) {
+	originalRunPoolTask := runPoolTask
+	originalDialerNewConn := dialerNewConn
+	defer func() {
+		runPoolTask = originalRunPoolTask
+		dialerNewConn = originalDialerNewConn
+	}()
+
+	old1 := &fakePoolTaskConn{addr: "node-a:8848"}
+	old2 := &fakePoolTaskConn{addr: "node-a:8848"}
+	dialerNewConn = func(_ context.Context, addr string, _ *dialer.BehaviorOptions) (dialer.Conn, error) {
+		t.Fatalf("same-node convergence must not rebuild pool to %s", addr)
+		return nil, nil
+	}
+	runPoolTask = func(d *DBConnectionPool, conn dialer.Conn, task *Task) (model.DataForm, *dialer.ExecutionTrace, error) {
+		return nil, &dialer.ExecutionTrace{Failovers: []dialer.FailoverTrace{{
+			Reason: dialer.FailoverReasonLeaderConvergenceWait,
+			From:   "node-a:8848",
+			To:     "node-a:8848",
+			Err:    "client error response. <NotLeader>node-a:8848:dnode1",
+		}}}, nil
+	}
+
+	pool := &DBConnectionPool{
+		opt:           PoolOption{Address: "node-a:8848", PoolSize: 2},
+		connections:   make(chan pooledConn, 2),
+		timeout:       time.Second,
+		generation:    1,
+		currentLeader: "node-a:8848",
+	}
+	pool.connections <- pooledConn{conn: old1, generation: 1}
+	pool.connections <- pooledConn{conn: old2, generation: 1}
+
+	err := pool.ExecuteTask(&Task{Script: "insert"})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(1), pool.generation)
+	assert.Equal(t, "node-a:8848", pool.currentLeader)
+	assert.False(t, old1.closed)
+	assert.False(t, old2.closed)
+	assert.Equal(t, 2, len(pool.connections))
+}
+
+func TestExecuteTaskDoesNotRebuildPoolForLegacySameLeaderTrace(t *testing.T) {
+	originalRunPoolTask := runPoolTask
+	originalDialerNewConn := dialerNewConn
+	defer func() {
+		runPoolTask = originalRunPoolTask
+		dialerNewConn = originalDialerNewConn
+	}()
+
+	old1 := &fakePoolTaskConn{addr: "node-a:8848"}
+	old2 := &fakePoolTaskConn{addr: "node-a:8848"}
+	dialerNewConn = func(_ context.Context, addr string, _ *dialer.BehaviorOptions) (dialer.Conn, error) {
+		t.Fatalf("trace targeting current leader must not rebuild pool to %s", addr)
+		return nil, nil
+	}
+	runPoolTask = func(d *DBConnectionPool, conn dialer.Conn, task *Task) (model.DataForm, *dialer.ExecutionTrace, error) {
+		return nil, &dialer.ExecutionTrace{Failovers: []dialer.FailoverTrace{{
+			Reason: dialer.FailoverReasonNotLeader,
+			From:   "node-a:8848",
+			To:     "node-a:8848",
+		}}}, nil
+	}
+
+	pool := &DBConnectionPool{
+		opt:           PoolOption{Address: "node-a:8848", PoolSize: 2},
+		connections:   make(chan pooledConn, 2),
+		timeout:       time.Second,
+		generation:    1,
+		currentLeader: "node-a:8848",
+	}
+	pool.connections <- pooledConn{conn: old1, generation: 1}
+	pool.connections <- pooledConn{conn: old2, generation: 1}
+
+	err := pool.ExecuteTask(&Task{Script: "insert"})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(1), pool.generation)
 	assert.False(t, old1.closed)
 	assert.False(t, old2.closed)
 	assert.Equal(t, 2, len(pool.connections))
@@ -618,23 +720,63 @@ func TestExecuteTaskReturnsErrorWhenPoolClosed(t *testing.T) {
 func TestBuildPoolBehaviorOptionsIncludesTimeout(t *testing.T) {
 	retries := 3
 	opt := &PoolOption{
-		Timeout:                5 * time.Second,
-		EnableHighAvailability: true,
-		HighAvailabilitySites:  []string{"node1:8848"},
-		Reconnect:              true,
-		TryReconnectNums:       &retries,
-		EnableScram:            true,
-		SqlStd:                 dialer.SqlStdMySQL,
+		Timeout:                  5 * time.Second,
+		LeaderConvergenceTimeout: 9 * time.Second,
+		EnableHighAvailability:   true,
+		HighAvailabilitySites:    []string{"node1:8848"},
+		Reconnect:                true,
+		TryReconnectNums:         &retries,
+		EnableScram:              true,
+		SqlStd:                   dialer.SqlStdMySQL,
 	}
 
 	behavior := buildPoolBehaviorOptions(opt)
 	assert.Equal(t, 5*time.Second, behavior.Timeout)
+	assert.Equal(t, 9*time.Second, behavior.LeaderConvergenceTimeout)
 	assert.True(t, behavior.EnableHighAvailability)
 	assert.Equal(t, []string{"node1:8848"}, behavior.HighAvailabilitySites)
 	assert.True(t, behavior.Reconnect)
 	assert.Equal(t, &retries, behavior.TryReconnectNums)
 	assert.True(t, behavior.EnableScram)
 	assert.Equal(t, dialer.SqlStdMySQL, behavior.SqlStd)
+}
+
+func TestNewDBConnectionPoolRejectsNegativeLeaderConvergenceTimeout(t *testing.T) {
+	_, err := NewDBConnectionPool(&PoolOption{
+		Address:                  "127.0.0.1:8848",
+		PoolSize:                 1,
+		LeaderConvergenceTimeout: -time.Second,
+	})
+	require.EqualError(t, err, "LeaderConvergenceTimeout must be equal or greater than 0")
+}
+
+func TestPoolTraceHelpersIgnoreConvergenceWaitAsNotLeaderTarget(t *testing.T) {
+	trace := &dialer.ExecutionTrace{Failovers: []dialer.FailoverTrace{
+		{Reason: dialer.FailoverReasonNotLeader, From: "old:8848", To: "leader-a:8848"},
+		{Reason: dialer.FailoverReasonLeaderConvergenceWait, From: "leader-a:8848", To: "leader-a:8848"},
+	}}
+
+	target, ok := notLeaderTarget(trace)
+	require.True(t, ok)
+	assert.Equal(t, "leader-a:8848", target)
+
+	target, ok = poolSwitchTarget(trace, nil)
+	require.True(t, ok)
+	assert.Equal(t, "leader-a:8848", target)
+
+	target, ok = poolSwitchTarget(trace, errors.New("still not leader"))
+	require.True(t, ok)
+	assert.Equal(t, "leader-a:8848", target)
+
+	sameNodeOnly := &dialer.ExecutionTrace{Failovers: []dialer.FailoverTrace{{
+		Reason: dialer.FailoverReasonLeaderConvergenceWait,
+		From:   "leader-a:8848",
+		To:     "leader-a:8848",
+	}}}
+	_, ok = notLeaderTarget(sameNodeOnly)
+	assert.False(t, ok)
+	_, ok = poolSwitchTarget(sameNodeOnly, nil)
+	assert.False(t, ok)
 }
 
 func TestNewDBConnectionPoolRejectsNonPositiveTryReconnectNums(t *testing.T) {

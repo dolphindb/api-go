@@ -23,6 +23,16 @@ import (
 
 const testAddr = "127.0.0.1:3002"
 
+type closeTrackingConn struct {
+	net.Conn
+	closeCount int
+}
+
+func (c *closeTrackingConn) Close() error {
+	c.closeCount++
+	return c.Conn.Close()
+}
+
 func TestDialer(t *testing.T) {
 	fOpt, err := normalizeBehaviorOptions(&BehaviorOptions{})
 	require.NoError(t, err)
@@ -32,6 +42,7 @@ func TestDialer(t *testing.T) {
 	assert.Equal(t, defaultParallelism, *fOpt.Parallelism)
 	assert.Equal(t, defaultPriority, *fOpt.Priority)
 	assert.Equal(t, defaultFetchSize, *fOpt.FetchSize)
+	assert.Equal(t, defaultLeaderConvergenceTimeout, fOpt.LeaderConvergenceTimeout)
 
 	priority := 2
 	parallelism := 4
@@ -486,6 +497,96 @@ func TestConnectUsesConfiguredNetTimeout(t *testing.T) {
 	assert.Equal(t, 2*time.Second, gotTimeout)
 }
 
+func TestConnectClosesPreviousSocketAfterNewSocketIsReady(t *testing.T) {
+	addr, stop := startDialerTestServer(t)
+	defer stop()
+
+	oldClient, oldPeer := net.Pipe()
+	defer oldPeer.Close()
+	oldConn := &closeTrackingConn{Conn: oldClient}
+
+	rawConn, err := NewConn(context.TODO(), addr, nil)
+	require.NoError(t, err)
+	c := rawConn.(*conn)
+	c.Conn = oldConn
+	c.connectedAddress = "old:8848"
+
+	require.NoError(t, c.connect(addr))
+	assert.Equal(t, 1, oldConn.closeCount)
+	assert.Equal(t, addr, c.connectedAddress)
+	require.NoError(t, c.Close())
+	assert.Empty(t, c.connectedAddress)
+}
+
+func TestConnectDialFailureKeepsPreviousSocket(t *testing.T) {
+	originalDial := dialWithDialer
+	defer func() { dialWithDialer = originalDial }()
+	dialWithDialer = func(d *net.Dialer, network, address string) (net.Conn, error) {
+		return nil, errors.New("dial failed")
+	}
+
+	oldClient, oldPeer := net.Pipe()
+	defer oldPeer.Close()
+	oldConn := &closeTrackingConn{Conn: oldClient}
+	rawConn, err := NewConn(context.TODO(), "new:8848", nil)
+	require.NoError(t, err)
+	c := rawConn.(*conn)
+	c.Conn = oldConn
+	c.connectedAddress = "old:8848"
+
+	require.EqualError(t, c.connect("new:8848"), "dial failed")
+	assert.Same(t, oldConn, c.Conn)
+	assert.Equal(t, 0, oldConn.closeCount)
+	assert.Equal(t, "old:8848", c.connectedAddress)
+	require.NoError(t, oldConn.Close())
+}
+
+func TestConnectHandshakeFailureClosesNewSocketAndClearsState(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer listener.Close()
+
+	clientClosed := make(chan error, 1)
+	go func() {
+		serverConn, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			clientClosed <- acceptErr
+			return
+		}
+		defer serverConn.Close()
+		buffer := make([]byte, 256)
+		if _, readErr := serverConn.Read(buffer); readErr != nil {
+			clientClosed <- readErr
+			return
+		}
+		if _, writeErr := serverConn.Write([]byte("invalid\n")); writeErr != nil {
+			clientClosed <- writeErr
+			return
+		}
+		_ = serverConn.SetReadDeadline(time.Now().Add(time.Second))
+		_, readErr := serverConn.Read(buffer)
+		clientClosed <- readErr
+	}()
+
+	oldClient, oldPeer := net.Pipe()
+	defer oldPeer.Close()
+	oldConn := &closeTrackingConn{Conn: oldClient}
+	rawConn, err := NewConn(context.TODO(), listener.Addr().String(), nil)
+	require.NoError(t, err)
+	c := rawConn.(*conn)
+	c.Conn = oldConn
+	c.connectedAddress = "old:8848"
+
+	require.Error(t, c.connect(listener.Addr().String()))
+	assert.Equal(t, 1, oldConn.closeCount)
+	assert.Nil(t, c.Conn)
+	assert.Nil(t, c.reader)
+	assert.Empty(t, c.connectedAddress)
+	assert.False(t, c.isConnected)
+	assert.True(t, c.isClosed)
+	require.Error(t, <-clientClosed)
+}
+
 func TestConnectNodeDoesNotTreatEINVALAsRetryable(t *testing.T) {
 	originalConnect := connectToAddress
 	defer func() {
@@ -704,6 +805,24 @@ func TestBehaviorOptionsValidateRejectsNonPositiveTryReconnectNums(t *testing.T)
 
 	positive := 2
 	require.NoError(t, (&BehaviorOptions{TryReconnectNums: &positive}).Validate())
+}
+
+func TestBehaviorOptionsLeaderConvergenceTimeoutValidationAndNormalization(t *testing.T) {
+	require.EqualError(t,
+		(&BehaviorOptions{LeaderConvergenceTimeout: -time.Second}).Validate(),
+		"LeaderConvergenceTimeout must be equal or greater than 0",
+	)
+	_, err := NewConn(context.TODO(), testAddr, &BehaviorOptions{
+		LeaderConvergenceTimeout: -time.Second,
+	})
+	require.EqualError(t, err, "LeaderConvergenceTimeout must be equal or greater than 0")
+
+	opt, err := normalizeBehaviorOptions(&BehaviorOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, 60*time.Second, opt.LeaderConvergenceTimeout)
+	opt, err = normalizeBehaviorOptions(&BehaviorOptions{LeaderConvergenceTimeout: 7 * time.Second})
+	require.NoError(t, err)
+	assert.Equal(t, 7*time.Second, opt.LeaderConvergenceTimeout)
 }
 
 func TestGetRetryLimitUsesNilAsUnlimitedReconnects(t *testing.T) {

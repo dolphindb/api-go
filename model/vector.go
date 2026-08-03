@@ -558,7 +558,10 @@ func (vct *Vector) renderDecimalArrayVector(w *protocol.Writer, bo protocol.Byte
 			return err
 		}
 
-		if avt.data.Len() > 0 {
+		// AG-183: lengths size is rowCount*unit; must be written even when every
+		// element is an empty array (data.Len()==0), otherwise the peer waits
+		// for those bytes and the client read deadline surfaces as i/o timeout.
+		if avt.rowCount > 0 {
 			err = w.Write(avt.lengths)
 			if err != nil {
 				return err
@@ -659,7 +662,10 @@ func (vct *Vector) renderCommonArrayVector(w *protocol.Writer, bo protocol.ByteO
 			return err
 		}
 
-		if avt.data.Len() > 0 {
+		// AG-183: lengths size is rowCount*unit; must be written even when every
+		// element is an empty array (data.Len()==0), otherwise the peer waits
+		// for those bytes and the client read deadline surfaces as i/o timeout.
+		if avt.rowCount > 0 {
 			err = w.Write(avt.lengths)
 			if err != nil {
 				return err

@@ -21,8 +21,12 @@ import (
 )
 
 const (
-	defaultByteOrder = protocol.LittleEndianByte
-	defaultTimeout   = time.Minute
+	defaultByteOrder             = protocol.LittleEndianByte
+	defaultTimeout               = time.Minute
+	maxLeaderConvergenceRetries  = 90
+	initialRequestRetryBackoff   = 300 * time.Millisecond
+	maxRequestRetryBackoff       = time.Second
+	requestRetryJitterProportion = 0.20
 )
 
 const (
@@ -108,6 +112,7 @@ type conn struct {
 	publicNameByAddress    map[string]string
 	addressByPublicName    map[string]string
 	isPublicName           bool
+	connectedAddress       string
 }
 
 var shuffleStringSlice = func(values []string) {
@@ -125,6 +130,14 @@ var dialWithDialer = func(d *net.Dialer, network, address string) (net.Conn, err
 var runInternalRequest = func(c *conn, params *requestParams) (*responseHeader, model.DataForm, error) {
 	return c.runInternal(params)
 }
+
+// Request retry seams keep failover tests deterministic and free of wall-clock sleeps.
+var (
+	sleepBeforeRequestRetry = time.Sleep
+	requestRetryNow         = time.Now
+	requestRetryJitter      = mathrand.Float64
+	connectionIsHealthy     = func(c *conn) bool { return c.connected() }
+)
 
 // NewConn instantiates a new connection with the addr.
 // BehaviorOpt will affect every request sent by conn.
@@ -234,6 +247,14 @@ func (c *conn) currentRemoteAddress() string {
 	}
 
 	return c.addr
+}
+
+func (c *conn) currentLogicalAddress() string {
+	if c.connectedAddress != "" {
+		return c.connectedAddress
+	}
+
+	return c.currentRemoteAddress()
 }
 
 // Get init scripts which will be run after you call connect
@@ -391,24 +412,33 @@ func (c *conn) connect(addr string) error {
 		return fmt.Errorf("expected TCP connection, got %T", dc)
 	}
 
+	if err := setTCPSocketOptions(tcpConn, c.tcpSocketOptions()); err != nil {
+		c.dialerLogWarnf("failed to configure tcp socket options for %s: %v", addr, err)
+		_ = tcpConn.Close()
+		return err
+	}
+
+	if c.Conn != nil {
+		if closeErr := c.Conn.Close(); closeErr != nil {
+			c.dialerLogWarnf("failed to close previous connection before switching to %s: %v", addr, closeErr)
+		}
+	}
+
 	c.reader = protocol.NewReader(tcpConn)
 	c.Conn = tcpConn
+	c.connectedAddress = ""
 	cleanup := true
 	defer func() {
 		if cleanup {
 			_ = tcpConn.Close()
 			c.reader = nil
 			c.Conn = nil
+			c.connectedAddress = ""
 			c.isConnected = false
 			c.isClosed = true
 			c.sessionID = nil
 		}
 	}()
-
-	if err := setTCPSocketOptions(tcpConn, c.tcpSocketOptions()); err != nil {
-		c.dialerLogWarnf("failed to configure tcp socket options for %s: %v", addr, err)
-		return err
-	}
 
 	h, _, err := c.runInternal(&requestParams{
 		commandType: connectCmd,
@@ -447,6 +477,7 @@ func (c *conn) connect(addr string) error {
 	}
 
 	if err == nil {
+		c.connectedAddress = addr
 		c.dialerLogDebugf("connected to %s (session=%s)", addr, c.GetSession())
 		c.refreshPublicNameAddressMap(addr)
 	}
@@ -459,22 +490,18 @@ func (c *conn) Close() error {
 		return nil
 	}
 
-	if c.Conn == nil {
-		c.isConnected = false
-		c.isClosed = true
-		c.sessionID = nil
-		return nil
-	}
-
-	if err := c.Conn.Close(); err != nil {
-		return err
-	}
-
+	connToClose := c.Conn
+	c.Conn = nil
+	c.reader = nil
 	c.isConnected = false
 	c.isClosed = true
 	c.sessionID = nil
+	c.connectedAddress = ""
 
-	return nil
+	if connToClose == nil {
+		return nil
+	}
+	return connToClose.Close()
 }
 
 func (c *conn) IsClosed() bool {
@@ -596,8 +623,8 @@ func (c *conn) runWithTrace(params *requestParams) (*responseHeader, model.DataF
 
 	rh, df, err := runInternalRequest(c, params)
 	retryLimit := c.getRetryLimit()
-	retriedTargets := make(map[string]struct{})
-	var connectedAddress string
+	targetAttempts := make(map[string]int)
+	var convergenceStarted time.Time
 	for attempt := 0; retryLimit == nil || attempt <= *retryLimit; attempt++ {
 		if err == nil {
 			return rh, df, trace, nil
@@ -608,7 +635,7 @@ func (c *conn) runWithTrace(params *requestParams) (*responseHeader, model.DataF
 		et, targetAddress := c.nodePool.parseError(err)
 		failoverErr := err
 
-		if et == UNKNOWN && c.isConnected && c.connected() {
+		if et == UNKNOWN && c.isConnected && connectionIsHealthy(c) {
 			return rh, df, trace, err
 		}
 		if et == LOGIN_REQUIRED {
@@ -616,42 +643,94 @@ func (c *conn) runWithTrace(params *requestParams) (*responseHeader, model.DataF
 		}
 
 		fallbackAddress := ""
-		var retryNode *node
-		if targetAddress != "" {
-			rawTargetAddress := targetAddress
-			targetPair := c.serverDirectedAddressPair(targetAddress)
-			targetAddress, fallbackAddress = targetPair.preferred(c.isPublicName)
-			if _, ok := retriedTargets[targetAddress]; ok {
-				c.dialerLogWarnf("request failure on %s maps to already retried target %s; stopping retry (reason=%v err=%v rawTarget=%s)", failedAddr, targetAddress, et, failoverErr, rawTargetAddress)
-				return rh, df, trace, err
-			}
-			if fallbackAddress != "" && fallbackAddress != targetAddress {
-				if _, ok := retriedTargets[fallbackAddress]; ok {
-					c.dialerLogWarnf("request failure on %s maps to already retried fallback %s; stopping retry (reason=%v err=%v rawTarget=%s target=%s)", failedAddr, fallbackAddress, et, failoverErr, rawTargetAddress, targetAddress)
-					return rh, df, trace, err
-				}
-			}
-			retryNode = newNodeWithFallback(targetAddress, fallbackAddress)
-			c.dialerLogInfof("request failure on %s maps to server-directed retry target %s (reason=%v err=%v rawTarget=%s fallback=%s)", failedAddr, retryNode.address, et, failoverErr, rawTargetAddress, fallbackAddress)
-		} else {
-			c.dialerLogWarnf("request failure on %s will trigger high-availability failover (reason=%v err=%v)", failedAddr, et, failoverErr)
-		}
-		time.Sleep(300 * time.Millisecond)
-
 		failoverErrText := ""
 		if failoverErr != nil {
 			failoverErrText = failoverErr.Error()
 		}
+		fromAddress := c.currentLogicalAddress()
+		if fromAddress == "" {
+			fromAddress = failedAddr
+		}
+		var retryNode *node
+		waitDuration := jitteredRequestRetryDelay(initialRequestRetryBackoff)
+		traceReason := FailoverReasonHighAvailability
+		if targetAddress != "" {
+			rawTargetAddress := targetAddress
+			targetPair := c.serverDirectedAddressPair(targetAddress)
+			targetAddress, fallbackAddress = targetPair.preferred(c.isPublicName)
+			targetKey := c.canonicalNodeAddress(targetAddress)
+			targetAttempts[targetKey]++
+			convergenceRetry := targetAttempts[targetKey] - 1
+			if convergenceStarted.IsZero() {
+				convergenceStarted = requestRetryNow()
+			}
+			if convergenceRetry > maxLeaderConvergenceRetries {
+				trace.Failovers = append(trace.Failovers, FailoverTrace{
+					Reason: FailoverReasonLeaderConvergenceWait,
+					From:   fromAddress,
+					To:     targetAddress,
+					Err:    failoverErrText,
+				})
+				c.dialerLogWarnf("leader convergence retry budget exhausted on %s for target %s after %d retries (reason=%v err=%v)", failedAddr, targetAddress, maxLeaderConvergenceRetries, et, failoverErr)
+				return rh, df, trace, err
+			}
+			if convergenceRetry > 0 {
+				waitDuration = jitteredRequestRetryDelay(leaderConvergenceBackoff(convergenceRetry))
+			}
+			sameNode := c.sameLogicalNode(targetAddress, c.currentLogicalAddress())
+			elapsed := requestRetryNow().Sub(convergenceStarted)
+			convergenceTimeout := c.leaderConvergenceTimeout()
+			remaining := convergenceTimeout - elapsed
+			if remaining <= 0 {
+				trace.Failovers = append(trace.Failovers, FailoverTrace{
+					Reason: FailoverReasonLeaderConvergenceWait,
+					From:   fromAddress,
+					To:     targetAddress,
+					Err:    failoverErrText,
+				})
+				c.dialerLogWarnf("leader convergence time budget exhausted on %s for target %s after %s (limit=%s reason=%v err=%v)", failedAddr, targetAddress, elapsed, convergenceTimeout, et, failoverErr)
+				return rh, df, trace, err
+			}
+			if waitDuration > remaining {
+				waitDuration = remaining
+			}
+			retryNode = newNodeWithFallback(targetAddress, fallbackAddress)
+			if sameNode {
+				traceReason = FailoverReasonLeaderConvergenceWait
+			} else {
+				traceReason = FailoverReasonNotLeader
+			}
+			if sameNode || convergenceRetry > 0 {
+				c.dialerLogInfof("waiting %s for leader convergence on %s toward %s (retry=%d/%d err=%v)", waitDuration, failedAddr, targetAddress, convergenceRetry, maxLeaderConvergenceRetries, failoverErr)
+			} else {
+				c.dialerLogInfof("request failure on %s maps to server-directed retry target %s (reason=%v err=%v rawTarget=%s fallback=%s)", failedAddr, retryNode.address, et, failoverErr, rawTargetAddress, fallbackAddress)
+			}
+		} else {
+			c.dialerLogWarnf("request failure on %s will trigger high-availability failover (reason=%v err=%v)", failedAddr, et, failoverErr)
+		}
+
 		trace.Failovers = append(trace.Failovers, FailoverTrace{
-			Reason: failoverReason(targetAddress),
-			From:   failedAddr,
+			Reason: traceReason,
+			From:   fromAddress,
 			To:     targetAddress,
 			Err:    failoverErrText,
 		})
 		traceIndex := len(trace.Failovers) - 1
+		sleepBeforeRequestRetry(waitDuration)
+
+		if targetAddress != "" && c.sameLogicalNode(targetAddress, c.currentLogicalAddress()) {
+			rh, df, err = runInternalRequest(c, params)
+			if err == nil {
+				c.dialerLogInfof("leader convergence retry on current node %s succeeded", targetAddress)
+			} else {
+				c.dialerLogWarnf("leader convergence retry on current node %s failed: %v", targetAddress, err)
+			}
+			continue
+		}
 
 		// for loop would break when switchDataNode run out of retry times
-		connectedAddress, err = c.switchDataNode(retryNode)
+		connectedAddress, switchErr := c.switchDataNode(retryNode)
+		err = switchErr
 		if err != nil {
 			return nil, nil, trace, err
 		}
@@ -680,9 +759,6 @@ func (c *conn) runWithTrace(params *requestParams) (*responseHeader, model.DataF
 		if retryAddress == "" {
 			retryAddress = trace.Failovers[len(trace.Failovers)-1].To
 		}
-		if retryAddress != "" {
-			retriedTargets[retryAddress] = struct{}{}
-		}
 		rh, df, err = runInternalRequest(c, params)
 		if err == nil {
 			c.dialerLogInfof("conn-level retry on %s succeeded", retryAddress)
@@ -693,12 +769,45 @@ func (c *conn) runWithTrace(params *requestParams) (*responseHeader, model.DataF
 	return rh, df, trace, err
 }
 
-func failoverReason(targetAddress string) FailoverReason {
-	if targetAddress != "" {
-		return FailoverReasonNotLeader
+func leaderConvergenceBackoff(retry int) time.Duration {
+	if retry <= 1 {
+		return initialRequestRetryBackoff
+	}
+	if retry == 2 {
+		return 2 * initialRequestRetryBackoff
+	}
+	return maxRequestRetryBackoff
+}
+
+func jitteredRequestRetryDelay(base time.Duration) time.Duration {
+	jitter := requestRetryJitter()
+	if jitter < 0 {
+		jitter = 0
+	} else if jitter > 1 {
+		jitter = 1
+	}
+	factor := 1 - requestRetryJitterProportion + 2*requestRetryJitterProportion*jitter
+	return time.Duration(float64(base) * factor)
+}
+
+func (c *conn) canonicalNodeAddress(address string) string {
+	pair := c.serverDirectedAddressPair(address)
+	if pair.local != "" {
+		return pair.local
+	}
+	return address
+}
+
+func (c *conn) sameLogicalNode(left, right string) bool {
+	return left != "" && right != "" && c.canonicalNodeAddress(left) == c.canonicalNodeAddress(right)
+}
+
+func (c *conn) leaderConvergenceTimeout() time.Duration {
+	if c.behaviorOpt == nil || c.behaviorOpt.LeaderConvergenceTimeout == 0 {
+		return defaultLeaderConvergenceTimeout
 	}
 
-	return FailoverReasonHighAvailability
+	return c.behaviorOpt.LeaderConvergenceTimeout
 }
 
 func (c *conn) runInternal(params *requestParams) (*responseHeader, model.DataForm, error) {

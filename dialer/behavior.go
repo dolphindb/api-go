@@ -77,6 +77,12 @@ type BehaviorOptions struct {
 	// Nil means reconnect indefinitely; any non-positive value is invalid.
 	TryReconnectNums *int
 
+	// LeaderConvergenceTimeout limits how long one request waits for repeated
+	// structured NotLeader responses after the first NotLeader is received.
+	// It is not a total request deadline: earlier targetless HA retries are not
+	// included. Zero uses the SDK default of 60 seconds.
+	LeaderConvergenceTimeout time.Duration
+
 	// UsePython specifies whether the session uses a Python parser
 	UsePython bool
 
@@ -89,12 +95,16 @@ type BehaviorOptions struct {
 	EnableScram bool
 }
 
-var errInvalidTryReconnectNums = errors.New("TryReconnectNums must be nil or greater than 0")
+var (
+	errInvalidTryReconnectNums         = errors.New("TryReconnectNums must be nil or greater than 0")
+	errInvalidLeaderConvergenceTimeout = errors.New("LeaderConvergenceTimeout must be equal or greater than 0")
+)
 
 const (
-	defaultPriority    = 4
-	defaultParallelism = 64
-	defaultFetchSize   = 0
+	defaultPriority                 = 4
+	defaultParallelism              = 64
+	defaultFetchSize                = 0
+	defaultLeaderConvergenceTimeout = 60 * time.Second
 )
 
 // Validate checks whether the behavior options are internally consistent.
@@ -103,7 +113,7 @@ func (f *BehaviorOptions) Validate() error {
 		return nil
 	}
 
-	return validateTryReconnectNums(f.TryReconnectNums)
+	return validateBehaviorOptions(f)
 }
 
 func normalizeBehaviorOptions(opt *BehaviorOptions) (*BehaviorOptions, error) {
@@ -120,6 +130,9 @@ func normalizeBehaviorOptions(opt *BehaviorOptions) (*BehaviorOptions, error) {
 	normalized.Parallelism = cloneIntPtrOrDefault(opt.Parallelism, defaultParallelism)
 	normalized.FetchSize = cloneIntPtrOrDefault(opt.FetchSize, defaultFetchSize)
 	normalized.TryReconnectNums = cloneIntPtr(opt.TryReconnectNums)
+	if normalized.LeaderConvergenceTimeout == 0 {
+		normalized.LeaderConvergenceTimeout = defaultLeaderConvergenceTimeout
+	}
 	if opt.HighAvailabilitySites != nil {
 		normalized.HighAvailabilitySites = slices.Clone(opt.HighAvailabilitySites)
 	}
@@ -132,7 +145,14 @@ func validateBehaviorOptions(opt *BehaviorOptions) error {
 		return nil
 	}
 
-	return validateTryReconnectNums(opt.TryReconnectNums)
+	if err := validateTryReconnectNums(opt.TryReconnectNums); err != nil {
+		return err
+	}
+	if opt.LeaderConvergenceTimeout < 0 {
+		return errInvalidLeaderConvergenceTimeout
+	}
+
+	return nil
 }
 
 func validateTryReconnectNums(n *int) error {
