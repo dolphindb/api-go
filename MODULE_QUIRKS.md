@@ -6,8 +6,6 @@
 - 修改某个模块前，先看对应章节，重点关注“反常点”和“写代码建议”。
 - 这里优先记录会影响实现判断的历史包袱、非直觉设计、与 Go 生态冲突的做法。
 - 如果代码与文档不一致，以代码为准；修完后把文档补齐。
-- 若读者几乎没有 Go 基础、需要「为什么这么怪」的逐条详解（含指针/`error`/New 等语法），请先读
-  [`../docs/analysis/api-go设计疑惑详解-面向Go新手.md`](../docs/analysis/api-go设计疑惑详解-面向Go新手.md)。
 
 ## `api`
 
@@ -43,21 +41,11 @@
   可能继续使用旧节点 session 并反复触发 failover。收到服务端响应头后也要刷新
   当前连接 session，即使后续响应体是服务端错误。
 - 服务端可能在客户端已经切到 `NotLeader` 指定节点后继续返回同一个
-  `NotLeader` target。不能把“重复 target”直接等同于“无可用路径”：当前实现按
-  规范化节点计数，用默认 90 次和 60 秒双预算等待 leader 收敛；同址时原地重放，
-  避免丢 session 和重复建连。
-- `LeaderConvergenceTimeout` 从当前请求第一次收到结构化 `NotLeader` 时起算，
-  不是单次 API 调用的总超时。之前的无 target HA 轮询不计入，且
-  `TryReconnectNums=nil` 时该既有路径仍可能无界等待。
-- failover trace 一次迭代只记录一个动作：跨节点定向使用 `NotLeader`，同址等待
-  使用 `LeaderConvergenceWait`。连接池不得把 `LeaderConvergenceWait(A→A)`
-  解释为 leader 已切换并重建整池。
-- `ServerError.Is` 的参数是 `ServerErrorCode`，不是标准库 `errors.Is` 所需的
-  `Is(error) bool`。调用方必须先用 `dialer.AsServerError(err)`，再调用
-  `serverErr.Is(dialer.ServerErrNotLeader)`；`errors.Is(err, ...)` 不会替代这条路径。
-- `conn.connect` 会在新 TCP 拨号和 socket option 配置成功后接管连接。改动连接
-  生命周期时必须保证旧 socket 被关闭、新握手失败时新 socket 被回收，并维护
-  `connectedAddress` 这个逻辑地址；不要只覆盖 `c.Conn` / `c.reader`。
+  `NotLeader` target。AG-236 移除了请求内已重试地址去重：无论重复的是首选
+  target 还是同一节点的 fallback，请求级 failover 都不应提前结束，而应统一服从
+  `TryReconnectNums` 的公开语义：`nil` 表示无限重试，非 `nil` 时按配置的次数停止。
+  该约束只适用于结构化 `NotLeader` 的 server-directed 路径，不应扩展为对所有业务
+  错误无条件重放。
 
 写代码建议：
 - 涉及连接、重连、HA 的改动，默认视为高风险改动，先核对 Python/C++ 语义再下手。

@@ -1,11 +1,15 @@
 # CHANGES
 
+## `3.2.2`
+
+- AG-236：高可用请求收到重复的 server-directed `NotLeader` target 时不再提前返回，
+  后续重试统一服从 `TryReconnectNums` 配置
+
 ## `3.2.1`
 
 - AG-52：新增 BOOL、CHAR、COMPRESS 读取侧 null 常量
   `model.NullBoolValue`、`model.NullCharValue`、`model.NullCompressValue`；
   构造/上传侧常量、现有返回类型和线协议保持不变
-- AG-235：streaming HA 写入遇到重复/自指向 `NotLeader` 时，在请求内做有界 leader 收敛重试，避免瞬时选举窗口丢批
 - AG-183：修复 ArrayVector 空元素序列化漏写 `lengths`；含空数组列的 `RunFunc`/`Upload` 不再对端死等并在客户端表现为 `i/o timeout`
 
 ## `3.2.0`

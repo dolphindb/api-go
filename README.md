@@ -222,7 +222,6 @@ NewDolphinDBClient 仅初始化客户端，需要通过 Connect 和 Login 去连
 - HighAvailabilitySites: 指定高可用节点地址，仅在 `EnableHighAvailability=true` 时可配置；否则会返回错误。
 - Reconnect: 指定是否开启断线重连。
 - TryReconnectNums: 指定断线重连次数。`nil` 表示无限重试；正整数表示有限重试次数；小于等于 `0` 的值会返回参数错误。
-- LeaderConvergenceTimeout: 指定从当前请求第一次收到结构化 `NotLeader` 起算的 leader 收敛窗口；它不是整个请求的总超时，之前发生的无 target HA 轮询不计入。`0` 使用默认 60 秒，负值返回参数错误。
 - EnableScram: 指定是否强制使用 SCRAM 登录。`false` 时客户端仍会优先尝试 SCRAM；如果服务端或用户不支持 SCRAM，会静默回退到普通 `login`，以兼顾默认安全性和旧版本兼容性。
 - IsReverseStreaming: 指定是否开启反向流订阅。
 - IsClearSessionMemory: 指定此任务完成后是否清理 Session 缓存。
@@ -536,7 +535,6 @@ PoolOption 参数说明：
 - HighAvailabilitySites: 指定高可用节点地址。开启负载均衡时，这些地址也会并入连接池候选节点集合；如果同时开启高可用，内部连接也会在这组去重后的节点中切换。若 `LoadBalance=false` 且 `EnableHighAvailability=false`，配置该参数会返回错误。
 - Timeout: 指定连接默认超时时间；对 `DBConnectionPool` 和 `ConnPool` 借出的连接都会生效。
 - TryReconnectNums: 指定重连次数。`nil` 表示无限重试；正整数表示有限重试次数；小于等于 `0` 的值会返回参数错误。
-- LeaderConvergenceTimeout: 指定从当前请求第一次收到结构化 `NotLeader` 起算的 leader 收敛窗口；它不是整个请求的总超时，之前发生的无 target HA 轮询不计入。`0` 使用默认 60 秒，负值返回参数错误。
 
 `Task` 封装了查看任务执行结果的相关方法。
 

@@ -11,7 +11,6 @@ type FailoverReason string
 const (
 	FailoverReasonUnknown                FailoverReason = ""
 	FailoverReasonNotLeader              FailoverReason = "NotLeader"
-	FailoverReasonLeaderConvergenceWait  FailoverReason = "LeaderConvergenceWait"
 	FailoverReasonHighAvailability       FailoverReason = "HighAvailability"
 	FailoverReasonServerDirectedFallback FailoverReason = "ServerDirectedFallback"
 )
